@@ -1,0 +1,12 @@
+# 生成文件（运行 cad/build.py 等脚本重新生成）
+out/stl/
+out/step/
+out/solidworks/
+out/archive/
+renders/mujoco_sequence.gif
+renders/v0.1/
+renders/v0.2/
+viewer/robodog_v0.1.html
+__pycache__/
+*.pyc
+node_modules/
