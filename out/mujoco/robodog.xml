@@ -1,5 +1,5 @@
-<!-- RoboDog v0.3.3 · 由 cad/export_mujoco.py 从 CAD 自动生成，不要手改（改 CAD 后重新导出） -->
-<mujoco model="robodog_v0.3.3">
+<!-- RoboDog v0.4 · 由 cad/export_mujoco.py 从 CAD 自动生成，不要手改（改 CAD 后重新导出） -->
+<mujoco model="robodog_v0.4">
   <compiler angle="degree" meshdir="meshes" autolimits="true"/>
   <option timestep="0.002" integrator="implicitfast"/>
 
@@ -113,7 +113,7 @@
   <worldbody>
     <body name="base" pos="0 0 0.3359" childclass="robodog">
       <freejoint name="root"/>
-      <inertial pos="0.000918782 7.39663e-05 0.000752604" mass="3.5362" fullinertia="0.0084093 0.033544 0.035224 3.46295e-05 0.00122235 -8.64015e-06"/>
+      <inertial pos="0.000663541 7.74538e-05 0.000902814" mass="3.6082" fullinertia="0.00977767 0.0345394 0.0373163 3.68965e-05 0.00127931 -9.36562e-06"/>
       <geom class="vis" mesh="body_motor" rgba="0.105882 0.109804 0.121569 1"/>
       <geom class="vis" mesh="body_block" rgba="0.172549 0.184314 0.203922 1"/>
       <geom class="vis" mesh="body_pcb" rgba="0.121569 0.231373 0.431373 1"/>
@@ -128,7 +128,7 @@
       <geom class="vis" mesh="body_battery" rgba="0.184314 0.364706 0.541176 1"/>
       <geom class="vis" mesh="body_pi" rgba="0.239216 0.490196 0.290196 1"/>
       <geom class="vis" mesh="body_fan" rgba="0.164706 0.164706 0.164706 1"/>
-      <geom name="col_body" class="col" type="box" pos="0 0 0.009" size="0.150 0.075 0.058"/>
+      <geom name="col_body" class="col" type="box" pos="0 0 0.009" size="0.150 0.085 0.058"/>
       <geom name="col_tail" class="col" type="box" pos="-0.185 0 0.060" size="0.030 0.035 0.012"/>
       <site name="imu" pos="-0.008 0 0.012" size="0.006" rgba="0 1 0 0.5"/>
       <site name="cliff_front" pos="0.131 0 -0.040" zaxis="0.5736 0 -0.8192" size="0.004" rgba="1 0 0 0.5"/>
@@ -141,7 +141,7 @@
         <geom class="vis" mesh="FL_haa_motor" rgba="0.105882 0.109804 0.121569 1"/>
         <body name="FL_hfe" pos="0.188 0.058 0">
           <joint name="FL_hfe" axis="0 1 0" range="-95 95" armature="0.005"/>
-          <inertial pos="-0.00148891 0.0417084 -0.0441722" mass="0.6792" fullinertia="0.00391235 0.00351168 0.000850755 -1.18428e-06 -1.75706e-05 0.000282725"/>
+          <inertial pos="-0.00128746 0.0427287 -0.0481052" mass="0.7496" fullinertia="0.00440638 0.00403171 0.000951192 9.94833e-07 -2.37987e-05 0.000327068"/>
           <geom class="vis" mesh="FL_hfe_flange" rgba="0.654902 0.670588 0.694118 1"/>
           <geom class="vis" mesh="FL_hfe_frame" rgba="0.172549 0.184314 0.203922 1"/>
           <geom class="vis" mesh="FL_hfe_thigh_out" rgba="0.172549 0.184314 0.203922 1"/>
@@ -153,7 +153,7 @@
           <geom name="col_FL_hfe" class="col" type="capsule" fromto="0 0.0445 0 0 0.0445 -0.1900" size="0.036"/>
           <body name="FL_knee" pos="0 0 -0.19">
             <joint name="FL_knee" axis="0 1 0" range="-150 12" armature="0.016"/>
-            <inertial pos="2.00854e-11 0.0427148 -0.0623644" mass="0.1886" fullinertia="0.000946815 0.000910054 8.42221e-05 5.02253e-14 4.5573e-13 -0.000110503"/>
+            <inertial pos="1.66419e-11 0.04077 -0.0618583" mass="0.2276" fullinertia="0.00104949 0.00101101 9.78969e-05 4.2866e-14 4.5763e-13 -0.000107747"/>
             <geom class="vis" mesh="FL_knee_frame" rgba="0.172549 0.184314 0.203922 1"/>
             <geom class="vis" mesh="FL_knee_alu" rgba="0.72549 0.745098 0.768627 1"/>
             <geom class="vis" mesh="FL_knee_armor" rgba="0.890196 0.901961 0.913725 1"/>
@@ -173,7 +173,7 @@
         <geom class="vis" mesh="FR_haa_motor" rgba="0.105882 0.109804 0.121569 1"/>
         <body name="FR_hfe" pos="0.188 -0.058 0">
           <joint name="FR_hfe" axis="0 1 0" range="-95 95" armature="0.005"/>
-          <inertial pos="-0.00148891 -0.0417084 -0.0441722" mass="0.6792" fullinertia="0.00391235 0.00351168 0.000850755 1.18428e-06 -1.75706e-05 -0.000282725"/>
+          <inertial pos="-0.00128746 -0.0427287 -0.0481052" mass="0.7496" fullinertia="0.00440638 0.00403171 0.000951192 -9.94833e-07 -2.37987e-05 -0.000327068"/>
           <geom class="vis" mesh="FR_hfe_flange" rgba="0.654902 0.670588 0.694118 1"/>
           <geom class="vis" mesh="FR_hfe_frame" rgba="0.172549 0.184314 0.203922 1"/>
           <geom class="vis" mesh="FR_hfe_thigh_out" rgba="0.172549 0.184314 0.203922 1"/>
@@ -185,7 +185,7 @@
           <geom name="col_FR_hfe" class="col" type="capsule" fromto="0 -0.0445 0 0 -0.0445 -0.1900" size="0.036"/>
           <body name="FR_knee" pos="0 0 -0.19">
             <joint name="FR_knee" axis="0 1 0" range="-150 12" armature="0.016"/>
-            <inertial pos="2.00854e-11 -0.0427148 -0.0623644" mass="0.1886" fullinertia="0.000946815 0.000910054 8.42221e-05 -5.02253e-14 4.5573e-13 0.000110503"/>
+            <inertial pos="1.66419e-11 -0.04077 -0.0618583" mass="0.2276" fullinertia="0.00104949 0.00101101 9.78969e-05 -4.2866e-14 4.5763e-13 0.000107747"/>
             <geom class="vis" mesh="FR_knee_frame" rgba="0.172549 0.184314 0.203922 1"/>
             <geom class="vis" mesh="FR_knee_alu" rgba="0.72549 0.745098 0.768627 1"/>
             <geom class="vis" mesh="FR_knee_armor" rgba="0.890196 0.901961 0.913725 1"/>
@@ -205,7 +205,7 @@
         <geom class="vis" mesh="RL_haa_motor" rgba="0.105882 0.109804 0.121569 1"/>
         <body name="RL_hfe" pos="-0.188 0.058 0">
           <joint name="RL_hfe" axis="0 1 0" range="-95 95" armature="0.005"/>
-          <inertial pos="-0.00148891 0.0417084 -0.0441722" mass="0.6792" fullinertia="0.00391235 0.00351168 0.000850755 -1.18428e-06 -1.75706e-05 0.000282725"/>
+          <inertial pos="-0.00128746 0.0427287 -0.0481052" mass="0.7496" fullinertia="0.00440638 0.00403171 0.000951192 9.94833e-07 -2.37987e-05 0.000327068"/>
           <geom class="vis" mesh="RL_hfe_flange" rgba="0.654902 0.670588 0.694118 1"/>
           <geom class="vis" mesh="RL_hfe_frame" rgba="0.172549 0.184314 0.203922 1"/>
           <geom class="vis" mesh="RL_hfe_thigh_out" rgba="0.172549 0.184314 0.203922 1"/>
@@ -217,7 +217,7 @@
           <geom name="col_RL_hfe" class="col" type="capsule" fromto="0 0.0445 0 0 0.0445 -0.1900" size="0.036"/>
           <body name="RL_knee" pos="0 0 -0.19">
             <joint name="RL_knee" axis="0 1 0" range="-150 12" armature="0.016"/>
-            <inertial pos="2.00855e-11 0.0427148 -0.0623644" mass="0.1886" fullinertia="0.000946815 0.000910054 8.42221e-05 5.02349e-14 4.55717e-13 -0.000110503"/>
+            <inertial pos="1.66418e-11 0.04077 -0.0618583" mass="0.2276" fullinertia="0.00104949 0.00101101 9.78969e-05 4.28616e-14 4.57648e-13 -0.000107747"/>
             <geom class="vis" mesh="RL_knee_frame" rgba="0.172549 0.184314 0.203922 1"/>
             <geom class="vis" mesh="RL_knee_alu" rgba="0.72549 0.745098 0.768627 1"/>
             <geom class="vis" mesh="RL_knee_armor" rgba="0.890196 0.901961 0.913725 1"/>
@@ -237,7 +237,7 @@
         <geom class="vis" mesh="RR_haa_motor" rgba="0.105882 0.109804 0.121569 1"/>
         <body name="RR_hfe" pos="-0.188 -0.058 0">
           <joint name="RR_hfe" axis="0 1 0" range="-95 95" armature="0.005"/>
-          <inertial pos="-0.00148891 -0.0417084 -0.0441722" mass="0.6792" fullinertia="0.00391235 0.00351168 0.000850755 1.18428e-06 -1.75706e-05 -0.000282725"/>
+          <inertial pos="-0.00128746 -0.0427287 -0.0481052" mass="0.7496" fullinertia="0.00440638 0.00403171 0.000951192 -9.94833e-07 -2.37987e-05 -0.000327068"/>
           <geom class="vis" mesh="RR_hfe_flange" rgba="0.654902 0.670588 0.694118 1"/>
           <geom class="vis" mesh="RR_hfe_frame" rgba="0.172549 0.184314 0.203922 1"/>
           <geom class="vis" mesh="RR_hfe_thigh_out" rgba="0.172549 0.184314 0.203922 1"/>
@@ -249,7 +249,7 @@
           <geom name="col_RR_hfe" class="col" type="capsule" fromto="0 -0.0445 0 0 -0.0445 -0.1900" size="0.036"/>
           <body name="RR_knee" pos="0 0 -0.19">
             <joint name="RR_knee" axis="0 1 0" range="-150 12" armature="0.016"/>
-            <inertial pos="2.00855e-11 -0.0427148 -0.0623644" mass="0.1886" fullinertia="0.000946815 0.000910054 8.42221e-05 -5.02349e-14 4.55717e-13 0.000110503"/>
+            <inertial pos="1.66418e-11 -0.04077 -0.0618583" mass="0.2276" fullinertia="0.00104949 0.00101101 9.78969e-05 -4.28616e-14 4.57648e-13 0.000107747"/>
             <geom class="vis" mesh="RR_knee_frame" rgba="0.172549 0.184314 0.203922 1"/>
             <geom class="vis" mesh="RR_knee_alu" rgba="0.72549 0.745098 0.768627 1"/>
             <geom class="vis" mesh="RR_knee_armor" rgba="0.890196 0.901961 0.913725 1"/>
@@ -321,7 +321,7 @@
     <key name="stand" qpos="0 0 0.336937 1 0 0 0 -0.0872665 0.610865 -1.22173 0.0872665 0.610865 -1.22173 -0.0872665 0.610865 -1.22173 0.0872665 0.610865 -1.22173 0 0"/>
     <key name="look" qpos="0 0 0.336937 1 0 0 0 -0.0872665 0.610865 -1.22173 0.0872665 0.610865 -1.22173 -0.0872665 0.610865 -1.22173 0.0872665 0.610865 -1.22173 0.610865 -0.20944"/>
     <key name="sit" qpos="0 0 0.232128 0.976296 0 -0.21644 0 -0.0872665 1.15546 -1.43826 0.0872665 1.15546 -1.43826 -0.0872665 1.46518 -2.44643 0.0872665 1.46518 -2.44643 0 -0.174533"/>
-    <key name="lie" qpos="0 0 0.0515596 1 0 0 0 0 -1.48353 -0.139626 -0 -1.48353 -0.139626 0 1.48353 0.139626 -0 1.48353 0.139626 0 0.314159"/>
+    <key name="lie" qpos="0 0 0.0540331 1 0 0 0 0 -1.48353 -0.139626 -0 -1.48353 -0.139626 0 1.48353 0.139626 -0 1.48353 0.139626 0 0.314159"/>
     <key name="crouch" qpos="0 0 0.136 1 0 0 0 -0.0872665 1.25782 -2.51563 0.0872665 1.25782 -2.51563 -0.0872665 1.25782 -2.51563 0.0872665 1.25782 -2.51563 0 0"/>
   </keyframe>
 </mujoco>

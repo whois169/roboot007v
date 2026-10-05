@@ -83,7 +83,7 @@ LEG_Y = {"thigh": (Y_INNER[0] + Y_OUTER[1]) / 2 / 1000, "shank": (SHANK_Y[0] + S
 def collision(g):
     out = []
     if g == "body":
-        out.append('<geom name="col_body" class="col" type="box" pos="0 0 0.009" size="0.150 0.075 0.058"/>')
+        out.append(f'<geom name="col_body" class="col" type="box" pos="0 0 0.009" size="0.150 {(BODY_W / 2 + 5) / 1000:.3f} 0.058"/>')
         out.append('<geom name="col_tail" class="col" type="box" pos="-0.185 0 0.060" size="0.030 0.035 0.012"/>')
     elif g == "neck_pitch":
         p = np.array([186.0, 0, 102.0]) / 1000 - jpt(g) / 1000
@@ -188,8 +188,8 @@ keys = []
 for pn, pose in POSES_MJ.items():
     keys.append(f'    <key name="{pn}" qpos="{fmt(qpos(pose))}"/>')
 
-xml = f"""<!-- RoboDog v0.3.3 · 由 cad/export_mujoco.py 从 CAD 自动生成，不要手改（改 CAD 后重新导出） -->
-<mujoco model="robodog_v0.3.3">
+xml = f"""<!-- RoboDog v0.4 · 由 cad/export_mujoco.py 从 CAD 自动生成，不要手改（改 CAD 后重新导出） -->
+<mujoco model="robodog_v0.4">
   <compiler angle="degree" meshdir="meshes" autolimits="true"/>
   <option timestep="0.002" integrator="implicitfast"/>
 

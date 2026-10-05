@@ -1,5 +1,5 @@
 """
-生成 RoboDog v0.3.3（可动装配，电机按 DM-J4310 V1.1 安装图，眼睛换成长条彩屏，传感器收进前脸）：
+生成 RoboDog v0.4（可动装配，电机按 DM-J4310 V1.1 安装图，眼睛换成长条彩屏，传感器收进前脸）：
   out/stl/                 可打印零件（已摆好打印方向）
   out/step/                站立姿态整机 STEP
   out/robodog.glb          按刚体分组的模型（零位），配合 out/rig.json 在网页里摆姿态
@@ -71,7 +71,8 @@ THIGH_PARTS = [("HFE法兰", hf, "flange"), ("大腿内板", G.thigh_inner(), "f
                ("带轮转接盘", G.pulley_adapter(), "frame"), ("小带轮20T", G.pulley_small(), "alu"),
                ("同步带HTD5M", G.belt(), "belt"), ("张紧轮", idler_r, "alu"), ("张紧轮轴", idler_ax, "steel"),
                ("张紧轮套筒", idler_sl, "frame"), ("膝轴", G.knee_shaft(), "alu"),
-               ("大腿装甲", A.thigh_cover(), "armor"), ("膝电机前安装环", G.kfe_front_ring(), "frame")]
+               ("大腿装甲", A.thigh_cover(), "armor"), ("膝电机前安装环", G.kfe_front_ring(), "frame"),
+               ("大腿隔板", G.thigh_partition(), "frame")]
 k_seat, k_plug = P.motor_connector_y(Y_KFE[0], G.KFE_CONN_ANG)
 THIGH_PARTS += [("KFE插头座", k_seat, "motor"), ("预留-KFE插头", k_plug, "keepout")]
 h_seat, h_plug = P.motor_connector_y(-MOTOR["H"], 90.0)          # HFE 插头朝上
@@ -110,7 +111,7 @@ add("body", "后髋座底盖", P.hip_block_cover().mirror("YZ"), "block")
 add("body", "前防跌落ToF", P.cliff_tof_front(), "pcb")
 add("body", "后防跌落ToF", P.cliff_tof_front().mirror("YZ"), "pcb")
 RX = HIP_X - BLOCK_DEPTH - 1
-for yy in (58.0, -58.0):
+for yy in (RAIL_Y, -RAIL_Y):
     for zz in (40.0, -35.0):
         add("body", "2020型材", P.rail_2020(-RX, RX, yy, zz), "alu")
 sa = A.side_armor_L()
@@ -386,8 +387,9 @@ printables = {
     "haa_bracket_RR": (br.mirror("YZ").mirror("XZ"), FLAT_Y, 1, f"{PA}，5 层壁，60% 填充"),
     "thigh_inner_L": (ti, FLAT_Y, 2, f"{PA}，5 层壁，60% 填充"),
     "thigh_inner_R": (ti.mirror("XZ"), FLAT_Y, 2, f"{PA}，5 层壁，60% 填充"),
-    "thigh_outer_L": (to, FLAT_Y, 2, f"{PA}，4 层壁，50% 填充"),
-    "thigh_outer_R": (to.mirror("XZ"), FLAT_Y, 2, f"{PA}，4 层壁，50% 填充"),
+    "thigh_outer_L": (to, FLAT_Y, 2, f"{PA}，4 层壁，40% 填充（外板朝下，围边朝上，不用支撑）"),
+    "thigh_outer_R": (to.mirror("XZ"), FLAT_YP, 2, f"{PA}，4 层壁，40% 填充（外板朝下，围边朝上，不用支撑）"),
+    "thigh_partition": (G.thigh_partition(), FLAT_Y, 4, "PETG，3 层壁（左右通用）"),
     "thigh_cover_L": (tc, FLAT_Y, 2, "ASA 白，3 层壁"),
     "thigh_cover_R": (tc.mirror("XZ"), FLAT_Y, 2, "ASA 白，3 层壁"),
     "standoff_set": (cq.Compound.makeCompound(G.standoffs()), FLAT_Y, 4, "PETG 100% 填充（或换 M4 铝柱）"),
@@ -441,11 +443,11 @@ report.append("")
 report.append(f"打印件总重粗估 ≈ {total_g / 1000:.2f} kg")
 
 # ------------------------------------------------------------------ STEP（站立姿态）
-asm = cq.Assembly(name="RoboDog_v0.3.3_stand")
+asm = cq.Assembly(name="RoboDog_v0.4_stand")
 for i, (g, nm, s, c) in enumerate(POSE_INFO["stand"]["items"]):
     if c != "keepout":
         asm.add(s, name=f"{i:03d}_{nm}", color=cq.Color(COL[c]))
-asm.export(os.path.join(OUT, "step", "robodog_v0.3.3_stand.step"))
+asm.export(os.path.join(OUT, "step", "robodog_v0.4_stand.step"))
 
 
 # ------------------------------------------------------------------ GLB（零位，按 刚体组|颜色 分节点）+ rig.json

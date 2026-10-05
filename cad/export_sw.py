@@ -1,6 +1,6 @@
 """
 导出给 SolidWorks 做运动分析用的文件（零位、按刚体分组）：
-  out/solidworks/robodog_v0.3.3_rigid_groups.step   一个装配体，15 个子装配 = 15 个刚体
+  out/solidworks/robodog_v0.4_rigid_groups.step   一个装配体，15 个子装配 = 15 个刚体
   out/solidworks/groups/<刚体>.step                   每个刚体单独一个文件
   out/solidworks/关节表.csv                            关节轴线、转动范围、站立/坐下/趴下角度
   out/solidworks/刚体质量.csv                          每个刚体的估算质量和重心（零位、mm）
@@ -24,7 +24,7 @@ for code, sx, sy, cn in B.LEGS:
     GROUP_CN[f"{code}_knee"] = f"{cn}腿-小腿（膝）"
 
 # ---------------- 装配体 STEP（零位，每个刚体一个子装配）
-top = cq.Assembly(name="RoboDog_v0.3.3_zero_pose")
+top = cq.Assembly(name="RoboDog_v0.4_zero_pose")
 for g, lst in B.groups.items():
     sub = cq.Assembly(name=g)
     one = cq.Assembly(name=g)
@@ -35,7 +35,7 @@ for g, lst in B.groups.items():
         one.add(s, name=f"{g}_{i:02d}_{nm}", color=cq.Color(B.COL[c]))
     top.add(sub, name=g)
     one.export(os.path.join(SW, "groups", f"{g}.step"))
-top.export(os.path.join(SW, "robodog_v0.3.3_rigid_groups.step"))
+top.export(os.path.join(SW, "robodog_v0.4_rigid_groups.step"))
 
 # ---------------- 关节表
 RANGE = {"haa": ("-30", "+30", "未校核，建议先限制在 ±30°"),

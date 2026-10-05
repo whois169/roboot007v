@@ -33,8 +33,11 @@ const SHOTS = [
     labels: [["2.25 寸长条彩屏（深色亚克力后面）", "neck_pitch", [249.6, 22, 110]], ["USB 相机镜头（分体式模组）", "neck_pitch", [250, 0, 88]],
              ["VL53L5CX 测距窗", "neck_pitch", [250, -16, 88]], ["隐私指示灯", "neck_pitch", [250, 12, 88]],
              ["毫米波藏在这条白边后面", "neck_pitch", [250, -8, 120]]] },
+  { name: "v4_leg", title: "封闭大腿：皮带和带轮全包在里面，小腿实心", pose: "stand", focus: ["FL_hfe", [176, 128, -120]], off: [0.42, 0.06, -0.42], shell: true,
+    labels: [["围边：从外壳一直包到内板", "FL_hfe", [147, 135, -120]], ["张紧轮罩（拆外壳调皮带）", "FL_hfe", [136, 135, -70]],
+             ["小腿槽口：里面是实心的膝部圆盘", "FL_hfe", [190, 118, -228]], ["实心小腿（去掉减重孔）", "FL_knee", [188, 122, -300]]] },
   { name: "v3_rear", title: "后 45°", pose: "stand", cam: [0.9, 0.62, -0.95], tgt: [0, 0.27, -0.02], shell: true },
-  { name: "v3_leg", title: "左前腿：同步带膝关节（拆下装甲和外板）", pose: "stand", cam: [0.72, 0.30, 0.55], tgt: [0.12, 0.19, 0.13], shell: false, thigh: true,
+  { name: "v3_leg", title: "左前腿：同步带膝关节（拆下装甲和外壳）", pose: "stand", cam: [0.72, 0.30, 0.55], tgt: [0.12, 0.19, 0.13], shell: false, thigh: true,
     labels: [["膝电机 KFE（随大腿转）", "FL_hfe", [X, YO + 31, 0]], ["HFE 髋俯仰电机", "FL_haa", [X, 67, 0]],
              ["20T 小带轮", "FL_hfe", [X, YO + 70, 0]], ["HTD-5M 20mm 皮带", "FL_hfe", [X - 22, YO + 70, -95]],
              ["张紧轮（长槽可调）", "FL_hfe", [X - 31, YO + 70, -70]], ["36T 大带轮（1:1.8）", "FL_knee", [X, YO + 70, -190]],
@@ -86,7 +89,7 @@ for (const s of SHOTS) {
     svg.id = "ov"; svg.setAttribute("width", W); svg.setAttribute("height", H);
     svg.style.cssText = "position:absolute;left:0;top:0;pointer-events:none;font-family:'Noto Sans SC',sans-serif";
     const add = (tag, attrs) => { const e = document.createElementNS(ns, tag); Object.entries(attrs).forEach(([k, val]) => e.setAttribute(k, val)); svg.appendChild(e); return e; };
-    add("text", { x: 22, y: 40, "font-size": 20, "font-weight": 700, fill: "#e9edf1" }).textContent = "RoboDog v0.3 · " + s.title;
+    add("text", { x: 22, y: 40, "font-size": 20, "font-weight": 700, fill: "#e9edf1" }).textContent = "RoboDog v0.4 · " + s.title;
     const items = (s.labels || []).map(([txt, g, p]) => {
       const q = v.worldOf(g, p).project(v.camera);
       return { txt, x: (q.x + 1) / 2 * W, y: (1 - q.y) / 2 * H, side: q.x < 0 ? "L" : "R",

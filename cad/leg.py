@@ -1,5 +1,5 @@
 """
-RoboDog v0.3 腿：同步带膝关节（腿坐标，零位 = 大腿、小腿都竖直向下）
+RoboDog v0.4 腿：同步带膝关节，大腿全封闭（腿坐标，零位 = 大腿、小腿都竖直向下）
   腿坐标：原点 = HFE 轴线与 HFE 输出面交点，x 向前，y 向外，z 向上
   膝坐标：原点 = 膝轴与 y=0 平面交点（零位时位于腿坐标 (0, 0, -L_THIGH)）
 传动：膝电机(KFE) -> 转接盘 -> 20T 小带轮 -> HTD-5M 皮带 -> 36T 大带轮(固定在小腿上)
@@ -44,11 +44,12 @@ IDLER_R = 9.0
 IDLER_POS = (_span_x(-70.0, BELT_OUT) - IDLER_R + 1.0, -70.0)   # 张紧轮压住后侧直段 1mm
 
 
+KFE_CABLE = (-35.0 * math.sin(math.radians(112.5)), -35.0 * math.cos(math.radians(112.5)))   # 膝电机出线孔（内板，两根髋部立柱之间）
+
+
 def _thigh_plate(y0, y1):
     p = tapered_slot_xz(R_HIP_PLATE, R_KNEE_PLATE, L_THIGH, y0, y1)
-    # 减重腰形孔：放在前侧，透过去能看到皮带
-    p = p.cut(stadium_y((15, -55), (17, -98), 5.5, y0 - 1, y1 + 1))
-    p = p.cut(stadium_y((18, -114), (20, -150), 5.0, y0 - 1, y1 + 1))
+    # v0.4：去掉减重孔，内外板都是实心的，从外面看不到皮带
     for (x, z) in STANDOFF_POS:
         p = p.cut(cyl_y(2.2, y0 - 1, y1 + 1, x, z))   # M4
     p = p.cut(cyl_y(KNEE_SHAFT_D / 2 + 0.1, y0 - 1, y1 + 1, 0, KNEE_Z))
@@ -68,18 +69,9 @@ def thigh_inner():
         p = p.cut(cyl_y(3.2, y1 - 3.5, y1 + 1, dx, dz))
     p = dowel_holes_y(p, y0 - 1, y0 + 5, 0, 0, M["out_dowel_pcd"], M["out_dowel_n"], M["out_dowel_d"], M["out_dowel_phase"])
     # 膝电机不再用背面固定（背面 Φ38 孔会被 HFE 法兰挡住），改由前安装环 + 髋部立柱固定
-    # 后缘加强翻边
-    lip = tapered_slot_xz(R_HIP_PLATE, R_KNEE_PLATE, L_THIGH, y1, y1 + 6)
-    inner = tapered_slot_xz(R_HIP_PLATE - 4, R_KNEE_PLATE - 4, L_THIGH, y1 - 1, y1 + 7)
-    lip = lip.cut(inner).cut(box(-0.5, 60, y1 - 1, y1 + 7, -L_THIGH - 40, 60))
-    lip = lip.cut(cyl_y(MOTOR["D"] / 2 + 3, y1 - 1, y1 + 7))
-    lip = lip.cut(cyl_y(24, y1 - 1, y1 + 7, 0, KNEE_Z))
-    ix, iz = IDLER_POS
-    lip = lip.cut(cyl_y(7, y1 - 1, y1 + 7, ix, iz))
-    for sh in motor_connector_y(Y_KFE[0], KFE_CONN_ANG):                  # 给膝电机插头让位
-        bb = sh.BoundingBox()
-        lip = lip.cut(box(bb.xmin - 1.5, bb.xmax + 1.5, y1 - 1, y1 + 7, bb.zmin - 1.5, bb.zmax + 1.5))
-    return p.fuse(lip).clean()
+    # v0.4：去掉后缘翻边（外壳围边接管了刚度）；膝电机的线从这个孔穿到内侧，再进机身
+    p = p.cut(cyl_y(5.0, y0 - 1, y1 + 1, *KFE_CABLE))
+    return p.clean()
 
 
 def kfe_front_ring():
@@ -103,9 +95,32 @@ def kfe_front_ring():
     return r.clean()
 
 
+def _notch_sweep():
+    """小腿在大腿围边上扫过的区域（腿坐标零位）：膝关节全行程 -12°..150°，杆身两侧各留 2mm"""
+    sweep = None
+    a = -KNEE_BETA_RANGE[1] - 4
+    while a <= -KNEE_BETA_RANGE[0] + 4:
+        b = box(-21, 21, Y_INNER[1] - 0.1, Y_PARTITION[0] - 1.0, -L_SHANK - 25, 4).rotate(V(0, 0, 0), V(0, 1, 0), a)
+        sweep = b if sweep is None else sweep.fuse(b)
+        a += 4
+    return sweep.translate(V(0, 0, KNEE_Z))
+
+
 def thigh_outer():
+    """大腿外壳：外板 + 一圈围边（从外板一直延伸到内板）。皮带、带轮、张紧轮都包在里面。
+    下端围边开一个槽口给小腿进出；后侧鼓出一个小包罩住张紧轮。"""
     y0, y1 = Y_OUTER
+    t = THIGH_WALL
     p = _thigh_plate(y0, y1)
+    ix, iz = IDLER_POS
+    ya, yb = Y_INNER[1], y0 + 0.5
+    outer = tapered_slot_xz(R_HIP_PLATE, R_KNEE_PLATE, L_THIGH, ya, yb).fuse(
+        stadium_y((ix - 4, iz), (ix + 4, iz), IDLER_R + 1.0 + t, ya, yb))           # 张紧轮罩（鼓包）
+    inner = tapered_slot_xz(R_HIP_PLATE - t, R_KNEE_PLATE - t, L_THIGH, ya - 1, yb + 1).fuse(
+        stadium_y((ix - 4, iz), (ix + 4, iz), IDLER_R + 1.0, ya - 1, yb + 1))
+    wall = outer.cut(inner)
+    wall = wall.cut(_notch_sweep())
+    p = p.fuse(wall)
     # 小带轮外端支撑轴承 688ZZ（8×16×5）
     p = p.fuse(cyl_y(14, y1, y1 + 3))
     p = p.cut(cyl_y(8.05, y0 - 1, y0 + 5))
@@ -115,11 +130,28 @@ def thigh_outer():
     return p.clean()
 
 
+def thigh_partition():
+    """大腿内隔板（3mm）：套在中段两根立柱上，把小腿活动的那一层和皮带层隔开"""
+    y0, y1 = Y_PARTITION
+    r = THIGH_WALL + 0.4
+    p = tapered_slot_xz(R_HIP_PLATE - r, R_KNEE_PLATE - r, L_THIGH, y0, y1)
+    p = p.cut(box(-60, 60, y0 - 1, y1 + 1, -40, 60))                           # 上面是膝电机，隔板从 z=-40 往下
+    p = p.cut(cyl_y(25, y0 - 1, y1 + 1, 0, KNEE_Z))                            # 小腿轮毂法兰
+    ix, iz = IDLER_POS
+    p = p.cut(stadium_y((ix - 4, iz), (ix + 4, iz), 5.2, y0 - 1, y1 + 1))      # 张紧轮套筒
+    for (x, z) in STANDOFF_POS[N_HIP_STANDOFF:]:
+        p = p.cut(cyl_y(2.2, y0 - 1, y1 + 1, x, z))
+    return p.clean()
+
+
 def standoffs():
-    """立柱（M4 通螺丝）。髋部 3 根分两段，中间夹住膝电机前安装环"""
+    """立柱（M4 通螺丝）。髋部 3 根分两段夹住膝电机前安装环，中段 2 根分两段夹住隔板"""
     out = []
     for i, (x, z) in enumerate(STANDOFF_POS):
-        segs = [(Y_INNER[1], Y_KFE_RING[0]), (Y_KFE_RING[1], Y_OUTER[0])] if i < N_HIP_STANDOFF else [(Y_INNER[1], Y_OUTER[0])]
+        if i < N_HIP_STANDOFF:
+            segs = [(Y_INNER[1], Y_KFE_RING[0]), (Y_KFE_RING[1], Y_OUTER[0])]
+        else:                                                      # 中段 2 根分两段，中间夹住隔板
+            segs = [(Y_INNER[1], Y_PARTITION[0]), (Y_PARTITION[1], Y_OUTER[0])]
         for (a, b) in segs:
             out.append(cyl_y(4.5, a, b, x, z).cut(cyl_y(2.2, a - 1, b + 1, x, z)))
     return out
@@ -197,13 +229,17 @@ def knee_shaft():
 
 
 def shank():
-    """小腿（膝坐标）：轮毂 + 带轮法兰 + 杆身。v0.3.1 加粗：前后 38→24mm、厚 32mm，中间保留减重长孔"""
+    """小腿（膝坐标）：轮毂 + 膝部圆盘 + 带轮法兰 + 杆身。前后 38→24mm、厚 32mm。
+    v0.4：杆身改实心（去掉减重长孔）；加膝部圆盘，从大腿槽口看进去是实心的"""
     hub = cyl_y(17, Y_SHANK_HUB[0], Y_SHANK_HUB[1] - 10)
+    # 膝部"鼓"：外圈 3mm 壁 + 内侧端板，里面空着减重（从外面看是一整个实心圆盘）
+    drum = chamfer_edges(cyl_y(KNEE_DISC_R, SHANK_Y[0], SHANK_Y[1] - 0.5), "%CIRCLE", 1.5)
+    drum = drum.cut(cyl_y(KNEE_DISC_R - 3, SHANK_Y[0] + 2, SHANK_Y[1] + 1))
+    hub = hub.fuse(drum)
     hub = hub.fuse(cyl_y(23, Y_SHANK_HUB[1] - 10, Y_SHANK_HUB[1]))        # 带轮法兰
     hub = chamfer_edges(hub, "%CIRCLE", 1.2)
     zt = -L_SHANK + 14
     bar = xz_prism([(-19, -8), (19, -8), (12, zt), (-12, zt)], *SHANK_Y)
-    bar = bar.cut(stadium_y((0, -46), (0, -128), 6.5, SHANK_Y[0] - 1, SHANK_Y[1] + 1))
     bar = chamfer_edges(bar, "|Y", 3.0)
     tip = box(-11, 11, SHANK_Y[0] + 3, SHANK_Y[1] - 3, -L_SHANK + 2, zt + 1)
     s = hub.fuse(bar).fuse(tip).clean()

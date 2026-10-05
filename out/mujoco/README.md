@@ -1,4 +1,4 @@
-# RoboDog MuJoCo 仿真模型（v0.3.3）
+# RoboDog MuJoCo 仿真模型（v0.4）
 
 由 `cad/export_mujoco.py` 从 CAD 自动生成。改了 CAD 以后重新运行它，这个文件夹会整体更新，不要手改 xml。
 

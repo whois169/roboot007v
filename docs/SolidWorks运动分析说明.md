@@ -1,11 +1,11 @@
 # 用 SolidWorks 做运动分析
 
 ## 用哪个文件
-- **`out/solidworks/robodog_v0.3.3_rigid_groups.step`**：做运动分析用这个。
+- **`out/solidworks/robodog_v0.4_rigid_groups.step`**：做运动分析用这个。
   - 所有零件都在**零位**：腿竖直向下，头朝正前。
   - 已经按 15 个运动刚体分成 15 个子装配，每个子装配内部是一个整体，不会乱动。
 - `out/solidworks/groups/*.step`：同样的 15 个刚体，每个单独一个文件，想一个一个插入时用。
-- `out/step/robodog_v0.3.3_stand.step`：站立姿态整机。只适合看外观和出图，**没有分组**，不要拿来做运动分析。
+- `out/step/robodog_v0.4_stand.step`：站立姿态整机。只适合看外观和出图，**没有分组**，不要拿来做运动分析。
 - `out/solidworks/关节表.csv`：14 个关节的轴线位置、方向、转动范围，以及站立、转头、坐下、趴下时的角度。
 - `out/solidworks/刚体质量.csv`：每个刚体的估算质量和重心，可以在 SolidWorks 里用"覆盖质量"填进去。
 

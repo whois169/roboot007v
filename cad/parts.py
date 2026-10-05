@@ -200,7 +200,7 @@ def hip_block_front():
             blk = blk.cut(cyl_x(M["rear_hole"] / 2, x0 - 1, x0 + 11, cy + dy, dz))
         # 后壁型材固定孔 M5
         for rz in (40.0, -35.0):
-            blk = blk.cut(cyl_x(2.75, x0 - 1, x0 + 11, s * 58.0, rz))
+            blk = blk.cut(cyl_x(2.75, x0 - 1, x0 + 11, s * RAIL_Y, rz))
     # 侧面凹槽装饰（机械感的分型线）
     for s in (+1, -1):
         blk = blk.cut(box(x0 + 14, x1 - 12, s * w - 1.2 if s > 0 else -w - 0.1,
