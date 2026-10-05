@@ -130,6 +130,16 @@ def thigh_outer():
     return p.clean()
 
 
+def knee_brush():
+    """膝部毛刷条（尼龙毛刷，带软底座）：沿小腿槽口两边各一条，毛刷在中间合拢，把槽口挡住；
+    小腿转过来时把毛刷推开，过去后自己弹回。这里画的是毛刷合拢时占的位置"""
+    t = THIGH_WALL
+    ya, yb = Y_INNER[1], Y_PARTITION[0] - 1.0
+    ring = tapered_slot_xz(R_HIP_PLATE, R_KNEE_PLATE, L_THIGH, ya, yb).cut(
+        tapered_slot_xz(R_HIP_PLATE - t, R_KNEE_PLATE - t, L_THIGH, ya - 1, yb + 1))
+    return ring.intersect(_notch_sweep())
+
+
 def thigh_partition():
     """大腿内隔板（3mm）：套在中段两根立柱上，把小腿活动的那一层和皮带层隔开"""
     y0, y1 = Y_PARTITION

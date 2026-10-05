@@ -205,6 +205,9 @@ def hip_block_front():
     for s in (+1, -1):
         blk = blk.cut(box(x0 + 14, x1 - 12, s * w - 1.2 if s > 0 else -w - 0.1,
                           s * w + 0.1 if s > 0 else -w + 1.2, z0 + 14, z1 - 14))
+    # v0.4 前外角切 14mm 斜角：机身加宽后，大腿根部在外摆 ±15° 以上会擦到这个角
+    for s in (+1, -1):
+        blk = blk.cut(xy_prism([(x1 - HIP_CORNER, s * (w + 1)), (x1 + 1, s * (w + 1)), (x1 + 1, s * (w - HIP_CORNER - 1))], z0 - 1, z1 + 1))
     # 顶面走线孔（到头部 / 尾部）
     blk = blk.cut(cyl_z(9, z1 - 5, z1 + 1, x0 + 34, 0))
     # 前壁线束口：腿上 2 个电机的线从这里进机身（外摆关节处留一圈余量）
@@ -269,6 +272,32 @@ def haa_bracket_FL():
     # 板 B 减重孔
     br = br.cut(stadium_y((xa1 + 8, 18), (xa1 + 8, -18), 4.5, yb0 - 1, yb1 + 1))
     return br
+
+
+def hip_shroud_FL():
+    """髋罩（左前，机身坐标）：把 HFE 电机、电机插头、髋支架 B 板整个包起来，跟着外摆关节一起动。
+    上下两半，用 M3 螺丝锁在髋支架 B 板上；后壁让出 A 板；电机线从后壁的孔直接进髋座前壁的线束口。返回 (上半, 下半)"""
+    x_hfe = HIP_X + HFE_DX
+    t = 1.8
+    r_plug = MOTOR["D"] / 2 + MOTOR["conn"][2] + MOTOR["plug"][2]                 # 插头最远处离电机轴 48.5
+    x0, x1, z0, z1 = HIP_X + 5, x_hfe + r_plug + 3.6, -32.5, 32.5
+    y0, y1 = HFE_IN_Y + 0.05, Y_OUT - 1.4
+    outer = chamfer_edges(box(x0, x1, y0, y1, z0, z1), "|Y", 12.0)
+    outer = chamfer_edges(outer, ">Y", 2.0)
+    inner = chamfer_edges(box(x0 + t, x1 - t, y0 + t, y1 - t, z0 + t, z1 - t), "|Y", 10.5)
+    s = outer.cut(inner)
+    s = s.cut(cyl_y(MOTOR["D"] / 2 + 0.8, y0 - 1, y0 + t + 1, x_hfe, 0))         # 内端：电机穿过去
+    s = s.cut(cyl_y(MOTOR["D"] / 2 + 1.0, y1 - t - 1, y1 + 1, x_hfe, 0))         # 外端：让出电机前端（转子接大腿）
+    # 让出髋支架 A 板（同一个刚体，不会相对运动）
+    xa1 = HIP_X + 8.5 + 0.5
+    s = s.cut(cyl_x(30.4, HIP_X, xa1, HAA_Y, 0)).cut(box(HIP_X, xa1, HAA_Y - 0.4, HFE_IN_Y + 0.4, -30.4, 30.4))
+    s = s.cut(box(x0 - 1, x0 + t + 1, 50, 62, 18, 28))                            # 电机出线孔（插头朝前，线沿罩内绕回来）-> 髋座前壁线束口
+    for (x, z) in ((x0 + 14, z0 + 8), (x1 - 14, z0 + 8), (x0 + 14, z1 - 8), (x1 - 14, z1 - 8)):
+        s = s.cut(cyl_y(1.7, y0 - 1, y0 + t + 1, x, z))                           # M3 锁到 B 板
+    s = s.clean()
+    top = s.intersect(box(x0 - 5, x1 + 5, y0 - 5, y1 + 5, 0, z1 + 5))
+    bot = s.intersect(box(x0 - 5, x1 + 5, y0 - 5, y1 + 5, z0 - 5, 0))
+    return top, bot
 
 
 # ---------------------------------------------------------------- 腿（腿坐标）

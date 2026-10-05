@@ -10,7 +10,7 @@
 ## 目录
 - `cad/config.py`：所有关键尺寸（改尺寸改这里）；`head.py` 头和脖子；`leg.py` 腿；`parts.py` 机身；`armor.py` 外观件
 - `cad/build.py`：生成 STL / STEP / GLB / rig.json / report.txt；`--check` 对站立、转头、坐下、趴下 4 个姿态做干涉检查
-- `cad/export_sw.py`（SolidWorks 分组装配体）、`cad/export_mujoco.py`（MuJoCo 模型）、`cad/check_neck.py`（脖子全范围扫描）
+- `cad/export_sw.py`（SolidWorks 分组装配体）、`cad/export_mujoco.py`（MuJoCo 模型）、`cad/check_neck.py`（脖子全范围扫描）、`cad/check_haa.py`（外摆关节全范围扫描）
 - `out/mujoco/check_poses.py`：PD 控制下的站立、坐下、趴下、起身仿真，看电机扭矩是否超限
 - `viewer/make_viewer.py` + `template.html`：生成 3D 预览网页；`viewer/shots_v3.mjs`：渲染效果图（需要 node + playwright + three）
 - `docs/`：核心原则、设计说明书、电子系统与接线、行动清单、分阶段采购表（xlsx）、电机实测清单、SolidWorks 说明
@@ -23,6 +23,7 @@
 cd cad
 python3 build.py --check        # 4 个姿态都要 0 处干涉，约 10 分钟
 python3 check_neck.py           # 改了头或脖子时跑，结果更新 head.py 的 NECK_LIMITS 和文档里的限位表
+python3 check_haa.py            # 改了机身、髋部或大腿时跑，外摆关节至少要能摆 ±15°
 python3 export_sw.py && python3 export_mujoco.py
 cd ../out/mujoco && python3 check_poses.py    # 电机扭矩不能长时间顶到上限
 cd ../../viewer && python3 make_viewer.py

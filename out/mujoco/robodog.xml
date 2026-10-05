@@ -35,6 +35,7 @@
     <mesh name="body_fan" file="body_fan.stl"/>
     <mesh name="FL_haa_flange" file="FL_haa_flange.stl"/>
     <mesh name="FL_haa_frame" file="FL_haa_frame.stl"/>
+    <mesh name="FL_haa_armor" file="FL_haa_armor.stl"/>
     <mesh name="FL_haa_motor" file="FL_haa_motor.stl"/>
     <mesh name="FL_hfe_flange" file="FL_hfe_flange.stl"/>
     <mesh name="FL_hfe_frame" file="FL_hfe_frame.stl"/>
@@ -44,6 +45,7 @@
     <mesh name="FL_hfe_belt" file="FL_hfe_belt.stl"/>
     <mesh name="FL_hfe_steel" file="FL_hfe_steel.stl"/>
     <mesh name="FL_hfe_armor" file="FL_hfe_armor.stl"/>
+    <mesh name="FL_hfe_rubber" file="FL_hfe_rubber.stl"/>
     <mesh name="FL_knee_frame" file="FL_knee_frame.stl"/>
     <mesh name="FL_knee_alu" file="FL_knee_alu.stl"/>
     <mesh name="FL_knee_armor" file="FL_knee_armor.stl"/>
@@ -51,6 +53,7 @@
     <mesh name="FL_knee_rubber" file="FL_knee_rubber.stl"/>
     <mesh name="FR_haa_flange" file="FR_haa_flange.stl"/>
     <mesh name="FR_haa_frame" file="FR_haa_frame.stl"/>
+    <mesh name="FR_haa_armor" file="FR_haa_armor.stl"/>
     <mesh name="FR_haa_motor" file="FR_haa_motor.stl"/>
     <mesh name="FR_hfe_flange" file="FR_hfe_flange.stl"/>
     <mesh name="FR_hfe_frame" file="FR_hfe_frame.stl"/>
@@ -60,6 +63,7 @@
     <mesh name="FR_hfe_belt" file="FR_hfe_belt.stl"/>
     <mesh name="FR_hfe_steel" file="FR_hfe_steel.stl"/>
     <mesh name="FR_hfe_armor" file="FR_hfe_armor.stl"/>
+    <mesh name="FR_hfe_rubber" file="FR_hfe_rubber.stl"/>
     <mesh name="FR_knee_frame" file="FR_knee_frame.stl"/>
     <mesh name="FR_knee_alu" file="FR_knee_alu.stl"/>
     <mesh name="FR_knee_armor" file="FR_knee_armor.stl"/>
@@ -67,6 +71,7 @@
     <mesh name="FR_knee_rubber" file="FR_knee_rubber.stl"/>
     <mesh name="RL_haa_flange" file="RL_haa_flange.stl"/>
     <mesh name="RL_haa_frame" file="RL_haa_frame.stl"/>
+    <mesh name="RL_haa_armor" file="RL_haa_armor.stl"/>
     <mesh name="RL_haa_motor" file="RL_haa_motor.stl"/>
     <mesh name="RL_hfe_flange" file="RL_hfe_flange.stl"/>
     <mesh name="RL_hfe_frame" file="RL_hfe_frame.stl"/>
@@ -76,6 +81,7 @@
     <mesh name="RL_hfe_belt" file="RL_hfe_belt.stl"/>
     <mesh name="RL_hfe_steel" file="RL_hfe_steel.stl"/>
     <mesh name="RL_hfe_armor" file="RL_hfe_armor.stl"/>
+    <mesh name="RL_hfe_rubber" file="RL_hfe_rubber.stl"/>
     <mesh name="RL_knee_frame" file="RL_knee_frame.stl"/>
     <mesh name="RL_knee_alu" file="RL_knee_alu.stl"/>
     <mesh name="RL_knee_armor" file="RL_knee_armor.stl"/>
@@ -83,6 +89,7 @@
     <mesh name="RL_knee_rubber" file="RL_knee_rubber.stl"/>
     <mesh name="RR_haa_flange" file="RR_haa_flange.stl"/>
     <mesh name="RR_haa_frame" file="RR_haa_frame.stl"/>
+    <mesh name="RR_haa_armor" file="RR_haa_armor.stl"/>
     <mesh name="RR_haa_motor" file="RR_haa_motor.stl"/>
     <mesh name="RR_hfe_flange" file="RR_hfe_flange.stl"/>
     <mesh name="RR_hfe_frame" file="RR_hfe_frame.stl"/>
@@ -92,6 +99,7 @@
     <mesh name="RR_hfe_belt" file="RR_hfe_belt.stl"/>
     <mesh name="RR_hfe_steel" file="RR_hfe_steel.stl"/>
     <mesh name="RR_hfe_armor" file="RR_hfe_armor.stl"/>
+    <mesh name="RR_hfe_rubber" file="RR_hfe_rubber.stl"/>
     <mesh name="RR_knee_frame" file="RR_knee_frame.stl"/>
     <mesh name="RR_knee_alu" file="RR_knee_alu.stl"/>
     <mesh name="RR_knee_armor" file="RR_knee_armor.stl"/>
@@ -113,7 +121,7 @@
   <worldbody>
     <body name="base" pos="0 0 0.3359" childclass="robodog">
       <freejoint name="root"/>
-      <inertial pos="0.000663541 7.74538e-05 0.000902814" mass="3.6082" fullinertia="0.00977767 0.0345394 0.0373163 3.68965e-05 0.00127931 -9.36562e-06"/>
+      <inertial pos="0.000669317 7.81281e-05 0.000882948" mass="3.5770" fullinertia="0.00956831 0.033896 0.0365008 3.68981e-05 0.00127926 -9.37117e-06"/>
       <geom class="vis" mesh="body_motor" rgba="0.105882 0.109804 0.121569 1"/>
       <geom class="vis" mesh="body_block" rgba="0.172549 0.184314 0.203922 1"/>
       <geom class="vis" mesh="body_pcb" rgba="0.121569 0.231373 0.431373 1"/>
@@ -135,13 +143,14 @@
       <site name="cliff_rear" pos="-0.131 0 -0.040" zaxis="-0.5736 0 -0.8192" size="0.004" rgba="1 0 0 0.5"/>
       <body name="FL_haa" pos="0 0.032 0">
         <joint name="FL_haa" axis="1 0 0" range="-30 30" armature="0.005"/>
-        <inertial pos="0.184147 0.029219 6.52236e-05" mass="0.3367" fullinertia="0.000172393 0.000176042 0.000205305 -3.81559e-05 -8.46134e-08 2.0245e-07"/>
+        <inertial pos="0.185475 0.0295798 -3.14173e-06" mass="0.3602" fullinertia="0.000192385 0.000218505 0.000240269 -3.9411e-05 -3.28697e-08 -3.85914e-09"/>
         <geom class="vis" mesh="FL_haa_flange" rgba="0.654902 0.670588 0.694118 1"/>
         <geom class="vis" mesh="FL_haa_frame" rgba="0.172549 0.184314 0.203922 1"/>
+        <geom class="vis" mesh="FL_haa_armor" rgba="0.890196 0.901961 0.913725 1"/>
         <geom class="vis" mesh="FL_haa_motor" rgba="0.105882 0.109804 0.121569 1"/>
         <body name="FL_hfe" pos="0.188 0.058 0">
           <joint name="FL_hfe" axis="0 1 0" range="-95 95" armature="0.005"/>
-          <inertial pos="-0.00128746 0.0427287 -0.0481052" mass="0.7496" fullinertia="0.00440638 0.00403171 0.000951192 9.94833e-07 -2.37987e-05 0.000327068"/>
+          <inertial pos="-0.000935888 0.0425645 -0.049573" mass="0.7596" fullinertia="0.0045599 0.00419254 0.000964879 4.28323e-06 -1.35704e-06 0.000313339"/>
           <geom class="vis" mesh="FL_hfe_flange" rgba="0.654902 0.670588 0.694118 1"/>
           <geom class="vis" mesh="FL_hfe_frame" rgba="0.172549 0.184314 0.203922 1"/>
           <geom class="vis" mesh="FL_hfe_thigh_out" rgba="0.172549 0.184314 0.203922 1"/>
@@ -150,6 +159,7 @@
           <geom class="vis" mesh="FL_hfe_belt" rgba="0.0784314 0.0784314 0.0784314 1"/>
           <geom class="vis" mesh="FL_hfe_steel" rgba="0.552941 0.576471 0.603922 1"/>
           <geom class="vis" mesh="FL_hfe_armor" rgba="0.890196 0.901961 0.913725 1"/>
+          <geom class="vis" mesh="FL_hfe_rubber" rgba="0.0705882 0.0705882 0.0705882 1"/>
           <geom name="col_FL_hfe" class="col" type="capsule" fromto="0 0.0445 0 0 0.0445 -0.1900" size="0.036"/>
           <body name="FL_knee" pos="0 0 -0.19">
             <joint name="FL_knee" axis="0 1 0" range="-150 12" armature="0.016"/>
@@ -167,13 +177,14 @@
       </body>
       <body name="FR_haa" pos="0 -0.032 0">
         <joint name="FR_haa" axis="1 0 0" range="-30 30" armature="0.005"/>
-        <inertial pos="0.184147 -0.029219 6.52236e-05" mass="0.3367" fullinertia="0.000172393 0.000176042 0.000205305 3.81559e-05 -8.46134e-08 -2.0245e-07"/>
+        <inertial pos="0.185475 -0.0295798 -3.14173e-06" mass="0.3602" fullinertia="0.000192385 0.000218505 0.000240269 3.9411e-05 -3.28697e-08 3.85914e-09"/>
         <geom class="vis" mesh="FR_haa_flange" rgba="0.654902 0.670588 0.694118 1"/>
         <geom class="vis" mesh="FR_haa_frame" rgba="0.172549 0.184314 0.203922 1"/>
+        <geom class="vis" mesh="FR_haa_armor" rgba="0.890196 0.901961 0.913725 1"/>
         <geom class="vis" mesh="FR_haa_motor" rgba="0.105882 0.109804 0.121569 1"/>
         <body name="FR_hfe" pos="0.188 -0.058 0">
           <joint name="FR_hfe" axis="0 1 0" range="-95 95" armature="0.005"/>
-          <inertial pos="-0.00128746 -0.0427287 -0.0481052" mass="0.7496" fullinertia="0.00440638 0.00403171 0.000951192 -9.94833e-07 -2.37987e-05 -0.000327068"/>
+          <inertial pos="-0.000935888 -0.0425645 -0.049573" mass="0.7596" fullinertia="0.0045599 0.00419254 0.000964879 -4.28323e-06 -1.35704e-06 -0.000313339"/>
           <geom class="vis" mesh="FR_hfe_flange" rgba="0.654902 0.670588 0.694118 1"/>
           <geom class="vis" mesh="FR_hfe_frame" rgba="0.172549 0.184314 0.203922 1"/>
           <geom class="vis" mesh="FR_hfe_thigh_out" rgba="0.172549 0.184314 0.203922 1"/>
@@ -182,6 +193,7 @@
           <geom class="vis" mesh="FR_hfe_belt" rgba="0.0784314 0.0784314 0.0784314 1"/>
           <geom class="vis" mesh="FR_hfe_steel" rgba="0.552941 0.576471 0.603922 1"/>
           <geom class="vis" mesh="FR_hfe_armor" rgba="0.890196 0.901961 0.913725 1"/>
+          <geom class="vis" mesh="FR_hfe_rubber" rgba="0.0705882 0.0705882 0.0705882 1"/>
           <geom name="col_FR_hfe" class="col" type="capsule" fromto="0 -0.0445 0 0 -0.0445 -0.1900" size="0.036"/>
           <body name="FR_knee" pos="0 0 -0.19">
             <joint name="FR_knee" axis="0 1 0" range="-150 12" armature="0.016"/>
@@ -199,13 +211,14 @@
       </body>
       <body name="RL_haa" pos="0 0.032 0">
         <joint name="RL_haa" axis="1 0 0" range="-30 30" armature="0.005"/>
-        <inertial pos="-0.184147 0.029219 6.52236e-05" mass="0.3367" fullinertia="0.000172393 0.000176042 0.000205305 3.81559e-05 8.46134e-08 2.0245e-07"/>
+        <inertial pos="-0.185475 0.0295798 -3.14173e-06" mass="0.3602" fullinertia="0.000192385 0.000218505 0.000240269 3.9411e-05 3.28697e-08 -3.85914e-09"/>
         <geom class="vis" mesh="RL_haa_flange" rgba="0.654902 0.670588 0.694118 1"/>
         <geom class="vis" mesh="RL_haa_frame" rgba="0.172549 0.184314 0.203922 1"/>
+        <geom class="vis" mesh="RL_haa_armor" rgba="0.890196 0.901961 0.913725 1"/>
         <geom class="vis" mesh="RL_haa_motor" rgba="0.105882 0.109804 0.121569 1"/>
         <body name="RL_hfe" pos="-0.188 0.058 0">
           <joint name="RL_hfe" axis="0 1 0" range="-95 95" armature="0.005"/>
-          <inertial pos="-0.00128746 0.0427287 -0.0481052" mass="0.7496" fullinertia="0.00440638 0.00403171 0.000951192 9.94833e-07 -2.37987e-05 0.000327068"/>
+          <inertial pos="-0.000935888 0.0425645 -0.049573" mass="0.7596" fullinertia="0.0045599 0.00419254 0.000964879 4.28323e-06 -1.35704e-06 0.000313339"/>
           <geom class="vis" mesh="RL_hfe_flange" rgba="0.654902 0.670588 0.694118 1"/>
           <geom class="vis" mesh="RL_hfe_frame" rgba="0.172549 0.184314 0.203922 1"/>
           <geom class="vis" mesh="RL_hfe_thigh_out" rgba="0.172549 0.184314 0.203922 1"/>
@@ -214,6 +227,7 @@
           <geom class="vis" mesh="RL_hfe_belt" rgba="0.0784314 0.0784314 0.0784314 1"/>
           <geom class="vis" mesh="RL_hfe_steel" rgba="0.552941 0.576471 0.603922 1"/>
           <geom class="vis" mesh="RL_hfe_armor" rgba="0.890196 0.901961 0.913725 1"/>
+          <geom class="vis" mesh="RL_hfe_rubber" rgba="0.0705882 0.0705882 0.0705882 1"/>
           <geom name="col_RL_hfe" class="col" type="capsule" fromto="0 0.0445 0 0 0.0445 -0.1900" size="0.036"/>
           <body name="RL_knee" pos="0 0 -0.19">
             <joint name="RL_knee" axis="0 1 0" range="-150 12" armature="0.016"/>
@@ -231,13 +245,14 @@
       </body>
       <body name="RR_haa" pos="0 -0.032 0">
         <joint name="RR_haa" axis="1 0 0" range="-30 30" armature="0.005"/>
-        <inertial pos="-0.184147 -0.029219 6.52236e-05" mass="0.3367" fullinertia="0.000172393 0.000176042 0.000205305 -3.81559e-05 8.46134e-08 -2.0245e-07"/>
+        <inertial pos="-0.185475 -0.0295798 -3.14173e-06" mass="0.3602" fullinertia="0.000192385 0.000218505 0.000240269 -3.9411e-05 3.28697e-08 3.85914e-09"/>
         <geom class="vis" mesh="RR_haa_flange" rgba="0.654902 0.670588 0.694118 1"/>
         <geom class="vis" mesh="RR_haa_frame" rgba="0.172549 0.184314 0.203922 1"/>
+        <geom class="vis" mesh="RR_haa_armor" rgba="0.890196 0.901961 0.913725 1"/>
         <geom class="vis" mesh="RR_haa_motor" rgba="0.105882 0.109804 0.121569 1"/>
         <body name="RR_hfe" pos="-0.188 -0.058 0">
           <joint name="RR_hfe" axis="0 1 0" range="-95 95" armature="0.005"/>
-          <inertial pos="-0.00128746 -0.0427287 -0.0481052" mass="0.7496" fullinertia="0.00440638 0.00403171 0.000951192 -9.94833e-07 -2.37987e-05 -0.000327068"/>
+          <inertial pos="-0.000935888 -0.0425645 -0.049573" mass="0.7596" fullinertia="0.0045599 0.00419254 0.000964879 -4.28323e-06 -1.35704e-06 -0.000313339"/>
           <geom class="vis" mesh="RR_hfe_flange" rgba="0.654902 0.670588 0.694118 1"/>
           <geom class="vis" mesh="RR_hfe_frame" rgba="0.172549 0.184314 0.203922 1"/>
           <geom class="vis" mesh="RR_hfe_thigh_out" rgba="0.172549 0.184314 0.203922 1"/>
@@ -246,6 +261,7 @@
           <geom class="vis" mesh="RR_hfe_belt" rgba="0.0784314 0.0784314 0.0784314 1"/>
           <geom class="vis" mesh="RR_hfe_steel" rgba="0.552941 0.576471 0.603922 1"/>
           <geom class="vis" mesh="RR_hfe_armor" rgba="0.890196 0.901961 0.913725 1"/>
+          <geom class="vis" mesh="RR_hfe_rubber" rgba="0.0705882 0.0705882 0.0705882 1"/>
           <geom name="col_RR_hfe" class="col" type="capsule" fromto="0 -0.0445 0 0 -0.0445 -0.1900" size="0.036"/>
           <body name="RR_knee" pos="0 0 -0.19">
             <joint name="RR_knee" axis="0 1 0" range="-150 12" armature="0.016"/>

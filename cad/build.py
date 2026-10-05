@@ -72,23 +72,27 @@ THIGH_PARTS = [("HFE法兰", hf, "flange"), ("大腿内板", G.thigh_inner(), "f
                ("同步带HTD5M", G.belt(), "belt"), ("张紧轮", idler_r, "alu"), ("张紧轮轴", idler_ax, "steel"),
                ("张紧轮套筒", idler_sl, "frame"), ("膝轴", G.knee_shaft(), "alu"),
                ("大腿装甲", A.thigh_cover(), "armor"), ("膝电机前安装环", G.kfe_front_ring(), "frame"),
-               ("大腿隔板", G.thigh_partition(), "frame")]
+               ("大腿隔板", G.thigh_partition(), "frame"), ("膝部毛刷条", G.knee_brush(), "rubber")]
 k_seat, k_plug = P.motor_connector_y(Y_KFE[0], G.KFE_CONN_ANG)
 THIGH_PARTS += [("KFE插头座", k_seat, "motor"), ("预留-KFE插头", k_plug, "keepout")]
-h_seat, h_plug = P.motor_connector_y(-MOTOR["H"], 90.0)          # HFE 插头朝上
 HAA_CONN_ANG = 55.0                                              # HAA 插头斜向上外侧（髋座内腔对角最宽）
 THIGH_PARTS += [(f"立柱{i}", s, "alu") for i, s in enumerate(G.standoffs())]
 SHANK_PARTS = [("小腿", G.to_knee(G.shank()), "frame"), ("大带轮36T", G.to_knee(G.pulley_big()), "alu"),
                ("小腿护甲", G.to_knee(G.shin_armor()), "armor"),
                ("足端", G.to_knee(G.foot_core()), "tpu"), ("足端防滑套", G.to_knee(G.foot_tread()), "rubber")]
 
+SHROUD = P.hip_shroud_FL()
 for code, sx, sy, cn in LEGS:
     gh, gt, gk = f"{code}_haa", f"{code}_hfe", f"{code}_knee"
     mb, mf = P.motor_x(HIP_X, HAA_Y)
     add("body", f"{cn}-HAA电机", body_mirror(mb, sx, sy), "motor")
     add(gh, f"{cn}-HAA法兰", body_mirror(mf, sx, sy), "flange")
     add(gh, f"{cn}-髋支架", body_mirror(P.haa_bracket_FL(), sx, sy), "frame")
+    add(gh, f"{cn}-髋罩上半", body_mirror(SHROUD[0], sx, sy), "armor")
+    add(gh, f"{cn}-髋罩下半", body_mirror(SHROUD[1], sx, sy), "armor")
     add(gh, f"{cn}-HFE电机", leg_to_body(hb, sx, sy), "motor")
+    # HFE 插头：前腿朝前、后腿朝后（都朝远离机身的一侧），髋罩才能压低。腿上零件四条腿同朝向，所以这里按前后分别给角度
+    h_seat, h_plug = P.motor_connector_y(-MOTOR["H"], HFE_CONN_ANG if sx > 0 else 180.0 - HFE_CONN_ANG)
     add(gh, f"{cn}-HFE插头座", leg_to_body(h_seat, sx, sy), "motor")
     add(gh, f"{cn}-预留-HFE插头", leg_to_body(h_plug, sx, sy), "keepout")
     a_seat, a_plug = P.motor_connector_x(HIP_X - MOTOR["H"], HAA_Y, HAA_CONN_ANG)
@@ -269,7 +273,7 @@ FIXED_MASS = {  # 外购件按公开数据/经验估（kg）
     "MPR121": 0.005, "4010风扇": 0.02, "偏航电机定子": 0.03, "偏航电机转子": 0.05, "俯仰电机定子": 0.05,
     "俯仰电机转子": 0.075, "USB相机": 0.03, "长条彩屏": 0.008, "28mm扬声器": 0.015, "ESP32-S3": 0.008, "USB集线器": 0.01,
     "急停": 0.025, "防跌落ToF": 0.003, "VL53L5CX": 0.003, "LD2410": 0.003, "BH1750": 0.002, "I2S麦克风": 0.002,
-    "功放": 0.003, "隐私开关": 0.003, "2020型材": 0.5 * (2 * RX) / 1000, "张紧轮轴": 0.01, "膝轴": 0.02,
+    "功放": 0.003, "隐私开关": 0.003, "2020型材": 0.5 * (2 * RX) / 1000, "张紧轮轴": 0.01, "膝轴": 0.02, "膝部毛刷": 0.01,
 }
 
 
@@ -334,7 +338,8 @@ for pn, pose in POSES.items():
 report.append("")
 
 # ------------------------------------------------------------------ 干涉检查
-KNOWN = [("同步带", "小带轮"), ("同步带", "张紧轮"), ("同步带", "大带轮"), ("插头座", "电机")]   # 插头座是电机自身的一部分
+KNOWN = [("同步带", "小带轮"), ("同步带", "张紧轮"), ("同步带", "大带轮"), ("插头座", "电机"),
+         ("膝部毛刷", "小腿"), ("膝部毛刷", "足端")]   # 毛刷是软的，小腿经过时把它推开   # 插头座是电机自身的一部分
 
 
 def known(a, b):
@@ -390,6 +395,10 @@ printables = {
     "thigh_outer_L": (to, FLAT_Y, 2, f"{PA}，4 层壁，40% 填充（外板朝下，围边朝上，不用支撑）"),
     "thigh_outer_R": (to.mirror("XZ"), FLAT_YP, 2, f"{PA}，4 层壁，40% 填充（外板朝下，围边朝上，不用支撑）"),
     "thigh_partition": (G.thigh_partition(), FLAT_Y, 4, "PETG，3 层壁（左右通用）"),
+    "hip_shroud_top_A": (SHROUD[0], FLIP, 2, "ASA 白，顶面朝下（左前、右后各 1）"),
+    "hip_shroud_top_B": (SHROUD[0].mirror("XZ"), FLIP, 2, "ASA 白，顶面朝下（右前、左后各 1）"),
+    "hip_shroud_bottom_A": (SHROUD[1], KEEP, 2, "ASA 白，底面朝下（左前、右后各 1）"),
+    "hip_shroud_bottom_B": (SHROUD[1].mirror("XZ"), KEEP, 2, "ASA 白，底面朝下（右前、左后各 1）"),
     "thigh_cover_L": (tc, FLAT_Y, 2, "ASA 白，3 层壁"),
     "thigh_cover_R": (tc.mirror("XZ"), FLAT_Y, 2, "ASA 白，3 层壁"),
     "standoff_set": (cq.Compound.makeCompound(G.standoffs()), FLAT_Y, 4, "PETG 100% 填充（或换 M4 铝柱）"),

@@ -228,7 +228,7 @@ def side_light_L():
 def shoulder_armor_FL():
     """肩甲：贴在前左髋座侧面（镜像得到其余三块）"""
     y0, y1 = BODY_W / 2, BODY_W / 2 + 3.5
-    x0, x1 = MID_X + 3, HIP_X - 3
+    x0, x1 = MID_X + 3, HIP_X - 1 - HIP_CORNER - 2          # v0.4 跟着髋座前外角缩短
     pts = [(x0, -36), (x1 - 16, -36), (x1, -20), (x1, 34), (x1 - 10, 44), (x0, 44)]
     p = xz_prism(pts, y0, y1)
     p = chamfer_edges(p, ">Y", 1.2)
