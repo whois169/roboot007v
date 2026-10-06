@@ -13,7 +13,10 @@
 - `cad/export_sw.py`（SolidWorks 分组装配体）、`cad/export_mujoco.py`（MuJoCo 模型）、`cad/check_neck.py`（脖子全范围扫描）、`cad/check_haa.py`（外摆关节全范围扫描）
 - `out/mujoco/check_poses.py`：PD 控制下的站立、坐下、趴下、起身仿真，看电机扭矩是否超限
 - `viewer/make_viewer.py` + `template.html`：生成 3D 预览网页；`viewer/shots_v3.mjs`：渲染效果图（需要 node + playwright + three）
-- `docs/`：核心原则、设计说明书、电子系统与接线、行动清单、分阶段采购表（xlsx）、电机实测清单、SolidWorks 说明
+- `docs/`：核心原则、设计说明书、电子系统与接线、行动清单、分阶段采购表（xlsx）、电机实测清单、零件尺寸收集清单、SolidWorks 说明
+
+## 买来的零件尺寸
+用户会把买来的零件尺寸（卖家 3D 模型、图纸截图或实测值）填进 `docs/零件尺寸收集清单.md`。按清单里"对应模型参数"一栏改模型，改完跑下面的验证流程。打印机孔径校准结果出来后，在模型里统一加孔径补偿。
 
 ## 坐标和约定
 机身坐标 X 前、Y 左、Z 上，单位 mm。脖子俯仰角负 = 抬头。

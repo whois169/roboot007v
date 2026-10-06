@@ -61,6 +61,7 @@
 - **MuJoCo 仿真**：`out/mujoco/scene.xml`。站立、坐下、趴下、起身都已在仿真里验证过，见 `out/mujoco/README.md`；动画在 `renders/mujoco_sequence.gif`
 - **SolidWorks 运动分析**：`out/solidworks/robodog_v0.4_rigid_groups.step`（零位，15 个刚体分组）、`out/solidworks/关节表.csv`、`out/solidworks/刚体质量.csv`。操作步骤见 `docs/SolidWorks运动分析说明.md`
 - `docs/电机实测清单.md`：电机到手后要量的尺寸
+- `docs/零件尺寸收集清单.md`：所有买来的零件要收集哪些尺寸、对应改模型里哪个参数（按购买阶段排）
 - `docs/行动清单.md`：分 5 个阶段的行动清单，以及资金从哪来
 - `docs/RoboDog_分阶段采购表.xlsx`：分阶段采购表（参考价），买了一样就标"已买"，自动算还差多少
 - `cad/config.py`：所有关键尺寸，**改这里就行**
