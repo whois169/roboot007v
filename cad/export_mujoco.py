@@ -180,16 +180,16 @@ for leg in ("FL", "FR", "RL", "RR"):
 
 # 蹲伏：四条腿折到身体正下方（从趴下起身的中间姿态，仿真里验证过：趴下 -> 蹲伏 -> 站立）
 _d = 135.0 - FOOT_D / 2
-_b = 2 * math.degrees(math.acos(_d / (2 * L_THIGH)))
-crouch = B.make_pose({c: B.leg_pose(STAND_HAA, _b / 2, _b) for c, *_ in B.LEGS})
+_aw, _b = B.ik(0.0, -_d)
+crouch = B.make_pose({c: B.leg_pose(STAND_HAA, _aw, _b) for c, *_ in B.LEGS})
 crouch["body_h"] = 135.0
 POSES_MJ = dict(B.POSES, crouch=crouch)
 keys = []
 for pn, pose in POSES_MJ.items():
     keys.append(f'    <key name="{pn}" qpos="{fmt(qpos(pose))}"/>')
 
-xml = f"""<!-- RoboDog v0.4 · 由 cad/export_mujoco.py 从 CAD 自动生成，不要手改（改 CAD 后重新导出） -->
-<mujoco model="robodog_v0.4">
+xml = f"""<!-- RoboDog v0.5 · 由 cad/export_mujoco.py 从 CAD 自动生成，不要手改（改 CAD 后重新导出） -->
+<mujoco model="robodog_v0.5">
   <compiler angle="degree" meshdir="meshes" autolimits="true"/>
   <option timestep="0.002" integrator="implicitfast"/>
 

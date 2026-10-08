@@ -1,5 +1,5 @@
 """
-生成 RoboDog v0.4（可动装配，电机按 DM-J4310 V1.1 安装图，眼睛换成长条彩屏，传感器收进前脸）：
+生成 RoboDog v0.5（可动装配；v0.5 = 皮带长度修正 + 外观设计规范 v1（深灰 + 银 + 琥珀橙）+ 背部任务导轨 / 激光雷达 / 任务箱 + 热成像和红外收发）：
   out/stl/                 可打印零件（已摆好打印方向）
   out/step/                站立姿态整机 STEP
   out/robodog.glb          按刚体分组的模型（零位），配合 out/rig.json 在网页里摆姿态
@@ -27,14 +27,16 @@ os.makedirs(os.path.join(OUT, "step"), exist_ok=True)
 V = cq.Vector
 O = V(0, 0, 0)
 
+# 外观设计规范 v1：深灰哑光壳板（armor）+ 银色件（trim）+ 黑色传感器窗（black）+ 琥珀橙状态灯（amber）；眼睛屏幕青色（light）
 COL = dict(
-    frame="#2c2f34", block="#2c2f34", thigh_out="#2c2f34", armor="#e3e6e9",
+    frame="#17191c", block="#17191c", thigh_out="#1c1f22", armor="#2a2d32", trim="#d3d7dc", black="#08090a",
     motor="#1b1c1f", flange="#a7abb1", alu="#b9bec4", steel="#8d939a", belt="#141414",
-    rubber="#121212", tpu="#3b3e42", estop_base="#f2c300", estop_cap="#d32f2f", battery="#2f5d8a",
-    pi="#3d7d4a", pcb="#1f3b6e", fan="#2a2a2a", camera="#202225", glass="#07090c",
-    copper="#c87533", light="#5ce1ff", light_red="#ff2d2d", keepout="#ffb020",
+    rubber="#121212", tpu="#2f3236", estop_base="#f2c300", estop_cap="#d32f2f", battery="#2f5d8a",
+    pi="#3d7d4a", pcb="#1f3b6e", fan="#2a2a2a", camera="#202225", glass="#07090c", ir="#3a2448",
+    copper="#c87533", light="#0b6f86", amber="#6a3000", light_red="#ff2d2d", keepout="#ffb020",
 )
-EMISSIVE = {"light": (0.36, 0.88, 1.0), "light_red": (1.0, 0.12, 0.12)}
+# 发光件：底色压暗 + 自发光，效果图里颜色才不会被冲成白色（实物颜色：眼睛青 #5CE1FF、状态灯琥珀橙 #FFA31F）
+EMISSIVE = {"light": (0.22, 0.86, 1.0), "amber": (1.0, 0.40, 0.0), "light_red": (1.0, 0.12, 0.12)}
 
 # ------------------------------------------------------------------ 刚体分组（零位、机身坐标）
 groups = {}          # 组名 -> [(零件名, shape, 颜色)]
@@ -71,14 +73,15 @@ THIGH_PARTS = [("HFE法兰", hf, "flange"), ("大腿内板", G.thigh_inner(), "f
                ("带轮转接盘", G.pulley_adapter(), "frame"), ("小带轮20T", G.pulley_small(), "alu"),
                ("同步带HTD5M", G.belt(), "belt"), ("张紧轮", idler_r, "alu"), ("张紧轮轴", idler_ax, "steel"),
                ("张紧轮套筒", idler_sl, "frame"), ("膝轴", G.knee_shaft(), "alu"),
-               ("大腿装甲", A.thigh_cover(), "armor"), ("膝电机前安装环", G.kfe_front_ring(), "frame"),
+               ("大腿装甲", A.thigh_cover(), "armor"), ("髋端盖", A.hip_cap(), "trim"), ("膝端盖", A.knee_cap(), "trim"),
+               ("膝电机前安装环", G.kfe_front_ring(), "frame"),
                ("大腿隔板", G.thigh_partition(), "frame")]
 k_seat, k_plug = P.motor_connector_y(Y_KFE[0], G.KFE_CONN_ANG)
 THIGH_PARTS += [("KFE插头座", k_seat, "motor"), ("预留-KFE插头", k_plug, "keepout")]
 HAA_CONN_ANG = 55.0                                              # HAA 插头斜向上外侧（髋座内腔对角最宽）
 THIGH_PARTS += [(f"立柱{i}", s, "alu") for i, s in enumerate(G.standoffs())]
 SHANK_PARTS = [("小腿", G.to_knee(G.shank()), "frame"), ("大带轮36T", G.to_knee(G.pulley_big()), "alu"),
-               ("小腿护甲", G.to_knee(G.shin_armor()), "armor"),
+               ("小腿护甲", G.to_knee(G.shin_armor()), "trim"),
                ("足端", G.to_knee(G.foot_core()), "tpu"), ("足端防滑套", G.to_knee(G.foot_tread()), "rubber")]
 
 SHROUD = P.hip_shroud_FL()
@@ -90,6 +93,7 @@ for code, sx, sy, cn in LEGS:
     add(gh, f"{cn}-髋支架", body_mirror(P.haa_bracket_FL(), sx, sy), "frame")
     add(gh, f"{cn}-髋罩上半", body_mirror(SHROUD[0], sx, sy), "armor")
     add(gh, f"{cn}-髋罩下半", body_mirror(SHROUD[1], sx, sy), "armor")
+    add(gh, f"{cn}-髋罩状态灯", body_mirror(P.hip_shroud_light_FL(), sx, sy), "amber")
     add(gh, f"{cn}-HFE电机", leg_to_body(hb, sx, sy), "motor")
     # HFE 插头：前腿朝前、后腿朝后（都朝远离机身的一侧），髋罩才能压低。腿上零件四条腿同朝向，所以这里按前后分别给角度
     h_seat, h_plug = P.motor_connector_y(-MOTOR["H"], HFE_CONN_ANG if sx > 0 else 180.0 - HFE_CONN_ANG)
@@ -121,22 +125,40 @@ for yy in (RAIL_Y, -RAIL_Y):
 sa = A.side_armor_L()
 add("body", "左侧甲", sa, "armor")
 add("body", "右侧甲", sa.mirror("XZ"), "armor")
-add("body", "左侧灯", A.side_light_L(), "light")
-add("body", "右侧灯", A.side_light_L().mirror("XZ"), "light")
+add("body", "左侧灯", A.side_light_L(), "amber")
+add("body", "右侧灯", A.side_light_L().mirror("XZ"), "amber")
+add("body", "左侧饰条", A.side_trim_L(), "trim")
+add("body", "右侧饰条", A.side_trim_L().mirror("XZ"), "trim")
 sh_a = A.shoulder_armor_FL()
 for code, sx, sy, cn in LEGS:
     add("body", f"{cn}肩甲", body_mirror(sh_a, sx, sy), "armor")
 add("body", "顶部装甲", A.top_armor(), "armor")
 for i, l in enumerate(A.spine_lights()):
-    add("body", f"脊灯{i}", l, "light")
+    add("body", f"脊灯{i}", l, "amber")
 for i, p in enumerate(A.touch_pads_back()):
     add("body", f"背部触摸铜箔{i}", p, "copper")
-add("body", "提手", A.handle_v2(), "frame")
 add("body", "电池门", A.battery_door(), "frame")
 add("body", "尾罩", A.tail_cowl(), "armor")
-add("body", "尾鳍", A.tail_fin(), "frame")
-add("body", "尾鳍灯", A.tail_fin_light(), "light")
 add("body", "尾灯", A.tail_light(), "light_red")
+# v0.5 背部：两根任务导轨（兼提手）+ 激光雷达模块 + 示范任务箱 + GX16 任务接口
+RAIL = A.mission_rail_L()
+add("body", "左任务导轨", RAIL, "frame")
+add("body", "右任务导轨", RAIL.mirror("XZ"), "frame")
+add("body", "左导轨灯", A.rail_light_L(), "amber")
+add("body", "右导轨灯", A.rail_light_L().mirror("XZ"), "amber")
+LID_PLATE, LID_BODY, LID_RING = A.lidar_module()
+add("body", "激光雷达桥板", LID_PLATE, "frame")
+add("body", "激光雷达(占位)", LID_BODY, "black")
+add("body", "激光雷达灯环", LID_RING, "amber")
+TBOX, TLID = A.task_box()
+add("body", "任务箱箱体", TBOX, "armor")
+add("body", "任务箱盖", TLID, "armor")
+_tw, _tl, _tc = A.task_box_parts()
+add("body", "任务箱相机窗", _tw, "black")
+add("body", "任务箱状态灯", _tl, "amber")
+for i, c in enumerate(_tc):
+    add("body", f"任务箱快拆夹{i}", c, "trim")
+add("body", "任务接口GX16", A.gx16_socket(), "steel")
 eb, ec = A.estop_v2()
 add("body", "急停底座", eb, "estop_base")
 add("body", "急停按钮", ec, "estop_cap")
@@ -175,6 +197,8 @@ add("neck_pitch", "头部框架", H.head_frame(), "frame")
 add("neck_pitch", "头壳", H.head_shell(), "armor")
 add("neck_pitch", "屏幕压框", H.screen_clamp(), "frame")
 add("neck_pitch", "面罩", H.head_visor(), "glass")
+add("neck_pitch", "前脸面板", H.face_plate(), "trim")
+add("neck_pitch", "传感器面板", H.sensor_panel(), "black")
 for i, e in enumerate(H.head_eyes()):
     add("neck_pitch", f"屏幕眼睛{i}", e, "light")
 add("neck_pitch", "隐私指示灯", H.privacy_led(), "light")
@@ -191,10 +215,11 @@ joints["neck_pitch"] = dict(parent="neck_yaw", point=(H.PITCH_X, 0, H.PITCH_Z), 
 # ------------------------------------------------------------------ 姿态
 def ik(dx, dz):
     """髋 -> 足端球心向量（世界前后 dx、上下 dz） -> (大腿世界角 a_w, 膝角 β)；角度从竖直向下量，向后为正"""
-    d = math.hypot(dx, dz)
-    beta = 2 * math.degrees(math.acos(min(1.0, d / (2 * L_THIGH))))
+    d = min(math.hypot(dx, dz), L_THIGH + L_SHANK)
+    inner = math.degrees(math.acos((L_THIGH ** 2 + L_SHANK ** 2 - d ** 2) / (2 * L_THIGH * L_SHANK)))   # 膝内角
+    alpha = math.degrees(math.acos(min(1.0, (L_THIGH ** 2 + d ** 2 - L_SHANK ** 2) / (2 * L_THIGH * d))))
     phi = math.degrees(math.atan2(-dx, -dz))
-    return phi + beta / 2, beta
+    return phi + alpha, 180.0 - inner
 
 
 def leg_pose(q_haa, a_body, beta):
@@ -265,7 +290,7 @@ def posed_items(pose):
 
 
 # ------------------------------------------------------------------ 质量与重心
-DENS = {"frame": 1.20 * 0.60, "block": 1.20 * 0.45, "thigh_out": 1.20 * 0.55, "armor": 1.07 * 0.85,
+DENS = {"frame": 1.20 * 0.60, "block": 1.20 * 0.45, "thigh_out": 1.20 * 0.55, "armor": 1.07 * 0.85, "trim": 1.24 * 0.85, "black": 1.27,
         "rubber": 1.10, "tpu": 1.21 * 0.5, "alu": 1.20 * 0.8, "steel": 7.85, "belt": 1.25, "glass": 1.19, "copper": 0.0}
 FIXED_MASS = {  # 外购件按公开数据/经验估（kg）
     "HAA电机": 0.28, "HFE电机": 0.28, "KFE电机": 0.28, "HAA法兰": 0.02, "HFE法兰": 0.02, "KFE法兰": 0.02,
@@ -273,12 +298,13 @@ FIXED_MASS = {  # 外购件按公开数据/经验估（kg）
     "MPR121": 0.005, "4010风扇": 0.02, "偏航电机定子": 0.03, "偏航电机转子": 0.05, "俯仰电机定子": 0.05,
     "俯仰电机转子": 0.075, "USB相机": 0.03, "长条彩屏": 0.008, "28mm扬声器": 0.015, "ESP32-S3": 0.008, "USB集线器": 0.01,
     "急停": 0.025, "防跌落ToF": 0.003, "VL53L5CX": 0.003, "LD2410": 0.003, "BH1750": 0.002, "I2S麦克风": 0.002,
-    "功放": 0.003, "隐私开关": 0.003, "2020型材": 0.5 * (2 * RX) / 1000, "张紧轮轴": 0.01, "膝轴": 0.02,
+    "功放": 0.003, "隐私开关": 0.003, "激光雷达(占位)": 0.05, "GX16": 0.02, "MLX90640热成像探头": 0.003, "MLX90640转接板": 0.002,
+    "红外发射管": 0.001, "红外接收头": 0.001, "2020型材": 0.5 * (2 * RX) / 1000, "张紧轮轴": 0.01, "膝轴": 0.02,
 }
 
 
 def mass_of(nm, s, c):
-    if c in ("keepout", "light", "light_red", "copper"):
+    if c in ("keepout", "light", "amber", "light_red", "copper", "ir"):
         return 0.0
     for k, m in FIXED_MASS.items():
         if k in nm:
@@ -309,9 +335,12 @@ BATTERY_X = round(max(-23.0, min(23.0, need * M_total / FIXED_MASS["电池6S2P"]
 groups["body"] = [(nm, s.translate(V(BATTERY_X, 0, 0)) if nm in ("电池6S2P", "预留-电池引线") else s, c)
                   for nm, s, c in groups["body"]]
 
-n_teeth = round(G.belt_length() / BELT_PITCH)
-report.append(f"膝关节：HTD-5M {BELT_W:.0f}mm 宽，{PULLEY_T_SMALL}T/{PULLEY_T_BIG}T = {KNEE_RATIO:.2f}:1；"
-              f"节线长 {G.belt_length():.1f}mm -> {n_teeth} 齿（{n_teeth * BELT_PITCH:.0f}mm）环形带 + 张紧轮")
+belt_ok = abs(G.belt_length(G.IDLER_PRESS) - G.BELT_LEN) <= 0.3 and G.IDLER_RANGE[0] <= 519.5 and G.IDLER_RANGE[1] >= 521.0
+report.append(f"膝关节：HTD-5M {BELT_W:.0f}mm 宽，{PULLEY_T_SMALL}T/{PULLEY_T_BIG}T = {KNEE_RATIO:.2f}:1，轴距 {L_THIGH:.1f}mm，"
+              f"{G.BELT_TEETH} 齿（{G.BELT_LEN:.0f}mm）环形带")
+report.append(f"        皮带长度检查：不压张紧轮需要 {G.belt_length():.2f}mm；张紧轮名义压进 {G.IDLER_PRESS:.1f}mm 时需要 "
+              f"{G.belt_length(G.IDLER_PRESS):.2f}mm；长槽 ±{G.IDLER_ADJ:.0f}mm 能适应 {G.IDLER_RANGE[0]:.1f}–{G.IDLER_RANGE[1]:.1f}mm"
+              f" -> {'通过' if belt_ok else '不通过!'}（要求名义误差 ≤0.3mm，调节范围覆盖 519.5–521.0mm）")
 report.append(f"膝关节峰值 ≈ 7 × {KNEE_RATIO:.2f} = {7 * KNEE_RATIO:.1f} N·m；电机峰值时皮带张力 ≈ {7 / (G.R_S / 1000):.0f} N")
 report.append(f"整机估重 ≈ {M_total:.2f} kg；重心配平：电池前后移 {BATTERY_X:+.1f} mm（需要 {need * M_total / FIXED_MASS['电池6S2P']:+.1f}，电池仓余量 ±23）")
 report.append("")
@@ -381,6 +410,11 @@ ti, to, tc = G.thigh_inner(), G.thigh_outer(), A.thigh_cover()
 shk = G.shank()
 ta, tl = A.top_armor(), A.tail_cowl()
 PA = "PA-CF"
+GR = "ASA 深灰哑光"          # 外观规范 v1：壳板
+SV = "PETG 银色"            # 银色件（或任意料打印后喷银漆）
+BK = "PETG 哑光黑"
+DF = "PETG 半透明（导光条）"
+sl = A.side_trim_L()
 printables = {
     "hip_block_front": (blk, FLIP, 1, f"{PA}，4 层壁，40% 填充（顶面朝下）"),
     "hip_block_rear": (blk.mirror("YZ"), FLIP, 1, f"{PA}，4 层壁，40% 填充（顶面朝下）"),
@@ -394,12 +428,15 @@ printables = {
     "thigh_outer_L": (to, FLAT_Y, 2, f"{PA}，4 层壁，40% 填充（外板朝下，围边朝上，不用支撑）"),
     "thigh_outer_R": (to.mirror("XZ"), FLAT_YP, 2, f"{PA}，4 层壁，40% 填充（外板朝下，围边朝上，不用支撑）"),
     "thigh_partition": (G.thigh_partition(), FLAT_Y, 4, "PETG，3 层壁（左右通用）"),
-    "hip_shroud_top_A": (SHROUD[0], FLIP, 2, "ASA 白，顶面朝下（左前、右后各 1）"),
-    "hip_shroud_top_B": (SHROUD[0].mirror("XZ"), FLIP, 2, "ASA 白，顶面朝下（右前、左后各 1）"),
-    "hip_shroud_bottom_A": (SHROUD[1], KEEP, 2, "ASA 白，底面朝下（左前、右后各 1）"),
-    "hip_shroud_bottom_B": (SHROUD[1].mirror("XZ"), KEEP, 2, "ASA 白，底面朝下（右前、左后各 1）"),
-    "thigh_cover_L": (tc, FLAT_Y, 2, "ASA 白，3 层壁"),
-    "thigh_cover_R": (tc.mirror("XZ"), FLAT_Y, 2, "ASA 白，3 层壁"),
+    "hip_shroud_top_A": (SHROUD[0], FLIP, 2, f"{GR}，顶面朝下（左前、右后各 1）"),
+    "hip_shroud_top_B": (SHROUD[0].mirror("XZ"), FLIP, 2, f"{GR}，顶面朝下（右前、左后各 1）"),
+    "hip_shroud_bottom_A": (SHROUD[1], KEEP, 2, f"{GR}，底面朝下（左前、右后各 1）"),
+    "hip_shroud_bottom_B": (SHROUD[1].mirror("XZ"), KEEP, 2, f"{GR}，底面朝下（右前、左后各 1）"),
+    "hip_shroud_light": (P.hip_shroud_light_FL(), FLAT_Y, 4, DF),
+    "thigh_cover_L": (tc, FLAT_YN, 2, f"{GR}，3 层壁，外面朝上"),
+    "thigh_cover_R": (tc.mirror("XZ"), FLAT_YP, 2, f"{GR}，3 层壁，外面朝上"),
+    "hip_cap": (A.hip_cap(), FLAT_YN, 4, f"{SV}，左右通用"),
+    "knee_cap": (A.knee_cap(), FLAT_YN, 4, f"{SV}，左右通用"),
     "standoff_set": (cq.Compound.makeCompound(G.standoffs()), FLAT_Y, 4, "PETG 100% 填充（或换 M4 铝柱）"),
     "pulley_adapter": (G.pulley_adapter(), FLAT_Y, 4, f"{PA} 100% 填充"),
     "kfe_front_ring": (G.kfe_front_ring(), FLAT_Y, 4, f"{PA} 100% 填充（后期可换铝）"),
@@ -409,28 +446,38 @@ printables = {
     "idler_sleeve": (idler_sl, FLAT_Y, 4, "PETG"),
     "shank_L": (shk, FLAT_Y, 2, f"{PA}，5 层壁，50% 填充"),
     "shank_R": (shk.mirror("XZ"), FLAT_Y, 2, f"{PA}，5 层壁，50% 填充"),
-    "shin_armor_L": (G.shin_armor(), FLAT_Y, 2, "ASA 白，3 层壁"),
-    "shin_armor_R": (G.shin_armor().mirror("XZ"), FLAT_Y, 2, "ASA 白，3 层壁"),
+    "shin_armor_L": (G.shin_armor(), FLAT_YN, 2, f"{SV}，3 层壁，外面朝上"),
+    "shin_armor_R": (G.shin_armor().mirror("XZ"), FLAT_YP, 2, f"{SV}，3 层壁，外面朝上"),
     "foot_core": (G.foot_core(), FLIP, 4, "TPU 95A，50% 填充"),
     "foot_tread": (G.foot_tread(), KEEP, 4, "TPU 85A 100% 填充；或用打印模具浇 40A 硅胶"),
-    "side_armor_L": (sa, FLAT_Y, 1, "ASA 白，3 层壁"),
-    "side_armor_R": (sa.mirror("XZ"), FLAT_Y, 1, "ASA 白，3 层壁"),
-    "shoulder_armor_FL": (sh_a, FLAT_Y, 1, "ASA 白"),
-    "shoulder_armor_FR": (sh_a.mirror("XZ"), FLAT_Y, 1, "ASA 白"),
-    "shoulder_armor_RL": (sh_a.mirror("YZ"), FLAT_Y, 1, "ASA 白"),
-    "shoulder_armor_RR": (sh_a.mirror("YZ").mirror("XZ"), FLAT_Y, 1, "ASA 白"),
-    "top_armor_L": (A.split_half(ta, True), FLAT_YP, 1, "ASA 白，沿中线分两半，切面朝下"),
-    "top_armor_R": (A.split_half(ta, False), FLAT_YN, 1, "ASA 白，切面朝下"),
-    "handle": (A.handle_v2(), KEEP, 1, f"{PA}，6 层壁"),
+    "side_armor_L": (sa, FLAT_Y, 1, f"{GR}，3 层壁"),
+    "side_armor_R": (sa.mirror("XZ"), FLAT_Y, 1, f"{GR}，3 层壁"),
+    "side_trim_L": (sl, FLAT_Y, 1, SV),
+    "side_trim_R": (sl.mirror("XZ"), FLAT_Y, 1, SV),
+    "side_light": (A.side_light_L(), FLAT_Y, 2, DF),
+    "shoulder_armor_FL": (sh_a, FLAT_Y, 1, GR),
+    "shoulder_armor_FR": (sh_a.mirror("XZ"), FLAT_Y, 1, GR),
+    "shoulder_armor_RL": (sh_a.mirror("YZ"), FLAT_Y, 1, GR),
+    "shoulder_armor_RR": (sh_a.mirror("YZ").mirror("XZ"), FLAT_Y, 1, GR),
+    "top_armor_L": (A.split_half(ta, True), FLAT_YP, 1, f"{GR}，沿中线分两半，切面朝下"),
+    "top_armor_R": (A.split_half(ta, False), FLAT_YN, 1, f"{GR}，切面朝下"),
+    "spine_light": (A.spine_light_strip(), lambda s: s.rotate(O, V(0, 1, 0), 90), 2, f"{DF}，左右通用"),
+    "mission_rail_L": (RAIL, FLAT_Y, 1, f"{PA}，6 层壁 60% 填充（兼提手，受力件）"),
+    "mission_rail_R": (RAIL.mirror("XZ"), FLAT_Y, 1, f"{PA}，6 层壁 60% 填充"),
+    "lidar_bridge": (LID_PLATE, FLIP, 1, f"{PA}，顶面朝下"),
+    "task_box_body": (TBOX, KEEP, 1, f"{GR}，开口朝上（示范任务模块）"),
+    "task_box_lid": (TLID, FLIP, 1, f"{GR}，顶面朝下"),
+    "task_box_clamp": (_tc[0], KEEP, 4, SV),
     "battery_door": (A.battery_door(), FLIP, 1, "PETG-CF"),
-    "tail_cowl_L": (A.split_half(tl, True), FLAT_YP, 1, "ASA 白，切面朝下"),
-    "tail_cowl_R": (A.split_half(tl, False), FLAT_YN, 1, "ASA 白，切面朝下"),
-    "tail_fin": (A.tail_fin(), FLAT_Y, 1, PA),
+    "tail_cowl_L": (A.split_half(tl, True), FLAT_YP, 1, f"{GR}，切面朝下"),
+    "tail_cowl_R": (A.split_half(tl, False), FLAT_YN, 1, f"{GR}，切面朝下"),
     "neck_base": (H.neck_base(), KEEP, 1, f"{PA}，100% 填充"),
     "yoke": (H.yoke(), KEEP, 1, f"{PA}，6 层壁 60% 填充"),
     "head_frame": (H.head_frame(), FLAT_Y, 1, f"{PA}，5 层壁"),
-    "head_shell": (H.head_shell(), FLIP, 1, "ASA 白，顶面朝下，前脸斜面加少量支撑"),
-    "ear_fin": (H.ear_fin(+1, assembled=False), FLAT_Y, 2, "ASA 白，左右通用"),
+    "head_shell": (H.head_shell(), FLIP, 1, f"{GR}，顶面朝下，前脸斜面加少量支撑"),
+    "face_plate": (H.face_plate(), lambda s: s.rotate(O, V(0, 1, 0), -90), 1, f"{SV}，外面朝上"),
+    "sensor_panel": (H.sensor_panel(), lambda s: s.rotate(O, V(0, 1, 0), -90), 1, f"{BK}，外面朝上"),
+    "ear_fin": (H.ear_fin(+1, assembled=False), FLAT_Y, 2, f"{GR}，左右通用"),
     "screen_clamp": (H.screen_clamp(), KEEP, 1, "PETG 或 PA-CF"),
 }
 report.append(f"{'零件':<20}{'数量':>4}  {'打印尺寸 X×Y×Z (mm)':<26}{'体积cm3':>8}  床内?  材料")
@@ -451,11 +498,11 @@ report.append("")
 report.append(f"打印件总重粗估 ≈ {total_g / 1000:.2f} kg")
 
 # ------------------------------------------------------------------ STEP（站立姿态）
-asm = cq.Assembly(name="RoboDog_v0.4_stand")
+asm = cq.Assembly(name="RoboDog_v0.5_stand")
 for i, (g, nm, s, c) in enumerate(POSE_INFO["stand"]["items"]):
     if c != "keepout":
         asm.add(s, name=f"{i:03d}_{nm}", color=cq.Color(COL[c]))
-asm.export(os.path.join(OUT, "step", "robodog_v0.4_stand.step"))
+asm.export(os.path.join(OUT, "step", "robodog_v0.5_stand.step"))
 
 
 # ------------------------------------------------------------------ GLB（零位，按 刚体组|颜色 分节点）+ rig.json
@@ -477,8 +524,8 @@ for g, lst in groups.items():
     for c, ms in bycol.items():
         m = trimesh.util.concatenate(ms)
         rgb = [int(COL[c][i:i + 2], 16) for i in (1, 3, 5)]
-        metallic = 0.85 if c in ("alu", "steel", "flange", "copper") else (0.35 if c == "motor" else 0.05)
-        rough = 0.35 if c in ("alu", "steel", "flange", "copper") else (0.08 if c == "glass" else (0.45 if c == "armor" else 0.7))
+        metallic = 0.85 if c in ("alu", "steel", "flange", "copper") else (0.75 if c == "trim" else (0.35 if c == "motor" else 0.05))
+        rough = 0.35 if c in ("alu", "steel", "flange", "copper") else (0.3 if c == "trim" else (0.08 if c == "glass" else (0.72 if c == "armor" else 0.7)))
         m.visual = trimesh.visual.TextureVisuals(material=trimesh.visual.material.PBRMaterial(
             name=c, baseColorFactor=rgb + [255], metallicFactor=metallic, roughnessFactor=rough,
             emissiveFactor=list(EMISSIVE.get(c, (0, 0, 0)))))

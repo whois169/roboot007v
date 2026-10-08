@@ -1,14 +1,15 @@
 """
-RoboDog v0.2 外观件：科幻装甲（机身坐标，X 前 / Y 左 / Z 上）
-  头部：前倾楔形面罩 + 双眼灯 + 一对后掠“耳鳍”
-  尾部：收窄的尾罩 + 上翘尾鳍 + 红色尾灯 + 充电口 + 急停
-  机身：带中脊的顶部装甲、分层侧甲、肩甲、大腿装甲片
-灯条只做外形（渲染时发光），实物用 WS2812B / COB 灯带塞进凹槽。
+RoboDog v0.5 外观件（机身坐标，X 前 / Y 左 / Z 上），按《外观设计规范 v1》：
+  深灰哑光壳板层叠在骨架上；银色件只用在前脸面板、髋/膝端盖、小腿护甲、侧面饰条；黑色传感器窗口；琥珀橙状态灯。
+  全部平面 + 斜切角；缝线 0.6 深 × 0.8 宽。
+  尾部：收窄的尾罩 + 红色尾灯 + 充电口 + 急停（v0.5 去掉尾鳍）
+  机身：带中脊的顶部装甲、分层侧甲、肩甲、大腿装甲；背部两根任务导轨（兼提手）+ 激光雷达模块 + 示范任务箱
+灯条只做外形（渲染时发光），实物用 WS2812B 灯带 + 半透明 PETG 导光条。
 """
 import math
 import cadquery as cq
 from config import *
-from parts import V, box, cyl_y, cyl_z, cyl_x, xz_prism, yz_prism, xy_prism, chamfer_edges, tapered_slot_xz
+from parts import V, box, cyl_y, cyl_z, cyl_x, xz_prism, yz_prism, xy_prism, chamfer_edges, tapered_slot_xz, stadium_y
 
 TOP = BODY_ZMAX           # 机身骨架顶面 z=50
 MID_X = HIP_X - BLOCK_DEPTH - 1   # 中段型材端面 x=±93
@@ -28,6 +29,32 @@ def loft(sections):
 def inset(s, d):
     x, hw, z0, z1, ct, cb = s
     return (x, hw - d, z0 - 0.01 if z0 <= TOP + 6.01 else z0 + d, z1 - d, max(ct - d * 0.4, 0.5), max(cb - d * 0.4, 0.5))
+
+
+def offset_poly(pts, d):
+    """二维多边形往里缩 d（斜接），pts 逆时针或顺时针都行"""
+    n = len(pts)
+    area = sum(pts[i][0] * pts[(i + 1) % n][1] - pts[(i + 1) % n][0] * pts[i][1] for i in range(n)) / 2
+    sgn = 1.0 if area > 0 else -1.0
+    lines = []
+    for i in range(n):
+        (x1, y1), (x2, y2) = pts[i], pts[(i + 1) % n]
+        L = math.hypot(x2 - x1, y2 - y1)
+        nx, ny = -(y2 - y1) / L * sgn, (x2 - x1) / L * sgn          # 指向多边形内部
+        lines.append(((x1 + nx * d, y1 + ny * d), (x2 - x1, y2 - y1)))
+    out = []
+    for i in range(n):
+        (p, r), (q, s_) = lines[i - 1], lines[i]
+        den = r[0] * s_[1] - r[1] * s_[0]
+        if abs(den) < 1e-9:
+            out.append(q)
+            continue
+        t = ((q[0] - p[0]) * s_[1] - (q[1] - p[1]) * s_[0]) / den
+        out.append((p[0] + t * r[0], p[1] + t * r[1]))
+    return out
+
+
+SEAM_W, SEAM_D = 0.8, 0.6          # 外观规范：缝线 0.8 宽 × 0.6 深
 
 
 # ------------------------------------------------------------------ 头部
@@ -128,8 +155,9 @@ def tail_cowl():
     # 急停孔 Φ22 + 充电口（XT60 母座面板）
     t = t.cut(cyl_z(11.2, 60, 76, -(HIP_X - 30), 0))
     t = t.cut(box(-(HIP_X + 20), -(HIP_X + 4), -60 - _DW, -40 - _DW, 54, 70).rotate(V(-(HIP_X + 12), -46 - _DW, 62), V(1, 0, 0), -20))   # 右侧
-    # 尾鳍插槽
-    t = t.cut(box(-(HIP_X + 50), -(HIP_X + 20), -3.2, 3.2, 60, 80))
+    # v0.5 去掉尾鳍（宠物元素）；尾罩顶面加一道横向缝线
+    skin = outer.cut(loft([inset(sc, SEAM_D) for sc in TAIL_SECT]))
+    t = t.cut(skin.intersect(box(-(HIP_X + 30) - SEAM_W / 2, -(HIP_X + 30) + SEAM_W / 2, -90, 90, 40, 90)))
     return t
 
 
@@ -177,52 +205,80 @@ def top_armor():
     for x in (-MID_X + 15, MID_X - 15):
         for y in (RAIL_Y, -RAIL_Y):
             a = a.cut(cyl_z(2.75, TOP - 1, 58, x, y))
+    # v0.5：缝线（两道横向）、任务导轨立柱让位孔、任务接口 GX16 航空插座孔
+    skin = yz_prism(SPINE_PROFILE, -MID_X + 1, MID_X - 1).cut(yz_prism(offset_poly(SPINE_PROFILE, SEAM_D), -MID_X, MID_X))
+    for x in (-38.0, 12.0):
+        a = a.cut(skin.intersect(box(x - SEAM_W / 2, x + SEAM_W / 2, -90, 90, TOP + 2, 80)))
+    for x in RAIL_POSTS_X:
+        for y in (RAIL_YC, -RAIL_YC):
+            a = a.cut(box(x - RAIL_POST[0] / 2 - 0.5, x + RAIL_POST[0] / 2 + 0.5, y - RAIL_POST[1] / 2 - 0.5, y + RAIL_POST[1] / 2 + 0.5, TOP - 1, 80))
+    a = a.cut(cyl_z(8.1, TOP - 1, 80, *GX16_XY))
+    a = a.cut(cyl_z(6.0, TOP - 1, 80, LIDAR["x"], 24.0))          # 激光雷达过线孔（Φ12 橡胶护线圈）
     return a
 
 
 def touch_pads_back():
     """背部前后两个触摸区（每区左右两片铜箔并联），贴在顶甲两侧斜面内侧，避开中脊上的进/排风格栅"""
     out = []
-    for (xa, xb) in ((12, 82), (-82, -12)):
+    for (xa, xb) in ((12, 82), (-66, -12)):                     # v0.5 后区缩短，让出 GX16 任务接口
         for s in (+1, -1):
             # 内斜面 (19,64)->(54.5+_DW,60.5)，铜箔贴在下面 0.3mm
             zs = lambda y: 64 - (y - 19) * 3.5 / (35.5 + _DW) - 0.6
-            ya, yb = 22, 52 + _DW
+            ya, yb = 22, 46 + _DW                                 # v0.5 外缘收窄，让出任务导轨立柱
             pts = [(s * ya, zs(ya)), (s * yb, zs(yb)), (s * yb, zs(yb) - 0.4), (s * ya, zs(ya) - 0.4)]
             out.append(yz_prism(pts, xa, xb))
     return out
 
 
 def spine_lights():
+    """机脊灯：琥珀橙，导光条是一整条，效果图按 3 段画（WS2812 分段点亮）"""
     out = []
     for s in (+1, -1):
         pts = [(s * (66.4 + _DW), 57.4), (s * (61.2 + _DW), 60.0), (s * (61.6 + _DW), 61.0), (s * (66.8 + _DW), 58.4)]
-        out.append(yz_prism(pts, -68, 68))
+        for (a, b) in ((-54, -9), (9, 54)):                     # 两段，让开导轨立柱
+            out.append(yz_prism(pts, a, b))
     return out
 
 
+def spine_light_strip():
+    """机脊导光条（整条，左右通用）"""
+    pts = [(66.4 + _DW, 57.4), (61.2 + _DW, 60.0), (61.6 + _DW, 61.0), (66.8 + _DW, 58.4)]
+    return yz_prism(pts, -68, 68)
+
+
 def side_armor_L():
-    """侧甲：3mm 底板 + 3.5mm 外层装甲（斜切角），外层上开状态灯槽"""
+    """侧甲：3mm 底板 + 3.5mm 外层装甲（斜切角）。v0.5：缝线把外层分成 3 块，后下方浅格栅，前上方一小段琥珀橙状态灯"""
     y0, y1, y2 = BODY_W / 2 - 2, BODY_W / 2 + 1, BODY_W / 2 + 4.5
     p = box(-MID_X + 0.5, MID_X - 0.5, y0, y1, BODY_ZMIN + 2, BODY_ZMAX - 2)
-    pts = [(-86, -38), (62, -38), (86, -16), (86, 30), (72, 44), (-72, 44), (-86, 30)]
+    pts = [(-86, -38), (62, -38), (86, -16), (86, 30), (72, 40), (-72, 40), (-86, 30)]
     top = xz_prism(pts, y1, y2)
-    top = chamfer_edges(top, ">Y", 1.4)
+    top = chamfer_edges(top, ">Y", 2.0)
     p = p.fuse(top).clean()
-    # 斜向装饰槽：只切外层装甲，不打通底板（避免侧面进风抢走流过树莓派的风）
-    for k in range(5):
-        x = -70 + k * 10
-        p = p.cut(xz_prism([(x, -28), (x + 4, -28), (x + 20, 8), (x + 16, 8)], y1 + 0.8, y2 + 1))
-    p = p.cut(box(-20, 70, y2 - 1.2, y2 + 1, 26, 29))          # 状态灯槽
+    g = lambda x0, x1, z0, z1: box(x0, x1, y2 - SEAM_D, y2 + 1, z0, z1)
+    p = p.cut(g(-10 - SEAM_W / 2, -10 + SEAM_W / 2, -40, 42))                  # 竖缝
+    p = p.cut(g(-90, -10, 6 - SEAM_W / 2, 6 + SEAM_W / 2))                     # 后半块再横分一刀
+    for k in range(5):                                                         # 后下方浅格栅（不打通，侧面不进风）
+        z = -30 + k * 6
+        p = p.cut(box(-76, -36, y2 - 1.2, y2 + 1, z, z + 2.4))
+    p = p.cut(box(34, 72, y2 - 1.2, y2 + 1, 25, 28))                           # 状态灯槽
     for x in (-MID_X + 15, 0, MID_X - 15):
-        for z in (40.0, -35.0):
+        for z in (35.0, -35.0):
             p = p.cut(cyl_y(2.75, y0 - 1, y2 + 1, x, z))
     return p
 
 
+def side_trim_L():
+    """侧面银色饰条：贴在侧甲底板上沿，外层装甲上面那一条（银色 PLA）"""
+    y1, y2 = BODY_W / 2 + 1, BODY_W / 2 + 3.5
+    t = chamfer_edges(box(-80, 80, y1, y2, 41.2, 46.6), ">Y", 0.8)
+    for x in (-60.0, 60.0):
+        t = t.cut(cyl_y(1.1, y1 - 1, y2 + 1, x, 43.9))
+    return t
+
+
 def side_light_L():
     y2 = BODY_W / 2 + 4.5
-    return box(-19.5, 69.5, y2 - 1.1, y2 + 0.4, 26.4, 28.6)
+    return box(34.5, 71.5, y2 - 1.1, y2 + 0.4, 25.4, 27.6)
 
 
 def shoulder_armor_FL():
@@ -237,17 +293,51 @@ def shoulder_armor_FL():
 
 
 def thigh_cover():
-    """大腿装甲片（腿坐标，零位），螺接在大腿外板外侧"""
-    y0, y1 = Y_OUTER[1], Y_OUTER[1] + 3.5
-    c = tapered_slot_xz(R_HIP_PLATE - 3, R_KNEE_PLATE - 3, L_THIGH - 12, y0, y1)
-    c = chamfer_edges(c, ">Y", 1.4)
-    c = c.cut(cyl_y(16, y0 - 1, y1 + 1))                         # 让出轴承凸台
-    c = c.cut(cyl_y(12.5, y0 - 1, y1 + 1, 0, -L_THIGH))         # 让出膝轴凸台
+    """大腿装甲（腿坐标零位），螺接在大腿外板外侧。v0.5：2mm 底板 + 2.5mm 凸起中板（大斜切），两道缝线；
+    髋端、膝端各留一圈给银色端盖；张紧轮螺丝头开长孔，不拆装甲也能调皮带"""
     import leg
+    y0, y1, y2 = Y_OUTER[1], Y_OUTER[1] + 2.0, Y_OUTER[1] + 4.5
+    c = tapered_slot_xz(R_HIP_PLATE - 3, R_KNEE_PLATE - 3, L_THIGH - 12, y0, y1)
+    c = chamfer_edges(c, ">Y", 0.8)
+    mid = tapered_slot_xz(R_HIP_PLATE - 10, R_KNEE_PLATE - 10, L_THIGH - 16, y1 - 0.01, y2)
+    mid = chamfer_edges(mid, ">Y", 2.2)
+    c = c.fuse(mid).clean()
+    c = c.cut(cyl_y(16, y0 - 1, y2 + 1))                         # 让出轴承凸台（髋端盖盖住）
+    c = c.cut(cyl_y(12.5, y0 - 1, y2 + 1, 0, -L_THIGH))         # 让出膝轴凸台（膝端盖盖住）
     ix, iz = leg.IDLER_POS
-    c = c.cut(cyl_y(6.5, y0 - 1, y1 + 1, ix, iz))                # 张紧轮螺丝头（调皮带时不用拆装甲）
-    c = c.cut(xz_prism([(-6, -70), (6, -70), (4, -150), (-4, -150)], y1 - 1.2, y1 + 1))   # 中线凹槽
+    c = c.cut(stadium_y((ix - leg.IDLER_ADJ, iz), (ix + leg.IDLER_ADJ, iz), 6.5, y0 - 1, y2 + 1))   # 张紧轮螺丝头长孔
+    for z in (-58.0, -128.0):                                    # 缝线
+        c = c.cut(box(-60, 60, y2 - SEAM_D, y2 + 1, z - SEAM_W / 2, z + SEAM_W / 2))
+    for (x, z) in HIP_CAP_SCREWS + [(x, z - L_THIGH) for (x, z) in KNEE_CAP_SCREWS]:
+        c = c.cut(cyl_y(0.8, y0 - 1, y2 + 1, x, z))                # 端盖 M2 自攻孔
     return c
+
+
+HIP_CAP_SCREWS = [(19.0 * math.cos(math.radians(a)), 19.0 * math.sin(math.radians(a))) for a in (90, 210, 330)]
+KNEE_CAP_SCREWS = [(15.0 * math.cos(math.radians(a)), 15.0 * math.sin(math.radians(a))) for a in (30, 150, 270)]
+
+
+def hip_cap():
+    """髋端银色端盖（腿坐标）：盖住小带轮外支撑轴承，看起来像电机端面"""
+    y0 = Y_OUTER[1] + 4.5
+    c = chamfer_edges(cyl_y(23, y0, y0 + 3.0), ">Y", 1.2)
+    c = c.cut(cyl_y(9, y0 + 2.2, y0 + 4))                         # 中心浅凹
+    for (x, z) in HIP_CAP_SCREWS:
+        c = c.cut(cyl_y(1.1, y0 - 1, y0 + 4, x, z)).cut(cyl_y(2.0, y0 + 2.2, y0 + 4, x, z))
+    for a in range(0, 360, 60):                                   # 外圈 6 道放射缝
+        c = c.cut(box(15, 22, -SEAM_W / 2, SEAM_W / 2, -0.5, 0.5).rotate(V(0, 0, 0), V(0, 0, 1), 0)
+                  .rotate(V(0, 0, 0), V(1, 0, 0), 90).translate(V(0, y0 + 3.0, 0)).rotate(V(0, 0, 0), V(0, 1, 0), a))
+    return c.clean()
+
+
+def knee_cap():
+    """膝端银色端盖（腿坐标零位），盖住膝轴 M5 螺丝"""
+    y0 = Y_OUTER[1] + 4.5
+    c = chamfer_edges(cyl_y(19, y0, y0 + 3.0, 0, -L_THIGH), ">Y", 1.2)
+    c = c.cut(cyl_y(7, y0 + 2.2, y0 + 4, 0, -L_THIGH))
+    for (x, z) in KNEE_CAP_SCREWS:
+        c = c.cut(cyl_y(1.1, y0 - 1, y0 + 4, x, z - L_THIGH)).cut(cyl_y(2.0, y0 + 2.2, y0 + 4, x, z - L_THIGH))
+    return c.clean()
 
 
 def battery_door():
@@ -274,6 +364,106 @@ def handle_v2():
     for x in (-57.0, 57.0):
         h = h.cut(cyl_z(2.75, z0 - 1, z0 + 12, x, 0))
     return h
+
+
+# ------------------------------------------------------------------ 背部：任务导轨 + 激光雷达模块 + 示范任务箱
+RAIL_YC = 66.0                     # 导轨中心 y（正下方就是机身上层 2020 型材，立柱 M5 直接锁进型材槽）
+RAIL_POSTS_X = (-62.0, 0.0, 62.0)      # 避开顶甲 x=±78 的固定螺丝和机脊灯段
+RAIL_POST = (12.0, 12.0)           # 立柱截面 x × y
+RAIL_BAR = (84.0, 94.0)            # 导轨横杆 z（下面离顶甲约 21mm，手指能伸进去当提手）
+RAIL_X = (-84.0, 64.0)
+GX16_XY = (-80.0, -34.0)           # 任务接口 GX16 航空插座（顶甲右后斜面，竖直朝上）
+LIDAR = dict(x=46.0, d=60.0, h=35.0, plate=(30.0, 62.0))   # 单线激光雷达占位 Φ60×35（买前按实物改），装在跨两根导轨的桥板上
+LIDAR_Z0 = RAIL_BAR[1] + 4.0       # 雷达底面（桥板 4mm）
+LIDAR_PLANE = LIDAR_Z0 + 22.0      # 扫描平面大约在底面以上 22mm（按实物改）
+BOX = dict(x=(-80.0, 8.0), w=112.0, z=(80.0, 114.0))      # 示范任务箱：夹在两根导轨之间，顶面低于雷达扫描平面
+
+
+def mission_rail_L():
+    """左任务导轨（右边镜像）：横杆 + 3 根立柱，立柱 M5 锁进下面的 2020 型材。兼做提手"""
+    y0, y1 = RAIL_YC - 6, RAIL_YC + 6
+    z0, z1 = RAIL_BAR
+    bar = xz_prism([(RAIL_X[0] + 8, z1), (RAIL_X[1] - 8, z1), (RAIL_X[1], z1 - 8), (RAIL_X[1] - 4, z0),
+                    (RAIL_X[0] + 4, z0), (RAIL_X[0], z1 - 8)], y0, y1)
+    r = bar
+    for x in RAIL_POSTS_X:
+        r = r.fuse(box(x - RAIL_POST[0] / 2, x + RAIL_POST[0] / 2, y0, y1, TOP, z0 + 1))
+    r = chamfer_edges(r.clean(), "|X", 1.5)
+    for x in RAIL_POSTS_X:
+        r = r.cut(cyl_z(2.75, TOP - 1, z1 + 1, x, RAIL_YC)).cut(cyl_z(5.0, z1 - 6, z1 + 1, x, RAIL_YC))   # M5 + 沉头
+    r = r.cut(box(RAIL_X[0] + 10, RAIL_X[1] - 10, y1 - SEAM_D, y1 + 1, (z0 + z1) / 2 - 1.5, (z0 + z1) / 2 + 1.5))   # 外侧细灯槽
+    return r.clean()
+
+
+def rail_light_L():
+    y1 = RAIL_YC + 6
+    zc = (RAIL_BAR[0] + RAIL_BAR[1]) / 2
+    return box(RAIL_X[0] + 10.5, RAIL_X[0] + 40, y1 - 0.5, y1 + 0.2, zc - 1.2, zc + 1.2)
+
+
+def lidar_module():
+    """激光雷达模块：桥板（跨在两根导轨上，4 个快拆夹） + 雷达占位 + 琥珀橙灯环。返回 (桥板, 雷达, 灯环)"""
+    L = LIDAR
+    xa, xb = L["x"] - L["plate"][0] / 2, L["x"] + L["plate"][0] / 2
+    z0 = RAIL_BAR[1]
+    plate = chamfer_edges(box(xa, xb, -RAIL_YC - 6, RAIL_YC + 6, z0, z0 + 4), "|Z", 4.0)
+    plate = plate.fuse(cyl_z(L["d"] / 2 - 7.5, z0 + 4, LIDAR_Z0 + 1.5, L["x"], 0))
+    for s in (+1, -1):                                           # 夹住导轨的下爪（导轨横杆两侧各一片）
+        for (ya, yb) in ((RAIL_YC + 6.2, RAIL_YC + 9.2), (RAIL_YC - 9.2, RAIL_YC - 6.2)):
+            plate = plate.fuse(box(xa + 3, xb - 3, min(s * ya, s * yb), max(s * ya, s * yb), z0 - 8, z0 + 0.1))
+    plate = plate.cut(cyl_z(6, z0 - 1, LIDAR_Z0 + 2, L["x"], 0))  # 雷达线从中间穿下去
+    lidar = chamfer_edges(cyl_z(L["d"] / 2, LIDAR_Z0 + 1.5, LIDAR_Z0 + L["h"], L["x"], 0), ">Z", 3.0)
+    ring = cyl_z(L["d"] / 2 - 3.6, z0 + 4.05, LIDAR_Z0 + 1.45, L["x"], 0).cut(cyl_z(L["d"] / 2 - 7.3, z0 + 3, LIDAR_Z0 + 2, L["x"], 0))
+    return plate.clean(), lidar, ring
+
+
+def task_box():
+    """示范任务箱（外观规范的样板）：箱体夹在两根导轨之间，两侧翻边压在导轨上，4 个快拆夹锁住。
+    前面一个相机窗，后面一个 GX16 线缆口，顶面凹进去一个提手。返回 (箱体, 盖子)"""
+    x0, x1 = BOX["x"]
+    w = BOX["w"] / 2
+    z0, z1 = BOX["z"]
+    body = box(x0, x1, -w, w, z0, z1 - 3)
+    body = chamfer_edges(body, "|X", 5.0)
+    body = chamfer_edges(body, "|Y", 3.0)
+    body = body.cut(box(x0 + 2, x1 - 2, -w + 2, w - 2, z0 + 2, z1))
+    for s in (+1, -1):                                           # 压在导轨上的翻边
+        fl = box(x0 + 6, x1 - 6, min(s * (w - 2), s * (RAIL_YC + 6)), max(s * (w - 2), s * (RAIL_YC + 6)), RAIL_BAR[1], RAIL_BAR[1] + 3)
+        body = body.fuse(chamfer_edges(fl, "|Z", 3.0))
+    body = body.cut(box(x1 - 3, x1 + 1, -14, 14, 88, 104))       # 前面相机窗
+    body = body.cut(cyl_x(8.1, x0 - 1, x0 + 3, 0, 97))           # 后面 GX16 线缆口
+    body = body.cut(box(x0 - 1, x0 + 2.5, -30.2, -17.8, 104.8, 107.2))   # 状态灯槽
+    body = body.cut(box(x0 - 1, x1 + 1, -w - 1, w + 1, (z0 + RAIL_BAR[1]) / 2 - SEAM_W / 2, (z0 + RAIL_BAR[1]) / 2 + SEAM_W / 2)
+                    .cut(box(x0 + 0.6, x1 - 0.6, -w + 0.6, w - 0.6, 60, 130)))   # 腰线
+    lid = chamfer_edges(box(x0, x1, -w, w, z1 - 3, z1), "|X", 5.0)
+    lid = chamfer_edges(lid, ">Z", 1.5)
+    lid = lid.cut(chamfer_edges(box(x0 + 26, x1 - 26, -16, 16, z1 - 2, z1 + 1), "|Z", 6.0))   # 凹进去的提手
+    lid = lid.fuse(box(x0 + 30, x1 - 30, -4, 4, z1 - 3, z1 - 0.5))
+    lid = lid.cut(box(x0 + 8, x0 + 20, -w - 1, w + 1, z1 - SEAM_D, z1 + 1))
+    return body.clean(), lid.clean()
+
+
+def task_box_parts():
+    """示范任务箱上的小件：相机窗（黑）、状态灯（琥珀）、快拆夹（银）"""
+    x0, x1 = BOX["x"]
+    win = box(x1 - 2.4, x1 - 0.6, -13.5, 13.5, 88.5, 103.5)
+    led = box(x0 - 0.4, x0 + 1.0, -30, -18, 105, 107)
+    clamps = []
+    for x in (x0 + 12, x1 - 12):
+        for s in (+1, -1):
+            clamps.append(chamfer_edges(box(x - 6, x + 6, s * (RAIL_YC + 6.2) - (0 if s > 0 else 4), s * (RAIL_YC + 6.2) + (4 if s > 0 else 0),
+                                            RAIL_BAR[0] + 2, RAIL_BAR[1] + 3), ">Z", 1.0))
+    return win, led, clamps
+
+
+def gx16_socket():
+    """任务接口 GX16 航空插座（面板座占位）：24V / 5V / CAN"""
+    x, y = GX16_XY
+    zt = 67 - (abs(y) - 20) * 4 / (46 + _DW - 10) + 1.0           # 斜面上最高那一侧再抬 1mm
+    flange = cyl_z(9.5, zt, zt + 2.0, x, y)
+    body = cyl_z(8.0, zt - 18, zt, x, y)
+    plug = cyl_z(7.0, zt + 2.0, zt + 9, x, y)
+    return flange.fuse(body).fuse(plug).clean()
 
 
 def estop_v2():

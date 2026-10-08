@@ -87,11 +87,11 @@ ul.next li::before{border-color:var(--muted);border-radius:50%}
 <div class="wrap">
   <header>
     <div>
-      <div class="eyebrow">Quadruped · Concept Sketch · v0.4</div>
+      <div class="eyebrow">Quadruped · Concept Sketch · v0.5</div>
       <h1>RoboDog 设计草图</h1>
-      <p class="lede">v0.3：膝关节改成同步带，能完整折叠，可以坐下、趴下。新增 2 自由度脖子（转头、抬头），头里集成相机、测距、毫米波、麦克风和扬声器。全身 4 个触摸区，加了隐私开关。v0.3.3：眼睛换成 2.25 寸长条彩屏（能做眨眼、看左右等动画），相机、测距窗收在屏幕下面那条白边上，毫米波藏在屏幕上方。v0.4：机身加宽到 160mm，髋部电机一半嵌进机身；大腿改成全封闭外壳，看不到皮带，小腿改实心。上面的姿态按钮驱动的是真实关节角，每个姿态都做过碰撞检查。</p>
+      <p class="lede">v0.3：膝关节改成同步带，能完整折叠，可以坐下、趴下。新增 2 自由度脖子（转头、抬头），头里集成相机、测距、毫米波、麦克风和扬声器。全身 4 个触摸区，加了隐私开关。v0.3.3：眼睛换成 2.25 寸长条彩屏（能做眨眼、看左右等动画），相机、测距窗收在屏幕下面那条白边上，毫米波藏在屏幕上方。v0.4：机身加宽到 160mm，髋部电机一半嵌进机身；大腿改成全封闭外壳，看不到皮带，小腿改实心。v0.5：方向改成"科技机械狗"，按《外观设计规范 v1》换成深灰壳板 + 银色件 + 琥珀橙状态灯；背部加两根任务导轨（兼提手），装激光雷达模块和示范任务箱；前脸加银色面板和黑色传感器面板，新增热成像和红外遥控收发；修正膝关节皮带长度（大腿轴距 189.3mm，104 齿皮带配张紧轮刚好张紧）。上面的姿态按钮驱动的是真实关节角，每个姿态都做过碰撞检查。</p>
     </div>
-    <div class="stamp">v0.4 · 12 + 2 个电机 · 4 个姿态已校核</div>
+    <div class="stamp">v0.5 · 12 + 2 个电机 · 4 个姿态已校核</div>
   </header>
 
   <div class="stage">
@@ -121,10 +121,13 @@ ul.next li::before{border-color:var(--muted);border-radius:50%}
     <div class="hint">拖动旋转 · 滚轮/双指缩放 · 右键平移</div>
   </div>
   <div class="leg" aria-label="配色说明" style="margin-top:-30px">
-    <span><i style="background:#e3e6e9"></i>外观装甲 ASA/PETG</span>
-    <span><i style="background:#2c2f34"></i>结构件 PA-CF</span>
+    <span><i style="background:#3d4147"></i>壳板 ASA 深灰哑光</span>
+    <span><i style="background:#c4c8cd"></i>银色件（前脸面板、端盖、小腿护甲）</span>
+    <span><i style="background:#0b0c0e"></i>黑色传感器窗 / 激光雷达</span>
+    <span><i style="background:#1d1f22"></i>结构件 PA-CF</span>
     <span><i style="background:#1b1c1f"></i>关节电机 DM-J4310</span>
-    <span><i style="background:#5ce1ff"></i>灯条（WS2812B）</span>
+    <span><i style="background:#ffa31f"></i>状态灯（WS2812B，琥珀橙）</span>
+    <span><i style="background:#5ce1ff"></i>屏幕眼睛（青色 HUD）</span>
     <span><i style="background:#ff2d2d"></i>尾灯</span>
     <span><i style="background:#3d7d4a"></i>树莓派 4B（占位）</span>
     <span><i style="background:#1f3b6e"></i>MC02 / 配电板（占位）</span>
@@ -364,7 +367,7 @@ new GLTFLoader().parse(bin.buffer, "", gltf => {
     const P = P0(g);
     o.castShadow = true; o.receiveShadow = true;
     o.geometry.computeVertexNormals();
-    if (col === "light" || col === "light_red") { o.material.emissiveIntensity = 0.9; o.material.toneMapped = false; o.castShadow = false; }
+    if (col === "light" || col === "light_red" || col === "amber") { o.material.emissiveIntensity = 0.9; o.material.toneMapped = false; o.castShadow = false; }
     if (col === "keepout") { o.material.transparent = true; o.material.opacity = 0.32; o.material.depthWrite = false; o.castShadow = false; }
     o.removeFromParent();
     o.position.set(-P[0], -P[1], -P[2]); o.quaternion.identity(); o.scale.set(1, 1, 1);
@@ -383,14 +386,14 @@ function setView(v) {
   document.querySelectorAll("[data-view]").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === v));
 }
 setView("iso");
-const SHELL = ["armor", "light", "light_red", "glass"], ELEC = ["battery", "pi", "pcb", "fan", "camera", "keepout"];
+const SHELL = ["armor", "trim", "black", "light", "amber", "light_red", "glass"], ELEC = ["battery", "pi", "pcb", "fan", "camera", "keepout"];
 const vis = { shell: true, elec: true, thigh: true };
 function refresh() {
   for (const { mesh, group, col } of meshes) {
     let v = true;
     if (!vis.shell && SHELL.includes(col)) v = false;
     if (!vis.elec && ELEC.includes(col)) v = false;
-    if (!vis.thigh && group.endsWith("_hfe") && (col === "thigh_out" || col === "armor")) v = false;
+    if (!vis.thigh && group.endsWith("_hfe") && (col === "thigh_out" || col === "armor" || col === "trim")) v = false;
     mesh.visible = v;
   }
 }

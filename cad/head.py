@@ -1,10 +1,12 @@
 """
-RoboDog v0.3 脖子 + 头部（机身坐标，零位：头朝正前方、不抬不低）
+RoboDog v0.5 脖子 + 头部（机身坐标，零位：头朝正前方、不抬不低）
   偏航（左右转头）：GM3506 云台电机，轴线竖直，在前髋座顶上
   俯仰（抬头低头）：GM4108 云台电机，轴线沿 Y，尽量靠近头部重心，静态力矩很小
 头里的电子件：2.25 寸长条彩屏（眼睛）、ESP32-S3（语音前端 + 触摸 + 屏幕 + 传感器）、USB 集线器、
 2×I2S 麦克风、功放 + 28mm 扬声器、BH1750 光照、隐私开关
-屏幕下面一排：USB 相机镜头、VL53L5CX 测距窗、隐私指示灯；屏幕上方白边后面藏 LD2410 毫米波
+屏幕下面一排（v0.5 黑色传感器面板）：红外接收、VL53L5CX 测距、USB 相机镜头、隐私指示灯、MLX90640 热成像、红外发射；
+屏幕上方面板后面藏 LD2410 毫米波。v0.5 前脸加一块银色面板框住屏幕和传感器面板（外观规范 v1）
+热成像、测距、红外收发都是直接开孔露在外面：亚克力挡远红外，也会削弱测距和红外遥控信号
 """
 import math
 import cadquery as cq
@@ -52,7 +54,13 @@ LENS = (0.0, 88.0)                       # 镜头中心 (y, z)
 CAM_MOD = 10.0                           # 镜头模组外形（方），到货核对
 TOF_POS = (-16.0, 88.0)                  # VL53L5CX 窗口
 PRIV_LED = (12.0, 88.0)                  # 隐私指示灯
-RADAR = dict(y=(-17.5, 17.5), z=(116.0, 123.0))   # LD2410B（7×35 长条板），藏在屏幕上方的白边后面，毫米波能穿透塑料
+RADAR = dict(y=(-17.5, 17.5), z=(116.0, 123.0))   # LD2410B（7×35 长条板），藏在屏幕上方的面板后面，毫米波能穿透塑料
+# v0.5 新增（到货后按实测改）：
+THERMAL = dict(y=26.0, z=88.0, can_d=9.2, board=(12.0, 10.5))   # MLX90640：TO-39 探头 Φ9.2，焊在 12×10.5 小转接板上（屏幕下面这条只有 11mm 净高）
+IR_TX = dict(y=35.0, z=88.0, d=5.0)                     # 940nm 红外发射管 Φ5（学习、控制空调电视）
+IR_RX = dict(y=-34.0, z=88.0, w=6.0, h=7.0)             # VS1838B 红外接收头，窗口 6×7
+FACE_T = 2.0                                            # 银色前脸面板厚度
+SENSOR_PANEL = dict(y=(-41.0, 41.0), z=(83.0, 94.5), t=1.5)   # 黑色传感器面板（嵌在前脸面板下面那个窗口里）
 
 
 # ------------------------------------------------------------------ 脖子（固定 / 偏航 / 俯仰）
@@ -133,6 +141,8 @@ def head_shell():
     h = h.cut(cyl_x(3.5, SCR_X1 - 0.1, HEAD_FRONT_X + 1, ly, lz))                    # 镜头孔 Φ7
     h = h.cut(box(SCR_X1 - 0.1, HEAD_FRONT_X + 1, TOF_POS[0] - 3, TOF_POS[0] + 3, TOF_POS[1] - 2, TOF_POS[1] + 2))   # 测距窗
     h = h.cut(cyl_x(1.6, SCR_X1 - 0.1, HEAD_FRONT_X + 1, PRIV_LED[0], PRIV_LED[1]))   # 隐私指示灯孔
+    for (cut, _) in _sensor_holes():
+        h = h.cut(cut)
     y0, y1, z0, z1 = VISOR
     h = h.cut(box(HEAD_FRONT_X - 4, HEAD_FRONT_X + 1, y0, y1, z0, z1))            # 面罩窗
     for k in range(4):                                                            # 侧面散热槽
@@ -147,6 +157,14 @@ def head_shell():
     for s in (+1, -1):                                                            # 耳鳍安装孔
         for x in (HIP_X - 12, HIP_X + 12):
             h = h.cut(cyl_z(1.7, 126, 134, x, s * 38))
+    for (y, z) in _FACE_SCREWS:                                                   # 前脸面板 M2 自攻孔
+        h = h.cut(cyl_x(0.8, HEAD_FRONT_X - 2.4, HEAD_FRONT_X + 0.1, y, z))
+    # v0.5 缝线（外观规范：0.6 深 × 0.8 宽）：两圈环形缝 + 两侧一道水平缝
+    skin = outer.cut(loft([inset(sc, 0.6) for sc in HEAD_SECT]))
+    for x in (HIP_X - 8, HIP_X + 66):
+        h = h.cut(skin.intersect(box(x - 0.4, x + 0.4, -80, 80, 60, 140)))
+    for sd in (+1, -1):
+        h = h.cut(skin.intersect(box(HIP_X + 66, HEAD_FRONT_X - 6, min(sd * 30, sd * 80), max(sd * 30, sd * 80), 92.6, 93.4)))
     return h.clean()
 
 
@@ -180,12 +198,68 @@ def head_visor():
     return chamfer_edges(box(SCR_X1 + 0.1, SCR_X1 + 2.1, y0 + 0.3, y1 - 0.3, z0 + 0.3, z1 - 0.3), "|X", 2.0)
 
 
+def _sensor_holes():
+    """前脸直接开孔的传感器（热成像、红外收发），返回 [(开孔, 说明)]，头壳、传感器面板共用"""
+    x0, x1 = SCR_X1 - 1, HEAD_FRONT_X + FACE_T + 1
+    t, tx, rx = THERMAL, IR_TX, IR_RX
+    return [(cyl_x(t["can_d"] / 2 + 0.3, x0, x1, t["y"], t["z"]), "MLX90640 热成像（必须开孔）"),
+            (cyl_x(tx["d"] / 2 + 0.2, x0, x1, tx["y"], tx["z"]), "红外发射管"),
+            (box(x0, x1, rx["y"] - rx["w"] / 2 - 0.2, rx["y"] + rx["w"] / 2 + 0.2, rx["z"] - rx["h"] / 2 - 0.2, rx["z"] + rx["h"] / 2 + 0.2), "红外接收头")]
+
+
+def _face_outline(x0, x1, d):
+    """前脸端面八边形（x=HEAD_FRONT_X 处的截面往里缩 d）拉伸成 [x0,x1] 的板"""
+    _, hw, z0, z1, ct, cb = HEAD_SECT[-1]
+    hw, z0, z1, ct, cb = hw - d, z0 + d, z1 - d, ct - d * 0.4, cb - d * 0.4
+    pts = [(-hw + cb, z0), (hw - cb, z0), (hw, z0 + cb), (hw, z1 - ct), (hw - ct, z1), (-hw + ct, z1), (-hw, z1 - ct), (-hw, z0 + cb)]
+    return (cq.Workplane("YZ", origin=(x0, 0, 0)).polyline(pts).close().extrude(x1 - x0).val())
+
+
+def face_plate():
+    """银色前脸面板（外观规范 v1）：框住屏幕面罩和下面的黑色传感器面板，4 颗 M2 自攻锁在头壳前面"""
+    x0, x1 = HEAD_FRONT_X, HEAD_FRONT_X + FACE_T
+    p = chamfer_edges(_face_outline(x0, x1, 1.5), ">X", 0.8)
+    y0, y1, z0, z1 = VISOR
+    p = p.cut(chamfer_edges(box(x0 - 1, x1 + 1, y0 - 1.5, y1 + 1.5, z0 - 1.5, z1 + 1.5), "|X", 2.5))   # 屏幕窗（露出一圈深灰色头壳台阶）
+    sp = SENSOR_PANEL
+    p = p.cut(chamfer_edges(box(x0 - 1, x1 + 1, sp["y"][0], sp["y"][1], sp["z"][0], sp["z"][1]), "|X", 1.5))
+    p = p.cut(box(x1 - 0.5, x1 + 1, -20, 20, 119.4, 120.2))                      # 缝线（毫米波位置的提示线）
+    for (y, z) in _FACE_SCREWS:
+        p = p.cut(cyl_x(1.1, x0 - 1, x1 + 1, y, z)).cut(cyl_x(2.1, x1 - 0.8, x1 + 1, y, z))
+    return p.clean()
+
+
+_FACE_SCREWS = [(-38.0, 104.0), (38.0, 104.0), (-36.0, 120.0), (36.0, 120.0)]
+
+
+def sensor_panel():
+    """黑色传感器面板 1.5mm（哑光黑打印）：所有前向传感器的窗口都开在这一块上"""
+    sp = SENSOR_PANEL
+    x0, x1 = HEAD_FRONT_X, HEAD_FRONT_X + sp["t"]
+    p = chamfer_edges(box(x0, x1, sp["y"][0] + 0.2, sp["y"][1] - 0.2, sp["z"][0] + 0.2, sp["z"][1] - 0.2), "|X", 1.3)
+    ly, lz = LENS
+    p = p.cut(cyl_x(3.5, x0 - 1, x1 + 1, ly, lz))
+    p = p.cut(box(x0 - 1, x1 + 1, TOF_POS[0] - 3, TOF_POS[0] + 3, TOF_POS[1] - 2, TOF_POS[1] + 2))
+    p = p.cut(cyl_x(1.6, x0 - 1, x1 + 1, PRIV_LED[0], PRIV_LED[1]))
+    for (cut, _) in _sensor_holes():
+        p = p.cut(cut)
+    for y in (-24.0, 6.0, 31.0):                                                 # 细分隔线，像设备面板
+        p = p.cut(box(x1 - 0.4, x1 + 1, y - 0.3, y + 0.3, sp["z"][0] + 2, sp["z"][1] - 2))
+    return p.clean()
+
+
 def head_eyes():
-    """屏幕上显示的一对眼睛（只用于效果图；实际是屏幕动画，可以眨眼、看左右、眯眼）"""
+    """屏幕上显示的 HUD 眼睛（只用于效果图；实际是屏幕动画）：两块切角方块 + 下面一条细扫描线 + 四个角标"""
     out = []
-    for y in (-13.5, 13.5):
-        e = box(SCR_X1 + 2.105, SCR_X1 + 2.16, y - 7.5, y + 7.5, SCREEN["zc"] - 4.5, SCREEN["zc"] + 4.5)   # 画在面罩表面，效果图里看得见
-        out.append(chamfer_edges(e, "|X", 3.0))
+    xa, xb = SCR_X1 + 2.105, SCR_X1 + 2.16
+    zc = SCREEN["zc"]
+    for y in (-13.0, 13.0):
+        e = box(xa, xb, y - 8.0, y + 8.0, zc - 2.0, zc + 4.0)
+        out.append(chamfer_edges(e, "|X", 2.2))
+    out.append(box(xa, xb, -24.0, 24.0, zc - 4.6, zc - 4.0))
+    for (y, z, dy, dz) in ((-26.5, zc + 6.2, 1, -1), (26.5, zc + 6.2, -1, -1), (-26.5, zc - 6.2, 1, 1), (26.5, zc - 6.2, -1, 1)):
+        out.append(box(xa, xb, min(y, y + dy * 3.5), max(y, y + dy * 3.5), min(z, z + dz * 0.6), max(z, z + dz * 0.6)))
+        out.append(box(xa, xb, min(y, y + dy * 0.6), max(y, y + dy * 0.6), min(z, z + dz * 2.5), max(z, z + dz * 2.5)))
     return out
 
 
@@ -235,6 +309,12 @@ def head_electronics():
         ("28mm扬声器", cyl_y(14, -49, -44, HIP_X + 28, 104), "fan"),       # 右侧壁，声音从侧面斜槽出来
         ("BH1750光照", box(HIP_X + 44, HIP_X + 56, -6, 6, 126.4, 128.6), "pcb"),
         ("隐私开关", box(HIP_X - 15, HIP_X - 5, 44, 51, 98, 104), "pcb"),
+        ("MLX90640热成像探头", cyl_x(THERMAL["can_d"] / 2, SCR_X1 - 3.0, HEAD_FRONT_X + 0.6, THERMAL["y"], THERMAL["z"]), "camera"),
+        ("MLX90640转接板", box(SCR_X1 - 4.6, SCR_X1 - 3.0, THERMAL["y"] - THERMAL["board"][0] / 2, THERMAL["y"] + THERMAL["board"][0] / 2,
+                             83.0, 83.0 + THERMAL["board"][1]), "pcb"),
+        ("红外发射管", cyl_x(IR_TX["d"] / 2, SCR_X1 - 6.0, HEAD_FRONT_X + 1.0, IR_TX["y"], IR_TX["z"]), "ir"),
+        ("红外接收头VS1838B", box(SCR_X1 - 3.5, HEAD_FRONT_X + 0.8, IR_RX["y"] - IR_RX["w"] / 2, IR_RX["y"] + IR_RX["w"] / 2,
+                                IR_RX["z"] - IR_RX["h"] / 2, IR_RX["z"] + IR_RX["h"] / 2), "camera"),
     ]
     for s in (+1, -1):
         e.append((f"I2S麦克风{'L' if s > 0 else 'R'}", box(HIP_X + 46, HIP_X + 58, s * 46.5 - 1.5, s * 46.5 + 1.5, 106, 118), "pcb"))

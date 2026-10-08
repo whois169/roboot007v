@@ -1,5 +1,5 @@
 """
-RoboDog v0.4 腿：同步带膝关节，大腿全封闭（腿坐标，零位 = 大腿、小腿都竖直向下）
+RoboDog v0.5 腿：同步带膝关节，大腿全封闭（腿坐标，零位 = 大腿、小腿都竖直向下）
   腿坐标：原点 = HFE 轴线与 HFE 输出面交点，x 向前，y 向外，z 向上
   膝坐标：原点 = 膝轴与 y=0 平面交点（零位时位于腿坐标 (0, 0, -L_THIGH)）
 传动：膝电机(KFE) -> 转接盘 -> 20T 小带轮 -> HTD-5M 皮带 -> 36T 大带轮(固定在小腿上)
@@ -28,20 +28,79 @@ Y_KFE_RING = (KFE_FRONT, KFE_FRONT + 4.0)         # 膝电机前安装环
 KFE_CONN_ANG = -90.0                              # 膝电机插头朝向：沿大腿向下（大腿板之间，不碰立柱）
 
 
-def belt_length():
-    """开口皮带外切长度（节线）"""
-    phi = math.asin((R_B - R_S) / L_THIGH)
-    return 2 * L_THIGH * math.cos(phi) + math.pi * (R_B + R_S) + 2 * phi * (R_B - R_S)
+BELT_TEETH = 104                                   # 买的环形带：HTD-5M 104 齿，节线长 520mm
+BELT_LEN = BELT_TEETH * BELT_PITCH
+IDLER_R = 9.0
+IDLER_Z = -70.0                                    # 张紧轮压在后侧直段 z=-70 处
+IDLER_ADJ = 6.0                                    # 张紧轮长槽 ±6mm（v0.4 是 ±4）
 
 
 def _span_x(z, off):
-    """后侧（x<0）皮带直段在高度 z 处的 x，off = 相对节线的径向偏移"""
+    """后侧（x<0）皮带直段在高度 z 处的 x，off = 相对节线的径向偏移（不压张紧轮时）"""
     t = -z / L_THIGH
     return -((R_S + off) + (R_B - R_S) * t)
 
 
-IDLER_R = 9.0
-IDLER_POS = (_span_x(-70.0, BELT_OUT) - IDLER_R + 1.0, -70.0)   # 张紧轮压住后侧直段 1mm
+def idler_center(press):
+    """张紧轮中心：press = 把皮带从直线位置往里压进去多少 mm"""
+    return (_span_x(IDLER_Z, BELT_OUT) - IDLER_R + press, IDLER_Z)
+
+
+def _belt_loop(press, off=0.0, n_arc=28):
+    """皮带走线（小轮 -> 张紧轮 -> 大轮，逆时针）。off = 相对节线的径向偏移。
+    返回 (长度, 折线点)。张紧轮在皮带外侧（压皮带背面），所以按负半径处理。"""
+    circles = [((0.0, 0.0), R_S + off), ((0.0, KNEE_Z), R_B + off)]
+    if press is not None:
+        circles.insert(1, (idler_center(press), -(IDLER_R + BELT_OUT) + off))
+    n = len(circles)
+    normals = []                                   # 每段直线的法向（从 i 到 i+1）
+    for i in range(n):
+        (c1, r1), (c2, r2) = circles[i], circles[(i + 1) % n]
+        dx, dz = c2[0] - c1[0], c2[1] - c1[1]
+        d = math.hypot(dx, dz)
+        ux, uz = dx / d, dz / d
+        px, pz = -uz, ux
+        k = -(r2 - r1) / d
+        h = math.sqrt(1 - k * k)
+        normals.append((k * ux - h * px, k * uz - h * pz))
+    length, pts = 0.0, []
+    for i in range(n):
+        (c, r) = circles[i]
+        n_in, n_out = normals[i - 1], normals[i]
+        a_in, a_out = math.atan2(n_in[1], n_in[0]), math.atan2(n_out[1], n_out[0])
+        da = (a_out - a_in) % (2 * math.pi) if r > 0 else -((a_in - a_out) % (2 * math.pi))
+        length += abs(r * da)
+        for k in range(n_arc + 1):
+            a = a_in + da * k / n_arc
+            pts.append((c[0] + r * math.cos(a), c[1] + r * math.sin(a)))
+        (c2, r2) = circles[(i + 1) % n]
+        p1 = (c[0] + r * n_out[0], c[1] + r * n_out[1])
+        p2 = (c2[0] + r2 * n_out[0], c2[1] + r2 * n_out[1])
+        length += math.hypot(p2[0] - p1[0], p2[1] - p1[1])
+    return length, pts
+
+
+def belt_length(press=None):
+    """节线长度；press=None 表示不装张紧轮的开口带"""
+    return _belt_loop(press)[0]
+
+
+def _solve_press(target):
+    lo, hi = 0.0, 2 * IDLER_ADJ
+    if belt_length(lo) > target or belt_length(hi) < target:
+        return None
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if belt_length(mid) < target else (lo, mid)
+    return (lo + hi) / 2
+
+
+IDLER_PRESS = _solve_press(BELT_LEN)               # 名义位置：刚好把 520mm 皮带张紧（约 6mm）
+if IDLER_PRESS is None:
+    raise ValueError(f"104 齿皮带和张紧轮调节范围对不上：不压 {belt_length(0):.2f}mm，压满 {belt_length(2 * IDLER_ADJ):.2f}mm")
+IDLER_PRESS = round(IDLER_PRESS, 1)
+IDLER_POS = idler_center(IDLER_PRESS)
+IDLER_RANGE = (belt_length(IDLER_PRESS - IDLER_ADJ), belt_length(IDLER_PRESS + IDLER_ADJ))   # 长槽两端能适应的带长
 
 
 KFE_CABLE = (-35.0 * math.sin(math.radians(112.5)), -35.0 * math.cos(math.radians(112.5)))   # 膝电机出线孔（内板，两根髋部立柱之间）
@@ -53,9 +112,9 @@ def _thigh_plate(y0, y1):
     for (x, z) in STANDOFF_POS:
         p = p.cut(cyl_y(2.2, y0 - 1, y1 + 1, x, z))   # M4
     p = p.cut(cyl_y(KNEE_SHAFT_D / 2 + 0.1, y0 - 1, y1 + 1, 0, KNEE_Z))
-    # 张紧轮长槽（M5，±4mm 调节）
+    # 张紧轮长槽（M5，±6mm 调节）
     ix, iz = IDLER_POS
-    p = p.cut(stadium_y((ix - 4, iz), (ix + 4, iz), 2.7, y0 - 1, y1 + 1))
+    p = p.cut(stadium_y((ix - IDLER_ADJ, iz), (ix + IDLER_ADJ, iz), 2.7, y0 - 1, y1 + 1))
     return p
 
 
@@ -115,9 +174,9 @@ def thigh_outer():
     ix, iz = IDLER_POS
     ya, yb = Y_INNER[1], y0 + 0.5
     outer = tapered_slot_xz(R_HIP_PLATE, R_KNEE_PLATE, L_THIGH, ya, yb).fuse(
-        stadium_y((ix - 4, iz), (ix + 4, iz), IDLER_R + 1.0 + t, ya, yb))           # 张紧轮罩（鼓包）
+        stadium_y((ix - IDLER_ADJ, iz), (ix + IDLER_ADJ, iz), IDLER_R + 1.0 + t, ya, yb))           # 张紧轮罩（鼓包）
     inner = tapered_slot_xz(R_HIP_PLATE - t, R_KNEE_PLATE - t, L_THIGH, ya - 1, yb + 1).fuse(
-        stadium_y((ix - 4, iz), (ix + 4, iz), IDLER_R + 1.0, ya - 1, yb + 1))
+        stadium_y((ix - IDLER_ADJ, iz), (ix + IDLER_ADJ, iz), IDLER_R + 1.0, ya - 1, yb + 1))
     wall = outer.cut(inner)
     wall = wall.cut(_notch_sweep())
     p = p.fuse(wall)
@@ -138,7 +197,7 @@ def thigh_partition():
     p = p.cut(box(-60, 60, y0 - 1, y1 + 1, -40, 60))                           # 上面是膝电机，隔板从 z=-40 往下
     p = p.cut(cyl_y(25, y0 - 1, y1 + 1, 0, KNEE_Z))                            # 小腿轮毂法兰
     ix, iz = IDLER_POS
-    p = p.cut(stadium_y((ix - 4, iz), (ix + 4, iz), 5.2, y0 - 1, y1 + 1))      # 张紧轮套筒
+    p = p.cut(stadium_y((ix - IDLER_ADJ, iz), (ix + IDLER_ADJ, iz), 5.2, y0 - 1, y1 + 1))      # 张紧轮套筒
     for (x, z) in STANDOFF_POS[N_HIP_STANDOFF:]:
         p = p.cut(cyl_y(2.2, y0 - 1, y1 + 1, x, z))
     return p.clean()
@@ -208,9 +267,11 @@ def pulley_big():
 
 
 def belt():
-    """HTD-5M 皮带（腿坐标零位），张紧轮处的压弯忽略"""
-    outer = tapered_slot_xz(R_S + BELT_OUT, R_B + BELT_OUT, L_THIGH, Y_PULLEY[0] + 1.5, Y_PULLEY[1] - 1.5)
-    inner = tapered_slot_xz(R_S + BELT_IN, R_B + BELT_IN, L_THIGH, Y_PULLEY[0], Y_PULLEY[1])
+    """HTD-5M 皮带（腿坐标零位），按张紧轮名义位置压弯后的实际走线"""
+    _, po = _belt_loop(IDLER_PRESS, BELT_OUT)
+    _, pi = _belt_loop(IDLER_PRESS, BELT_IN)
+    outer = xz_prism(po, Y_PULLEY[0] + 1.5, Y_PULLEY[1] - 1.5)
+    inner = xz_prism(pi, Y_PULLEY[0], Y_PULLEY[1])
     return outer.cut(inner)
 
 
@@ -254,11 +315,15 @@ def shank():
 
 
 def shin_armor():
-    """小腿外侧白色护甲（膝坐标）"""
+    """小腿外侧护甲（膝坐标）。v0.5：加宽到和小腿杆身一样宽（视觉上加粗），大斜切做出折面，两道缝线；银色 PLA。
+    宽度不超过 ±19，仍在大腿槽口 ±21 以内，不影响膝关节活动"""
     y0, y1 = Y_SHIN
-    a = xz_prism([(-15, -27), (15, -27), (10, -L_SHANK + 30), (-10, -L_SHANK + 30)], y0, y1)
-    a = chamfer_edges(a, ">Y", 1.4)
-    a = a.cut(xz_prism([(-2, -40), (2, -40), (1.5, -120), (-1.5, -120)], y1 - 1.2, y1 + 1))   # 中线凹槽
+    zb = -L_SHANK + 30
+    a = xz_prism([(-18, -27), (18, -27), (13, zb), (-13, zb)], y0, y1)
+    a = chamfer_edges(a, ">Y", 2.0)
+    for z in (-62.0, -118.0):
+        a = a.cut(box(-20, 20, y1 - 0.6, y1 + 1, z - 0.4, z + 0.4))
+    a = a.cut(xz_prism([(-2, -70), (2, -70), (1.5, -110), (-1.5, -110)], y1 - 1.0, y1 + 1))   # 中间一小段凹槽
     for z in (-30.0, -137.0):
         a = a.cut(cyl_y(1.7, y0 - 1, y1 + 1, 0, z))
     return a

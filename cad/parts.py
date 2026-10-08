@@ -274,6 +274,16 @@ def haa_bracket_FL():
     return br
 
 
+HIP_SHROUD_LIGHT_X = HIP_X + HFE_DX + MOTOR["D"] / 2 + 12.0     # 状态灯槽在 HFE 电机孔前面
+
+
+def hip_shroud_light_FL():
+    """髋罩状态灯（导光条，左前；其余镜像）"""
+    xl = HIP_SHROUD_LIGHT_X
+    y1 = Y_OUT - 1.4
+    return box(xl - 1.3, xl + 1.3, y1 - 1.1, y1 + 0.3, -12.5, 12.5)
+
+
 def hip_shroud_FL():
     """髋罩（左前，机身坐标）：把 HFE 电机、电机插头、髋支架 B 板整个包起来，跟着外摆关节一起动。
     上下两半，用 M3 螺丝锁在髋支架 B 板上；后壁让出 A 板；电机线从后壁的孔直接进髋座前壁的线束口。返回 (上半, 下半)"""
@@ -294,6 +304,10 @@ def hip_shroud_FL():
     s = s.cut(box(x0 - 1, x0 + t + 1, 50, 62, 18, 28))                            # 电机出线孔（插头朝前，线沿罩内绕回来）-> 髋座前壁线束口
     for (x, z) in ((x0 + 14, z0 + 8), (x1 - 14, z0 + 8), (x0 + 14, z1 - 8), (x1 - 14, z1 - 8)):
         s = s.cut(cyl_y(1.7, y0 - 1, y0 + t + 1, x, z))                           # M3 锁到 B 板
+    # v0.5 外观：外侧面电机孔前面一条竖向状态灯槽（琥珀橙），顶面一道横缝
+    xl = HIP_SHROUD_LIGHT_X
+    s = s.cut(box(xl - 1.6, xl + 1.6, y1 - 1.2, y1 + 1, -13, 13))
+    s = s.cut(box(x_hfe - 0.4, x_hfe + 0.4, y0 + 4, y1 - 4, z1 - 0.6, z1 + 1))
     s = s.clean()
     top = s.intersect(box(x0 - 5, x1 + 5, y0 - 5, y1 + 5, 0, z1 + 5))
     bot = s.intersect(box(x0 - 5, x1 + 5, y0 - 5, y1 + 5, z0 - 5, 0))
