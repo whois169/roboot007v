@@ -188,8 +188,8 @@ keys = []
 for pn, pose in POSES_MJ.items():
     keys.append(f'    <key name="{pn}" qpos="{fmt(qpos(pose))}"/>')
 
-xml = f"""<!-- RoboDog v0.5 · 由 cad/export_mujoco.py 从 CAD 自动生成，不要手改（改 CAD 后重新导出） -->
-<mujoco model="robodog_v0.5">
+xml = f"""<!-- RoboDog v0.6 · 由 cad/export_mujoco.py 从 CAD 自动生成，不要手改（改 CAD 后重新导出） -->
+<mujoco model="robodog_v0.6">
   <compiler angle="degree" meshdir="meshes" autolimits="true"/>
   <option timestep="0.002" integrator="implicitfast"/>
 

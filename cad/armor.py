@@ -9,7 +9,7 @@ RoboDog v0.5 外观件（机身坐标，X 前 / Y 左 / Z 上），按《外观�
 import math
 import cadquery as cq
 from config import *
-from parts import V, box, cyl_y, cyl_z, cyl_x, xz_prism, yz_prism, xy_prism, chamfer_edges, tapered_slot_xz, stadium_y
+from parts import V, box, cyl_y, cyl_z, cyl_x, xz_prism, yz_prism, xy_prism, chamfer_edges, tapered_slot_xz, stadium_y, offset_poly
 
 TOP = BODY_ZMAX           # 机身骨架顶面 z=50
 MID_X = HIP_X - BLOCK_DEPTH - 1   # 中段型材端面 x=±93
@@ -29,29 +29,6 @@ def loft(sections):
 def inset(s, d):
     x, hw, z0, z1, ct, cb = s
     return (x, hw - d, z0 - 0.01 if z0 <= TOP + 6.01 else z0 + d, z1 - d, max(ct - d * 0.4, 0.5), max(cb - d * 0.4, 0.5))
-
-
-def offset_poly(pts, d):
-    """二维多边形往里缩 d（斜接），pts 逆时针或顺时针都行"""
-    n = len(pts)
-    area = sum(pts[i][0] * pts[(i + 1) % n][1] - pts[(i + 1) % n][0] * pts[i][1] for i in range(n)) / 2
-    sgn = 1.0 if area > 0 else -1.0
-    lines = []
-    for i in range(n):
-        (x1, y1), (x2, y2) = pts[i], pts[(i + 1) % n]
-        L = math.hypot(x2 - x1, y2 - y1)
-        nx, ny = -(y2 - y1) / L * sgn, (x2 - x1) / L * sgn          # 指向多边形内部
-        lines.append(((x1 + nx * d, y1 + ny * d), (x2 - x1, y2 - y1)))
-    out = []
-    for i in range(n):
-        (p, r), (q, s_) = lines[i - 1], lines[i]
-        den = r[0] * s_[1] - r[1] * s_[0]
-        if abs(den) < 1e-9:
-            out.append(q)
-            continue
-        t = ((q[0] - p[0]) * s_[1] - (q[1] - p[1]) * s_[0]) / den
-        out.append((p[0] + t * r[0], p[1] + t * r[1]))
-    return out
 
 
 SEAM_W, SEAM_D = 0.8, 0.6          # 外观规范：缝线 0.8 宽 × 0.6 深
@@ -292,29 +269,55 @@ def shoulder_armor_FL():
     return p
 
 
+def _shield_outline(z_cut=-148.0, n=40):
+    """大腿装甲外形 = 大腿外壳轮廓（髋端 R44 圆弧 + 两侧切线收到膝盖），边缘和外壳齐平，没有一圈凸边；
+    在 z_cut 以下斜切收口，让出银色膝盖。（外壳不能再放大：大腿板再宽就斜放不进 256 打印床）"""
+    r1, r2, L = R_HIP_PLATE, R_KNEE_PLATE, L_THIGH
+    s = (r1 - r2) / L
+    nx, nz = math.sqrt(1 - s * s), -s
+    a0 = math.atan2(nz, nx)                                         # 右侧切点在髋端圆上的角度（略低于水平）
+    arc = [(r1 * math.cos(a0 + (math.pi - 2 * a0) * k / n), r1 * math.sin(a0 + (math.pi - 2 * a0) * k / n)) for k in range(n + 1)]
+    A, B = (r1 * nx, r1 * nz), (r2 * nx, -L + r2 * nz)              # 右侧切线 A -> B
+    t = (z_cut - A[1]) / (B[1] - A[1])
+    xc = A[0] + (B[0] - A[0]) * t
+    return [(xc, z_cut)] + arc + [(-xc, z_cut), (-22.0, z_cut - 12.0), (22.0, z_cut - 12.0)]
+
+
+THIGH_SHIELD = _shield_outline()   # 腿坐标 (x, z)：圆弧肩，往下越来越细，和大腿外壳齐平
+
+
 def thigh_cover():
-    """大腿装甲（腿坐标零位），螺接在大腿外板外侧。v0.5：2mm 底板 + 2.5mm 凸起中板（大斜切），两道缝线；
-    髋端、膝端各留一圈给银色端盖；张紧轮螺丝头开长孔，不拆装甲也能调皮带"""
+    """大腿装甲（腿坐标零位）。v0.6 参考概念图：盾牌形折面外形，上宽下窄，在膝盖上面就收住，
+    让银色膝盖露出来；装甲边缘和大腿外壳齐平（v0.6 用户要求：外面一圈不能凸出来）；2mm 底板 + 2.5mm 凸起中板（大斜切）
+    + 两道斜向折线 + 顶部一小段琥珀橙灯；髋端留给银色端盖。v0.6 去掉张紧轮长孔：调皮带时拆下装甲（4 颗 M3）"""
     import leg
     y0, y1, y2 = Y_OUTER[1], Y_OUTER[1] + 2.0, Y_OUTER[1] + 4.5
-    c = tapered_slot_xz(R_HIP_PLATE - 3, R_KNEE_PLATE - 3, L_THIGH - 12, y0, y1)
-    c = chamfer_edges(c, ">Y", 0.8)
-    mid = tapered_slot_xz(R_HIP_PLATE - 10, R_KNEE_PLATE - 10, L_THIGH - 16, y1 - 0.01, y2)
-    mid = chamfer_edges(mid, ">Y", 2.2)
+    c = chamfer_edges(xz_prism(THIGH_SHIELD, y0, y1), ">Y", 0.8)
+    mid = chamfer_edges(xz_prism(offset_poly(THIGH_SHIELD, 6.0), y1 - 0.01, y2), ">Y", 2.2)
     c = c.fuse(mid).clean()
     c = c.cut(cyl_y(16, y0 - 1, y2 + 1))                         # 让出轴承凸台（髋端盖盖住）
-    c = c.cut(cyl_y(12.5, y0 - 1, y2 + 1, 0, -L_THIGH))         # 让出膝轴凸台（膝端盖盖住）
-    ix, iz = leg.IDLER_POS
-    c = c.cut(stadium_y((ix - leg.IDLER_ADJ, iz), (ix + leg.IDLER_ADJ, iz), 6.5, y0 - 1, y2 + 1))   # 张紧轮螺丝头长孔
-    for z in (-58.0, -128.0):                                    # 缝线
-        c = c.cut(box(-60, 60, y2 - SEAM_D, y2 + 1, z - SEAM_W / 2, z + SEAM_W / 2))
-    for (x, z) in HIP_CAP_SCREWS + [(x, z - L_THIGH) for (x, z) in KNEE_CAP_SCREWS]:
-        c = c.cut(cyl_y(0.8, y0 - 1, y2 + 1, x, z))                # 端盖 M2 自攻孔
+    for (x, z) in THIGH_COVER_SCREWS:
+        c = c.cut(cyl_y(1.7, y0 - 1, y2 + 1, x, z)).cut(cyl_y(3.0, y2 - 1.6, y2 + 1, x, z))   # M3 沉头，锁进大腿外板的热熔螺母
+    panel = xz_prism(offset_poly(THIGH_SHIELD, 8.0), y2 - SEAM_D - 0.1, y2 + 1)
+    for (pa, pb) in (((-50, -44), (50, -84)), ((-50, -98), (50, -134))):   # 斜向折线（缝线），只刻在中板上
+        (xa, za), (xb, zb) = pa, pb
+        k = SEAM_W / 2 / math.cos(math.atan2(zb - za, xb - xa))
+        c = c.cut(xz_prism([(xa, za - k), (xb, zb - k), (xb, zb + k), (xa, za + k)], y2 - SEAM_D, y2 + 1).intersect(panel))
+    c = c.cut(box(-12, 12, y2 - 1.2, y2 + 1, 27.5, 30.5))         # 顶部状态灯槽
+    for (x, z) in HIP_CAP_SCREWS:
+        c = c.cut(cyl_y(0.8, y0 - 1, y2 + 1, x, z))                # 髋端盖 M2 自攻孔
     return c
 
 
+def thigh_light():
+    """大腿装甲顶部的琥珀橙状态灯（导光条）"""
+    y2 = Y_OUTER[1] + 4.5
+    return box(-11.6, 11.6, y2 - 1.1, y2 + 0.3, 27.9, 30.1)
+
+
+THIGH_COVER_SCREWS = [(-30.0, -40.0), (30.0, -40.0), (-25.0, -138.0), (25.0, -138.0)]
 HIP_CAP_SCREWS = [(19.0 * math.cos(math.radians(a)), 19.0 * math.sin(math.radians(a))) for a in (90, 210, 330)]
-KNEE_CAP_SCREWS = [(15.0 * math.cos(math.radians(a)), 15.0 * math.sin(math.radians(a))) for a in (30, 150, 270)]
+KNEE_CAP_SCREWS = [(18.0 * math.cos(math.radians(a)), 18.0 * math.sin(math.radians(a))) for a in (30, 150, 270)]
 
 
 def hip_cap():
@@ -331,12 +334,17 @@ def hip_cap():
 
 
 def knee_cap():
-    """膝端银色端盖（腿坐标零位），盖住膝轴 M5 螺丝"""
-    y0 = Y_OUTER[1] + 4.5
-    c = chamfer_edges(cyl_y(19, y0, y0 + 3.0, 0, -L_THIGH), ">Y", 1.2)
-    c = c.cut(cyl_y(7, y0 + 2.2, y0 + 4, 0, -L_THIGH))
+    """银色膝盖（腿坐标零位）：v0.6 大腿装甲在膝盖上面收住，膝盖整个露出来。
+    Φ50 端盖 + 下面一圈垫环（直接贴在大腿外板上，3 颗 M2 自攻），中间深色凹槽，像概念图的金属关节"""
+    y0, y1 = Y_OUTER[1], Y_OUTER[1] + 2.6
+    kz = -L_THIGH
+    ring = cyl_y(21, y0, y1, 0, kz).cut(cyl_y(12.5, y0 - 1, y1 + 1, 0, kz))
+    disc = chamfer_edges(cyl_y(25, y1, y1 + 3.4, 0, kz), ">Y", 1.6)
+    c = ring.fuse(disc).clean()
+    c = c.cut(cyl_y(9, y1 + 2.4, y1 + 5, 0, kz))
+    c = c.cut(cyl_y(16, y1 + 2.8, y1 + 5, 0, kz).cut(cyl_y(15.2, y1 + 2.0, y1 + 6, 0, kz)))   # 一圈细环线
     for (x, z) in KNEE_CAP_SCREWS:
-        c = c.cut(cyl_y(1.1, y0 - 1, y0 + 4, x, z - L_THIGH)).cut(cyl_y(2.0, y0 + 2.2, y0 + 4, x, z - L_THIGH))
+        c = c.cut(cyl_y(1.1, y0 - 1, y1 + 5, x, z + kz)).cut(cyl_y(2.0, y1 + 2.0, y1 + 5, x, z + kz))
     return c.clean()
 
 

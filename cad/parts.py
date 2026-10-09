@@ -94,6 +94,29 @@ def chamfer_edges(solid, selector, r):
         return solid
 
 
+def offset_poly(pts, d):
+    """二维多边形往里缩 d（斜接），pts 逆时针或顺时针都行"""
+    n = len(pts)
+    area = sum(pts[i][0] * pts[(i + 1) % n][1] - pts[(i + 1) % n][0] * pts[i][1] for i in range(n)) / 2
+    sgn = 1.0 if area > 0 else -1.0
+    lines = []
+    for i in range(n):
+        (x1, y1), (x2, y2) = pts[i], pts[(i + 1) % n]
+        L = math.hypot(x2 - x1, y2 - y1)
+        nx, ny = -(y2 - y1) / L * sgn, (x2 - x1) / L * sgn          # 指向多边形内部
+        lines.append(((x1 + nx * d, y1 + ny * d), (x2 - x1, y2 - y1)))
+    out = []
+    for i in range(n):
+        (p, r), (q, s_) = lines[i - 1], lines[i]
+        den = r[0] * s_[1] - r[1] * s_[0]
+        if abs(den) < 1e-9:
+            out.append(q)
+            continue
+        t = ((q[0] - p[0]) * s_[1] - (q[1] - p[1]) * s_[0]) / den
+        out.append((p[0] + t * r[0], p[1] + t * r[1]))
+    return out
+
+
 def rot_y_vec(x, z, deg):
     """右手系绕 Y 旋转 (x,z) 向量，与 cadquery rotate 一致"""
     a = math.radians(deg)

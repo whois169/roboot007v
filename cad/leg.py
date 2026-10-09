@@ -1,5 +1,5 @@
 """
-RoboDog v0.5 腿：同步带膝关节，大腿全封闭（腿坐标，零位 = 大腿、小腿都竖直向下）
+RoboDog v0.6 腿：同步带膝关节，大腿全封闭（腿坐标，零位 = 大腿、小腿都竖直向下）
   腿坐标：原点 = HFE 轴线与 HFE 输出面交点，x 向前，y 向外，z 向上
   膝坐标：原点 = 膝轴与 y=0 平面交点（零位时位于腿坐标 (0, 0, -L_THIGH)）
 传动：膝电机(KFE) -> 转接盘 -> 20T 小带轮 -> HTD-5M 皮带 -> 36T 大带轮(固定在小腿上)
@@ -7,7 +7,7 @@ RoboDog v0.5 腿：同步带膝关节，大腿全封闭（腿坐标，零位 = �
 import math
 import cadquery as cq
 from config import *
-from parts import (V, box, cyl_x, cyl_y, cyl_z, xz_prism, tapered_slot_xz, stadium_y,
+from parts import (V, box, cyl_x, cyl_y, cyl_z, xz_prism, tapered_slot_xz, stadium_y, offset_poly,
                    bolt_circle, chamfer_edges, motor_y, motor_connector_y, dowel_holes_y)
 
 PD_S = PULLEY_T_SMALL * BELT_PITCH / math.pi      # 小轮节圆直径 31.83
@@ -154,20 +154,44 @@ def kfe_front_ring():
     return r.clean()
 
 
+SHANK_ZT = -L_SHANK + 14
+
+
+def shank_profile(style=None):
+    """小腿杆身外形（膝坐标 x 前、z 上，膝轴在原点）。弯折都放在"后侧"（-x）：
+    膝关节折叠时小腿的前侧贴向大腿，后侧朝外，所以往后拱不会碰到大腿。足端球心始终在 (0, -L_SHANK)"""
+    style = style or LEG_STYLE
+    zt = SHANK_ZT
+    if style == "A":                                   # 直小腿（v0.5 原样）
+        return [(-19, -8), (19, -8), (12, zt), (-12, zt)]
+    if style == "B":                                   # 后弓小腿：膝下 60mm 处往后鼓出"小腿肚"，前沿保持直线
+        return [(19, -8), (12, zt), (-12, zt), (-16, -126), (-38, -66), (-30, -34), (-19, -8)]
+    if style == "C":                                   # 狗腿反弓：小腿在 90mm 处往后折约 30°，前沿跟着内凹
+        return [(19, -8), (-5, -90), (12, zt), (-12, zt), (-43, -90), (-19, -8)]
+    raise ValueError(style)
+
+
 def _notch_sweep():
-    """小腿在大腿围边上扫过的区域（腿坐标零位）：膝关节全行程 -12°..150°，杆身两侧各留 2mm"""
+    """小腿在大腿围边上扫过的区域（腿坐标零位）：膝关节全行程 -12°..150°。
+    v0.6：按小腿真实外形（外扩 2mm）扫，再并上原来 ±21 的直条，小腿怎么弯槽口都跟着变"""
+    y0, y1 = Y_INNER[1] - 0.1, Y_PARTITION[0] - 1.0
+    prof = xz_prism(offset_poly(shank_profile(), -2.0), y0, y1).fuse(box(-21, 21, y0, y1, -L_SHANK - 25, 4))
     sweep = None
     a = -KNEE_BETA_RANGE[1] - 4
     while a <= -KNEE_BETA_RANGE[0] + 4:
-        b = box(-21, 21, Y_INNER[1] - 0.1, Y_PARTITION[0] - 1.0, -L_SHANK - 25, 4).rotate(V(0, 0, 0), V(0, 1, 0), a)
+        b = prof.rotate(V(0, 0, 0), V(0, 1, 0), a)
         sweep = b if sweep is None else sweep.fuse(b)
         a += 4
     return sweep.translate(V(0, 0, KNEE_Z))
 
 
+Z_FORK = -40.0                    # v0.6：这个高度以下，大腿围边只包皮带层（和隔板上沿对齐）
+
+
 def thigh_outer():
-    """大腿外壳：外板 + 一圈围边（从外板一直延伸到内板）。皮带、带轮、张紧轮都包在里面。
-    下端围边开一个槽口给小腿进出；后侧鼓出一个小包罩住张紧轮。"""
+    """大腿外壳：外板 + 一圈围边。皮带、带轮、张紧轮都包在里面；后侧鼓出一个小包罩住张紧轮。
+    v0.6"叉形"大腿：髋部（z > Z_FORK，里面是膝电机）围边从外板一直包到内板；下半段围边只包皮带那一层
+    （到隔板为止），小腿那一层不做围边，小腿夹在隔板和内板之间活动——从外面看没有槽口，是一整块完整的大腿"""
     y0, y1 = Y_OUTER
     t = THIGH_WALL
     p = _thigh_plate(y0, y1)
@@ -178,14 +202,22 @@ def thigh_outer():
     inner = tapered_slot_xz(R_HIP_PLATE - t, R_KNEE_PLATE - t, L_THIGH, ya - 1, yb + 1).fuse(
         stadium_y((ix - IDLER_ADJ, iz), (ix + IDLER_ADJ, iz), IDLER_R + 1.0, ya - 1, yb + 1))
     wall = outer.cut(inner)
-    wall = wall.cut(_notch_sweep())
-    p = p.fuse(wall)
+    upper = wall.intersect(box(-80, 80, ya - 1, yb + 1, Z_FORK, 80)).cut(_notch_sweep())
+    lower = wall.intersect(box(-80, 80, Y_PARTITION[0], yb + 1, -L_THIGH - 60, Z_FORK + 0.01))
+    p = p.fuse(upper).fuse(lower)
+    p = p.cut(stadium_y((ix - IDLER_ADJ, iz), (ix + IDLER_ADJ, iz), 4.9, y1 - 2.9, y1 + 0.1))   # 张紧轮 M5 沉头螺丝的长条沉孔
     # 小带轮外端支撑轴承 688ZZ（8×16×5）
     p = p.fuse(cyl_y(14, y1, y1 + 3))
     p = p.cut(cyl_y(8.05, y0 - 1, y0 + 5))
     p = p.cut(cyl_y(5.0, y0 - 1, y1 + 4))
     # 膝轴外端凸台（膝轴用 M5 螺丝从两端锁在大腿板上）
     p = p.fuse(cyl_y(11, y1, y1 + 2.5, 0, KNEE_Z)).cut(cyl_y(KNEE_SHAFT_D / 2 + 0.1, y0, y1 + 4, 0, KNEE_Z))
+    for a in (30, 150, 270):                                  # v0.6 银色膝盖盖的 M2 自攻孔（膝盖露在装甲外面）
+        t = math.radians(a)
+        p = p.cut(cyl_y(0.8, y1 - 4, y1 + 0.1, 18 * math.cos(t), KNEE_Z + 18 * math.sin(t)))
+    import armor                                              # v0.6 大腿装甲的 M3 热熔螺母孔
+    for (x, z) in armor.THIGH_COVER_SCREWS:
+        p = p.cut(cyl_y(2.0, y1 - 4.5, y1 + 0.1, x, z))
     return p.clean()
 
 
@@ -279,7 +311,7 @@ def idler():
     """张紧轮：打印滚轮 + 2×F625ZZ，M5 螺丝穿过内外板长槽"""
     ix, iz = IDLER_POS
     r = cyl_y(IDLER_R, YB0 + 0.3, YB1 - 0.3, ix, iz).cut(cyl_y(2.6, YB0, YB1, ix, iz))
-    axle = cyl_y(2.5, Y_INNER[0] - 2, Y_OUTER[1] + 1.5, ix, iz)
+    axle = cyl_y(2.5, Y_INNER[0] - 2, Y_OUTER[1], ix, iz)          # v0.6 外侧用 M5 沉头螺丝，头和外板平齐（大腿装甲直接盖在上面）
     sleeve = cyl_y(4.5, Y_INNER[1], Y_PULLEY[0], ix, iz).fuse(cyl_y(4.5, Y_PULLEY[1], Y_OUTER[0], ix, iz))
     sleeve = sleeve.cut(cyl_y(2.6, Y_INNER[0], Y_OUTER[1], ix, iz))
     return r, axle, sleeve
@@ -299,8 +331,8 @@ def shank():
     hub = hub.fuse(drum)
     hub = hub.fuse(cyl_y(23, Y_SHANK_HUB[1] - 10, Y_SHANK_HUB[1]))        # 带轮法兰
     hub = chamfer_edges(hub, "%CIRCLE", 1.2)
-    zt = -L_SHANK + 14
-    bar = xz_prism([(-19, -8), (19, -8), (12, zt), (-12, zt)], *SHANK_Y)
+    zt = SHANK_ZT
+    bar = xz_prism(shank_profile(), *SHANK_Y)
     bar = chamfer_edges(bar, "|Y", 3.0)
     tip = box(-11, 11, SHANK_Y[0] + 3, SHANK_Y[1] - 3, -L_SHANK + 2, zt + 1)
     s = hub.fuse(bar).fuse(tip).clean()
@@ -309,24 +341,48 @@ def shank():
     for (dx, dz) in bolt_circle(36, 4, 45):
         s = s.cut(cyl_y(1.9, Y_SHANK_HUB[1] - 9, Y_SHANK_HUB[1] + 1, dx, dz))  # M4 热熔螺母
     s = s.cut(cyl_x(2.2, -20, 20, (SHANK_Y[0] + SHANK_Y[1]) / 2, -L_SHANK + 7))
+    s = s.cut(cyl_x(1.9, -20, 20, (SHANK_Y[0] + SHANK_Y[1]) / 2, (-L_SHANK + 11.5 + SHIN_Z[1] - 0.2) / 2))   # 脚踝护圈 M3 热熔螺母
     for z in (-30.0, -100.0, -150.0):                                        # 护甲 M3 热熔螺母
         s = s.cut(cyl_y(1.9, SHANK_Y[1] - 6, SHANK_Y[1] + 1, 0, z if z != -100.0 else -137.0))
     return s
 
 
+SHIN_Z = (-27.0, -172.0)          # 小腿护甲上下端（膝坐标）
+
+
+def _shin_outline(inset):
+    """护甲外形：小腿外形往里缩 inset，再截取 SHIN_Z 这一段"""
+    return xz_prism(offset_poly(shank_profile(), inset), Y_SHIN[0] - 2, Y_SHIN[1] + 2).intersect(
+        box(-60, 60, Y_SHIN[0] - 3, Y_SHIN[1] + 3, SHIN_Z[1], SHIN_Z[0]))
+
+
 def shin_armor():
-    """小腿外侧护甲（膝坐标）。v0.5：加宽到和小腿杆身一样宽（视觉上加粗），大斜切做出折面，两道缝线；银色 PLA。
-    宽度不超过 ±19，仍在大腿槽口 ±21 以内，不影响膝关节活动"""
+    """小腿外侧银色护甲（膝坐标）。v0.6：外形跟着小腿杆身走（A 直 / B 后弓 / C 反弓），大斜切折面；
+    中间挖一块浅槽，贴深灰内嵌板，做出概念图那种"银框 + 深色板"的双色效果。宽度在大腿槽口以内，不影响膝关节活动"""
     y0, y1 = Y_SHIN
-    zb = -L_SHANK + 30
-    a = xz_prism([(-18, -27), (18, -27), (13, zb), (-13, zb)], y0, y1)
-    a = chamfer_edges(a, ">Y", 2.0)
-    for z in (-62.0, -118.0):
-        a = a.cut(box(-20, 20, y1 - 0.6, y1 + 1, z - 0.4, z + 0.4))
-    a = a.cut(xz_prism([(-2, -70), (2, -70), (1.5, -110), (-1.5, -110)], y1 - 1.0, y1 + 1))   # 中间一小段凹槽
+    a = _shin_outline(1.0).intersect(box(-60, 60, y0, y1, -400, 100))
+    a = chamfer_edges(a, ">Y", 1.8)
+    a = a.cut(_shin_outline(4.0).intersect(box(-60, 60, y1 - 1.0, y1 + 1, SHIN_Z[1] + 14, SHIN_Z[0] - 10)))   # 内嵌板浅槽
     for z in (-30.0, -137.0):
         a = a.cut(cyl_y(1.7, y0 - 1, y1 + 1, 0, z))
-    return a
+    return a.clean()
+
+
+def shin_insert():
+    """小腿护甲上的深灰内嵌板（1mm 厚，双面胶贴在浅槽里，顺便盖住护甲螺丝）"""
+    y1 = Y_SHIN[1]
+    return _shin_outline(4.3).intersect(box(-60, 60, y1 - 0.95, y1 - 0.1, SHIN_Z[1] + 14.3, SHIN_Z[0] - 10.3))
+
+
+def ankle_collar():
+    """银色脚踝护圈（膝坐标）：套在小腿末端、足端上面，像概念图里的金属脚踝；1 颗 M3 横向锁住"""
+    z0, z1 = -L_SHANK + 11.5, SHIN_Z[1] - 0.2
+    o = chamfer_edges(box(-15.5, 15.5, SHANK_Y[0] - 2.5, SHANK_Y[1] + 2.5, z0, z1), "|Z", 3.0)
+    o = chamfer_edges(o, ">Z or <Z", 0.8)
+    o = o.cut(box(-12.8, 12.8, SHANK_Y[0] - 0.3, SHANK_Y[1] + 0.3, z0 - 1, z1 + 1))
+    o = o.cut(xz_prism(offset_poly(shank_profile(), -0.4), SHANK_Y[0] - 0.3, SHANK_Y[1] + 0.3))   # 跟着小腿外形让位（反弓小腿下端略宽）
+    o = o.cut(box(-16, 16, SHANK_Y[1] + 1.9, SHANK_Y[1] + 3, (z0 + z1) / 2 - 0.4, (z0 + z1) / 2 + 0.4))   # 一道细线
+    return o.cut(cyl_x(1.7, -17, 17, (SHANK_Y[0] + SHANK_Y[1]) / 2, (z0 + z1) / 2)).clean()
 
 
 FOOT_CORE_R = FOOT_D / 2 - 2.5

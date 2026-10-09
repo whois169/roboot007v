@@ -10,7 +10,7 @@ viewer/robodog_v0.1.html
 __pycache__/
 *.pyc
 node_modules/
-# 下面这些也是生成文件，体积大，不进版本记录（跑 build.py / export_mujoco.py / shots_v5.mjs 重新生成）
+# 下面这些也是生成文件，体积大，不进版本记录（跑 build.py / export_mujoco.py / shots_v6.mjs 重新生成）
 out/robodog.glb
 out/mujoco/meshes/
 renders/

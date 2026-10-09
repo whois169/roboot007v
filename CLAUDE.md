@@ -11,9 +11,10 @@
 ## 目录
 - `cad/config.py`：所有关键尺寸（改尺寸改这里）；`head.py` 头和脖子；`leg.py` 腿（含皮带走线和长度计算）；`parts.py` 机身；`armor.py` 外观件、任务导轨、雷达模块、任务箱
 - `cad/build.py`：生成 STL / STEP / GLB / rig.json / report.txt；`--check` 对站立、转头、坐下、趴下 4 个姿态做干涉检查
-- `cad/export_sw.py`（SolidWorks 分组装配体）、`cad/export_mujoco.py`（MuJoCo 模型）、`cad/check_neck.py`（脖子全范围扫描）、`cad/check_haa.py`（外摆关节全范围扫描）
+- `cad/export_sw.py`（SolidWorks 分组装配体）、`cad/export_mujoco.py`（MuJoCo 模型）、`cad/check_neck.py`（脖子全范围扫描）、`cad/check_haa.py`（外摆关节全范围扫描）、`cad/check_knee.py`（膝关节全行程扫描，v0.6）
+- 腿的造型：`config.py` → `LEG_STYLE`（A 直 / B 后弓 / C 狗腿反弓，当前 C），也可以用环境变量 `LEG_STYLE=B python3 build.py` 临时切换；小腿外形在 `leg.py` 的 `shank_profile()`，大腿装甲外形在 `armor.py` 的 `_shield_outline()`
 - `out/mujoco/check_poses.py`：PD 控制下的站立、坐下、趴下、起身仿真，看电机扭矩是否超限
-- `viewer/make_viewer.py` + `template.html`：生成 3D 预览网页；`viewer/shots_v5.mjs`：渲染效果图（v0.5，浅灰摄影棚背景）（需要 node + playwright + three）
+- `viewer/make_viewer.py` + `template.html`：生成 3D 预览网页；`viewer/shots_v6.mjs`：渲染效果图（v0.6，浅灰摄影棚背景）（需要 node + playwright + three）
 - `docs/`：核心原则、外观设计规范、P1 头部开发计划、设计说明书、电子系统与接线、行动清单、分阶段采购表（xlsx）、电机实测清单、零件尺寸收集清单、SolidWorks 说明
 
 ## 买来的零件尺寸
@@ -28,6 +29,7 @@ cd cad
 python3 build.py --check        # 4 个姿态都要 0 处干涉，约 15 分钟；report.txt 里的"皮带长度检查"必须是"通过"
 python3 check_neck.py           # 改了头或脖子时跑，结果更新 head.py 的 NECK_LIMITS 和文档里的限位表
 python3 check_haa.py            # 改了机身、髋部或大腿时跑，外摆关节至少要能摆 ±15°
+python3 check_knee.py           # 改了大腿、小腿、膝盖或足端时跑，膝关节必须保持 -10°…150° 全程无碰撞
 python3 export_sw.py && python3 export_mujoco.py
 cd ../out/mujoco && python3 check_poses.py    # 电机扭矩不能长时间顶到上限
 cd ../../viewer && python3 make_viewer.py

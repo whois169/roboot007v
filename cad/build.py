@@ -1,5 +1,5 @@
 """
-生成 RoboDog v0.5（可动装配；v0.5 = 皮带长度修正 + 外观设计规范 v1（深灰 + 银 + 琥珀橙）+ 背部任务导轨 / 激光雷达 / 任务箱 + 热成像和红外收发）：
+生成 RoboDog v0.6（v0.6 = 参考概念图的新腿：圆弧肩倒梯形大腿、叉形大腿去掉槽口、外露银色膝盖、反弓小腿、双色护甲、银色脚踝；可动装配；v0.5 = 皮带长度修正 + 外观设计规范 v1（深灰 + 银 + 琥珀橙）+ 背部任务导轨 / 激光雷达 / 任务箱 + 热成像和红外收发）：
   out/stl/                 可打印零件（已摆好打印方向）
   out/step/                站立姿态整机 STEP
   out/robodog.glb          按刚体分组的模型（零位），配合 out/rig.json 在网页里摆姿态
@@ -73,7 +73,8 @@ THIGH_PARTS = [("HFE法兰", hf, "flange"), ("大腿内板", G.thigh_inner(), "f
                ("带轮转接盘", G.pulley_adapter(), "frame"), ("小带轮20T", G.pulley_small(), "alu"),
                ("同步带HTD5M", G.belt(), "belt"), ("张紧轮", idler_r, "alu"), ("张紧轮轴", idler_ax, "steel"),
                ("张紧轮套筒", idler_sl, "frame"), ("膝轴", G.knee_shaft(), "alu"),
-               ("大腿装甲", A.thigh_cover(), "armor"), ("髋端盖", A.hip_cap(), "trim"), ("膝端盖", A.knee_cap(), "trim"),
+               ("大腿装甲", A.thigh_cover(), "armor"), ("大腿状态灯", A.thigh_light(), "amber"),
+               ("髋端盖", A.hip_cap(), "trim"), ("膝盖", A.knee_cap(), "trim"),
                ("膝电机前安装环", G.kfe_front_ring(), "frame"),
                ("大腿隔板", G.thigh_partition(), "frame")]
 k_seat, k_plug = P.motor_connector_y(Y_KFE[0], G.KFE_CONN_ANG)
@@ -81,7 +82,8 @@ THIGH_PARTS += [("KFE插头座", k_seat, "motor"), ("预留-KFE插头", k_plug, 
 HAA_CONN_ANG = 55.0                                              # HAA 插头斜向上外侧（髋座内腔对角最宽）
 THIGH_PARTS += [(f"立柱{i}", s, "alu") for i, s in enumerate(G.standoffs())]
 SHANK_PARTS = [("小腿", G.to_knee(G.shank()), "frame"), ("大带轮36T", G.to_knee(G.pulley_big()), "alu"),
-               ("小腿护甲", G.to_knee(G.shin_armor()), "trim"),
+               ("小腿护甲", G.to_knee(G.shin_armor()), "trim"), ("小腿内嵌板", G.to_knee(G.shin_insert()), "armor"),
+               ("脚踝护圈", G.to_knee(G.ankle_collar()), "trim"),
                ("足端", G.to_knee(G.foot_core()), "tpu"), ("足端防滑套", G.to_knee(G.foot_tread()), "rubber")]
 
 SHROUD = P.hip_shroud_FL()
@@ -436,7 +438,8 @@ printables = {
     "thigh_cover_L": (tc, FLAT_YN, 2, f"{GR}，3 层壁，外面朝上"),
     "thigh_cover_R": (tc.mirror("XZ"), FLAT_YP, 2, f"{GR}，3 层壁，外面朝上"),
     "hip_cap": (A.hip_cap(), FLAT_YN, 4, f"{SV}，左右通用"),
-    "knee_cap": (A.knee_cap(), FLAT_YN, 4, f"{SV}，左右通用"),
+    "knee_cap": (A.knee_cap(), FLAT_Y, 4, f"{SV}，左右通用，垫环朝上"),
+    "thigh_light": (A.thigh_light(), FLAT_Y, 4, DF),
     "standoff_set": (cq.Compound.makeCompound(G.standoffs()), FLAT_Y, 4, "PETG 100% 填充（或换 M4 铝柱）"),
     "pulley_adapter": (G.pulley_adapter(), FLAT_Y, 4, f"{PA} 100% 填充"),
     "kfe_front_ring": (G.kfe_front_ring(), FLAT_Y, 4, f"{PA} 100% 填充（后期可换铝）"),
@@ -444,10 +447,13 @@ printables = {
     "pulley_big_36T": (G.pulley_big(), FLAT_Y, 4, f"{PA} 6 层壁 80% 填充，0.12 层高"),
     "idler_roller": (idler_r, FLAT_Y, 4, f"{PA}（内装 2×F625ZZ）"),
     "idler_sleeve": (idler_sl, FLAT_Y, 4, "PETG"),
-    "shank_L": (shk, FLAT_Y, 2, f"{PA}，5 层壁，50% 填充"),
-    "shank_R": (shk.mirror("XZ"), FLAT_Y, 2, f"{PA}，5 层壁，50% 填充"),
+    "shank_L": (shk, FLAT_Y, 2, f"{PA}，6 层壁，60% 填充（反弓弯折处受力大）"),
+    "shank_R": (shk.mirror("XZ"), FLAT_Y, 2, f"{PA}，6 层壁，60% 填充（反弓弯折处受力大）"),
     "shin_armor_L": (G.shin_armor(), FLAT_YN, 2, f"{SV}，3 层壁，外面朝上"),
     "shin_armor_R": (G.shin_armor().mirror("XZ"), FLAT_YP, 2, f"{SV}，3 层壁，外面朝上"),
+    "ankle_collar": (G.ankle_collar(), KEEP, 4, f"{SV}，左右通用"),
+    "shin_insert_L": (G.shin_insert(), FLAT_YN, 2, f"{GR}，1mm 薄片，双面胶贴"),
+    "shin_insert_R": (G.shin_insert().mirror("XZ"), FLAT_YP, 2, f"{GR}，1mm 薄片，双面胶贴"),
     "foot_core": (G.foot_core(), FLIP, 4, "TPU 95A，50% 填充"),
     "foot_tread": (G.foot_tread(), KEEP, 4, "TPU 85A 100% 填充；或用打印模具浇 40A 硅胶"),
     "side_armor_L": (sa, FLAT_Y, 1, f"{GR}，3 层壁"),
@@ -498,11 +504,11 @@ report.append("")
 report.append(f"打印件总重粗估 ≈ {total_g / 1000:.2f} kg")
 
 # ------------------------------------------------------------------ STEP（站立姿态）
-asm = cq.Assembly(name="RoboDog_v0.5_stand")
+asm = cq.Assembly(name="RoboDog_v0.6_stand")
 for i, (g, nm, s, c) in enumerate(POSE_INFO["stand"]["items"]):
     if c != "keepout":
         asm.add(s, name=f"{i:03d}_{nm}", color=cq.Color(COL[c]))
-asm.export(os.path.join(OUT, "step", "robodog_v0.5_stand.step"))
+asm.export(os.path.join(OUT, "step", "robodog_v0.6_stand.step"))
 
 
 # ------------------------------------------------------------------ GLB（零位，按 刚体组|颜色 分节点）+ rig.json
