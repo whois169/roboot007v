@@ -10,7 +10,7 @@ from trimesh.transformations import rotation_matrix, translation_matrix
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "out")
 sc = trimesh.load(os.path.join(OUT, "robodog.glb"))
-rig = json.load(open(os.path.join(OUT, "rig.json")))
+rig = json.load(open(os.path.join(OUT, "rig.json"), encoding="utf-8"))
 J = rig["joints"]
 meshes = {}
 for node in sc.graph.nodes_geometry:

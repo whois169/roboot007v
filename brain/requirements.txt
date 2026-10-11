@@ -1,0 +1,11 @@
+numpy
+pyyaml
+python-dotenv
+sounddevice      # 麦克风和扬声器（树莓派上要先 sudo apt install libportaudio2）
+sherpa-onnx      # 唤醒词、说话检测、语音识别（全部本地）
+pypinyin         # 把中文唤醒词转成拼音给唤醒模型
+edge-tts         # 语音合成
+miniaudio        # 解码合成出来的 mp3
+openai>=1.30     # OpenAI 兼容接口客户端
+pygame           # 电脑上模拟眼睛屏幕的窗口
+opencv-python    # 摄像头、人脸检测（本地）

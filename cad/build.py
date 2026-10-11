@@ -545,7 +545,7 @@ rig = dict(
            for pn, p in POSES.items()},
     body_pitch_axis=[1, 0, 0],
 )
-json.dump(rig, open(os.path.join(OUT, "rig.json"), "w"), ensure_ascii=False, indent=1)
-open(os.path.join(OUT, "report.txt"), "w").write("\n".join(report) + "\n")
+json.dump(rig, open(os.path.join(OUT, "rig.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+open(os.path.join(OUT, "report.txt"), "w", encoding="utf-8").write("\n".join(report) + "\n")
 print("\n".join(report))
 print(f"\n{sum(len(v) for v in groups.values())} 个零件，{len(groups)} 个刚体组，{len(printables)} 种打印件 -> {os.path.abspath(OUT)}")

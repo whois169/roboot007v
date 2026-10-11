@@ -1,0 +1,237 @@
+"""眼睛（长条屏 HUD）。大脑只发统一的 JSON 指令，不关心另一头是谁：
+
+  sim      笔记本上的模拟器窗口（dog/hud.py 渲染，284×76 原始分辨率放大显示）
+  serial   以后：同样的 JSON 一行一条，通过串口发给头部 ESP32，由它渲染
+  console  只在控制台打印模式变化（没有显示器时用）
+
+指令格式见 dog/hud.py 开头。模拟器收到的也是“先变成一行 JSON 文字、再解析”的结果，
+和串口上走的字节完全一样，所以以后换成 ESP32，大脑代码不用改。
+
+反方向（ESP32 → 大脑）的事件：触摸、传感器读数、隐私开关、心跳，格式见 dog/protocol.py。
+收到的每一行先过 protocol.check_event()，合法的交给 on_event（大脑注册的回调）。
+模拟器里用键盘代替：T = 摸头顶，C = 摸下巴（按住 1 秒以上 = hold），P = 拨隐私开关。
+"""
+import asyncio
+import json
+import logging
+import os
+import time
+
+from . import hud, protocol
+
+log = logging.getLogger("eyes")
+
+DIRECTIONS = ("center", "left", "right", "up", "down")
+# look 技能的方向 -> gaze（按狗自己的方向：左 = -1）
+GAZE = {"center": [0, 0], "left": [-0.8, 0], "right": [0.8, 0], "up": [0, -0.8], "down": [0, 0.8]}
+
+
+class Eyes:
+    def __init__(self):
+        self.mode_now = "idle"
+        self.on_quit = None          # 模拟器窗口被关掉时调用
+        self.on_key = {}             # 其他模块注册的快捷键
+        self.on_event = None         # 收到 ESP32 事件时调用：async on_event(事件 dict)
+        self.last_hb = 0.0           # 最后一次收到心跳（time.monotonic）
+        self.is_real = False         # 是不是真的 ESP32（真的才检查心跳）
+
+    async def start(self):
+        pass
+
+    async def close(self):
+        pass
+
+    def send(self, cmd: dict):
+        err = hud.check(cmd)
+        if err:
+            log.warning("眼睛指令不合规，丢掉：%s（%s）", cmd, err)
+            return
+        if "mode" in cmd and cmd["mode"] != self.mode_now:
+            self.mode_now = cmd["mode"]
+            log.debug("[眼睛] %s", hud.LABEL[cmd["mode"]])
+        if "log" in cmd:
+            log.debug("[屏幕] %s", " | ".join(cmd["log"]))
+        self._send_line(json.dumps(cmd, ensure_ascii=False, separators=(",", ":")))
+
+    def _send_line(self, line: str):
+        raise NotImplementedError
+
+    def receive_line(self, line: str):
+        """收到 ESP32 发来的一行：解析、检查，合法的交给大脑。"""
+        line = line.strip()
+        if not line:
+            return
+        try:
+            ev = json.loads(line)
+        except json.JSONDecodeError:
+            log.warning("头部发来的不是 JSON，丢掉：%s", line[:80])
+            return
+        err = protocol.check_event(ev)
+        if err:
+            log.warning("头部事件不合规，丢掉：%s（%s）", line[:80], err)
+            return
+        if ev["ev"] == "hb":
+            self.last_hb = time.monotonic()
+        elif ev["ev"] != "sensor":
+            log.debug("[头部] %s", line)
+        if self.on_event:
+            asyncio.get_running_loop().create_task(self.on_event(ev))
+
+    # ---- 常用的几种指令
+    def mode(self, m: str, **kw):
+        self.send({"mode": m, **kw})
+
+    def gaze(self, x: float, y: float):
+        self.send({"gaze": [round(float(x), 3), round(float(y), 3)]})     # numpy 的数转成普通数字才能进 JSON
+
+    def level(self, v: float):
+        self.send({"level": round(max(0.0, min(1.0, float(v))), 3)})
+
+    def status(self, **kw):
+        self.send({"status": kw})
+
+    def log(self, *lines: str):
+        """往屏幕的数据流里加几行（自动转成大写、去掉字体里没有的字符）。"""
+        self.send({"log": [hud.clean(s) for s in lines]})
+
+
+class SimEyes(Eyes):
+    """模拟器：一个 pygame 窗口，按 284×76 原始分辨率画，再放大 scale 倍显示。"""
+
+    KEYS = "1234567890-="      # 数字键依次切换 12 个模式
+
+    def __init__(self, scale=3, fps=30, name="RoboDog", **_):
+        super().__init__()
+        self.scale, self.fps = scale, fps
+        self.title = f"{name} HUD 模拟器（284×76）"
+        self._task = None
+
+    async def start(self):
+        os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+        import pygame
+        self.pg = pygame
+        pygame.init()
+        self.win = pygame.display.set_mode((hud.W * self.scale, hud.H * self.scale))
+        pygame.display.set_caption(self.title)
+        self.canvas = pygame.Surface((hud.W, hud.H))
+        self.r = hud.HudRenderer(hud.Gfx(self.canvas), now=time.monotonic())
+        self._task = asyncio.create_task(self._loop())
+        log.info("HUD 模拟器已打开。窗口快捷键：T 摸头顶、C 摸下巴（按住 1 秒 = 长按）、P 拨隐私开关；"
+                 "1-9、0、-、= 切换 12 个模式，方向键移动视线，Q/A 调音量，Esc 退出")
+
+    def _send_line(self, line):
+        self.r.apply(json.loads(line))     # 和串口一样：收到一行文字再解析
+
+    async def close(self):
+        if self._task:
+            self._task.cancel()
+        self.pg.quit()
+
+    def _fake(self, ev: dict):
+        """模拟 ESP32 发来一行事件（和真串口走同一条路：先变成文字再解析、检查）。"""
+        self.receive_line(json.dumps(ev, ensure_ascii=False))
+
+    async def _loop(self):
+        pg = self.pg
+        gx = gy = lv = 0.0
+        privacy = False
+        pressed = {}                                     # 触摸键按下的时间，用来分“点一下”和“按住”
+        while True:
+            now = time.monotonic()
+            for key, (zone, t0, held) in list(pressed.items()):
+                if not held and now - t0 >= 1.0:          # 按住满 1 秒：发 hold
+                    pressed[key] = (zone, t0, True)
+                    self._fake({"ev": "touch", "zone": zone, "action": "hold"})
+            for e in pg.event.get():
+                if e.type == pg.QUIT or (e.type == pg.KEYDOWN and e.key == pg.K_ESCAPE):
+                    if self.on_quit:
+                        self.on_quit()
+                    return
+                if e.type == pg.KEYUP and e.key in pressed:
+                    zone, t0, held = pressed.pop(e.key)
+                    self._fake({"ev": "touch", "zone": zone, "action": "release" if held else "tap"})
+                    continue
+                if e.type != pg.KEYDOWN:
+                    continue
+                if e.key in (pg.K_t, pg.K_c):
+                    pressed[e.key] = ("head" if e.key == pg.K_t else "chin", now, False)
+                    continue
+                if e.key == pg.K_p:
+                    privacy = not privacy
+                    self._fake({"ev": "privacy", "on": privacy})
+                    continue
+                ch = e.unicode
+                if ch and ch in self.KEYS:
+                    self.mode(hud.MODES[self.KEYS.index(ch)])
+                elif e.key in (pg.K_LEFT, pg.K_RIGHT, pg.K_UP, pg.K_DOWN):   # 按你看到的方向
+                    gx += {pg.K_LEFT: 0.25, pg.K_RIGHT: -0.25}.get(e.key, 0)
+                    gy += {pg.K_UP: -0.25, pg.K_DOWN: 0.25}.get(e.key, 0)
+                    gx, gy = max(-1, min(1, gx)), max(-1, min(1, gy))
+                    self.gaze(gx, gy)
+                elif ch in ("q", "a"):
+                    lv = max(0.0, min(1.0, lv + (0.2 if ch == "q" else -0.2)))
+                    self.level(lv)
+                elif e.key in self.on_key:
+                    self.on_key[e.key]()
+            self.r.tick(time.monotonic())
+            self.pg.transform.scale(self.canvas, self.win.get_size(), self.win)   # 按真实像素放大
+            self.pg.display.flip()
+            await asyncio.sleep(1 / self.fps)
+
+
+class SerialEyes(Eyes):
+    """发给头部 ESP32：每条指令一行 JSON（UTF-8，结尾 \\n）。ESP32 固件以后写，按 dog/hud.py 渲染。"""
+
+    def __init__(self, port, baud=115200, **_):
+        super().__init__()
+        try:
+            import serial
+        except ImportError:
+            raise SystemExit("串口眼睛要先安装：pip install pyserial")
+        self.ser = serial.Serial(port, baud, timeout=0.1)
+        self.is_real = True
+        self._task = None
+        log.info("眼睛：串口 %s @ %d", port, baud)
+
+    async def start(self):
+        self._task = asyncio.create_task(self._read_loop())
+
+    async def _read_loop(self):
+        """一直读 ESP32 发来的行（在线程里读，不卡住大脑）。"""
+        buf = b""
+        while True:
+            chunk = await asyncio.to_thread(self.ser.read, 256)
+            if not chunk:
+                continue
+            buf += chunk
+            while b"\n" in buf:
+                line, buf = buf.split(b"\n", 1)
+                self.receive_line(line.decode("utf-8", errors="replace"))
+
+    def _send_line(self, line):
+        self.ser.write((line + "\n").encode("utf-8"))
+
+    async def close(self):
+        if self._task:
+            self._task.cancel()
+        self.ser.close()
+
+
+class ConsoleEyes(Eyes):
+    """只打印模式变化（音量、视线这种高频指令不打印）。"""
+
+    def _send_line(self, line):
+        cmd = json.loads(line)
+        if "mode" in cmd:
+            log.info("[眼睛] %s %s", hud.LABEL[cmd["mode"]], cmd.get("text", ""))
+
+
+def make(cfg_eyes: dict, persona_name="RoboDog") -> Eyes:
+    kind = cfg_eyes.get("type", "sim")
+    if kind in ("sim", "window"):
+        return SimEyes(name=persona_name, **cfg_eyes.get("sim", cfg_eyes.get("window", {})))
+    if kind == "serial":
+        return SerialEyes(**cfg_eyes.get("serial", {}))
+    if kind == "console":
+        return ConsoleEyes()
+    raise SystemExit(f"config.yaml 里 eyes.type 只能是 sim / serial / console，现在是 {kind!r}")

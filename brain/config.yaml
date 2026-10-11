@@ -1,0 +1,144 @@
+# RoboDog 大脑配置。改完重启 main.py 生效。
+# 密钥不写在这里，写在同目录的 .env 里（参考 .env.example）。
+
+# ---------------- 人设（科技机械狗，占位版本，以后再细化） ----------------
+persona:
+  name: RoboDog              # 名字（占位）
+  personality: 冷静、精确、可靠。是一台家用科技机械狗，负责感知、巡检和执行任务；知道自己是机器，不假装是人，也不扮演宠物。
+  style: 系统汇报式：先结论后数据，标明来源；一次一两句；不用语气词、拟声词和表情符号，不说“汪”。
+
+# ---------------- 眼睛 ----------------
+eyes:
+  type: sim                  # sim = 笔记本上的 HUD 模拟器；serial = 同样的 JSON 指令发给 ESP32（以后）；console = 只打印
+  sim:
+    scale: 3                 # 窗口放大倍数（屏幕真实是 284×76 像素）
+    fps: 30
+  look_hold_seconds: 3       # 大模型让它看向某处以后，过多久回到正前方
+  status_seconds: 1          # 多久刷新一次屏幕边上的温度、电量，并往数据流里推一行读数（数据流靠它一直流动）
+  serial:
+    port: COM3               # 树莓派上一般是 /dev/ttyACM0 或 /dev/ttyUSB0
+    baud: 115200
+
+# ---------------- 看（摄像头） ----------------
+# 本地一直做人脸和动静检测，画面不出电脑；只在“有人出现、有人叫它、空闲太久”时截一张图给看图模型
+vision:
+  enabled: true              # false = 不开摄像头
+  camera_index: 0            # 有多个摄像头时改这里
+  detect_fps: 5              # 每秒检测几次
+  face_min_score: 0.8        # 人脸检测的把握多大才算数（0–1）
+  person_gone_seconds: 10    # 多久没看到人脸算“人走了”
+  idle_look_minutes: 10      # 多久没互动算“空闲太久”，会截一张图巡视一下周围
+  follow_face: true          # 眼睛跟着人看
+  snapshot_size: 512         # 截图长边多少像素
+  wait_on_wake_seconds: 1.0  # 被叫以后，最多等看图结果多久再去问大模型
+  save_snapshots: false      # true = 每张上传的截图也存一份到 data/snapshots（调试用）
+  model:                     # 看图模型（OpenAI 兼容接口）。三项填全才会上传截图，否则只用本地检测
+    base_url: ""             # 例：https://dashscope.aliyuncs.com/compatible-mode/v1
+    model: ""                # 例：qwen-vl-plus
+    api_key_env: VISION_API_KEY   # .env 里存密钥的变量名
+    timeout_seconds: 15
+
+# ---------------- 主动开口（第⑥块，语音模式、开了摄像头才有） ----------------
+attention:
+  enabled: true
+  min_gap_minutes: 10        # 两次主动开口至少隔多久
+  max_per_hour: 3            # 每小时最多主动开口几次
+  quiet_hours: [23, 7]       # 夜里几点到几点不主动说
+  arrive_after_minutes: 5    # 离开多久再回来算“回来了”（回来后走到它面前看着它时，它先开口）
+  sitting_minutes: 60        # 摄像头连续看到你多久，提醒你起来活动
+  cooldown_minutes:          # 同一类事多久才能再说一次
+    arrive: 30
+    first: 720
+    sit: 60
+
+# ---------------- 长期记忆（第⑤块） ----------------
+memory:
+  home: home_main            # 现在在哪个家：记忆存在 data/memory/<这个名字>.db，每个家一个文件
+  folder: data/memory
+  fact_merge: 0.8            # 新记的事和旧的几乎一样（0–1）就当重复，只更新时间；同一件事的新情况由大模型先忘旧的再记新的
+  max_facts: 6               # 每次最多带几条事实给大模型
+  max_events: 6              # 每次最多带几条相关事件
+
+# ---------------- 感觉板（我自己感觉到的） ----------------
+senses:
+  temp_hum: fake             # fake = 温湿度先用假数据（大模型知道是假的）；以后接真传感器再加选项
+  fake_temp: 22.0            # 假数据的温度和湿度
+  fake_humidity: 55.0
+  temp_hum_seconds: 30       # 多久读一次温湿度
+
+# ---------------- 我查到的：天气（Open-Meteo，免费，不用密钥） ----------------
+weather:
+  city: 成都                 # 改成你所在的城市（中文名就行）
+  refresh_minutes: 30        # 多久刷新一次
+  keywords: [天气, 温度, 几度, 多少度, 冷, 热, 暖和, 凉, 穿, 外套, 出门, 下雨, 雨, 伞, 晴, 阴, 雪, 风, 湿, 闷, 晒]
+                             # 用户的话里有这些词，才把天气放进【我查到的】（免得每句话都扯天气）
+
+# ---------------- 唤醒词（sherpa-onnx 本地识别，不联网） ----------------
+wake:
+  keywords: [你好小狗]       # 可以写多个；必须是中文（模型按拼音认词）
+  threshold: 0.25            # 越小越容易唤醒（也越容易误触发），0.1–0.5
+  boost: 1.5                 # 越大越容易唤醒
+
+# ---------------- 声音输入输出 ----------------
+audio:
+  sample_rate: 16000         # 麦克风采样率（模型要求 16k，设备不支持时自动重采样）
+  input_device: null         # null = 系统默认麦克风；python main.py --devices 可以列出所有设备
+  output_device: null        # null = 系统默认扬声器
+  mute_tail_seconds: 0.6     # 自己说完话后再多“捂住耳朵”多久，防止听到自己的回声
+
+# ---------------- 唤醒后听你说话 ----------------
+listen:
+  look_to_talk: true         # 不用唤醒词：看着它说话就行（要开摄像头）
+  wake_word: true            # 唤醒词留着当备用（它看不见你的时候喊一声）；false = 完全不用
+  # 看着它说话的判断（减少误触发，调严一点就更少误触发、但更难叫到它）：
+  near_face_width: 0.12      # 脸至少占画面宽度的多少（越大 = 要离得越近）
+  facing_min: 0.6            # 脸要多正对着它（0–1）
+  attend_seconds: 1.0        # 要连续看着它多久才开始听
+  look_away_seconds: 1.5     # 还没开口就扭头/走开多久，就停止聆听
+  attention_ratio: 0.6       # 说话期间至少有多少时间是看着它的
+  min_speech_seconds: 0.5    # 说话太短不理
+  min_chars: 2               # 识别出来少于几个字不理
+  fillers: [嗯, 啊, 哦, 噢, 呃, 额, 好, 好的, 对, 对的, 是, 是的, 行, 嗯嗯, 哈哈, 哈哈哈, 喂, 好吧, 没事]   # 只有这些语气词不理
+  # 其他：
+  wait_seconds: 5            # 喊唤醒词后多久没开口就放弃
+  max_speech_seconds: 15     # 一句话最长多久
+  end_silence_seconds: 0.8   # 停顿多久算说完
+  follow_up_seconds: 6       # 回答完以后（人已经不看着它了）还能接着说的时间；0 = 不等
+
+# ---------------- 本地先反应（唤醒后 0.1 秒内） ----------------
+react:
+  ack: beep                  # 喊唤醒词后马上的反应：beep = 两声提示音（科技感）；text = 说下面这句话
+  ack_text: 在。             # ack 是 text 时说的话（启动时提前合成好，存在 data/cache）
+  listen_beep: true          # 看着它、开始聆听时响一声很轻的提示音，告诉你“我在听”
+
+# ---------------- 语音识别（本地 SenseVoice） ----------------
+asr:
+  model_dir: models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17
+  num_threads: 2
+
+# ---------------- 语音合成 ----------------
+tts:
+  engine: local              # local = 本地 MeloTTS（快、稳定、不联网）；edge = 微软 edge-tts（音色好，但国内常常很慢）
+  local:
+    model_dir: models/vits-melo-tts-zh_en
+    speed: 1.1               # 语速，1.0 = 正常
+    num_threads: 4
+  edge:                      # 只上传要说的文字
+    voice: zh-CN-YunyangNeural  # 中性、冷静的男声；其他可选：zh-CN-XiaoxiaoNeural、zh-CN-YunxiNeural
+    rate: "+5%"
+    pitch: "+0Hz"
+
+# ---------------- 大模型（OpenAI 兼容接口，换厂家只改这里） ----------------
+# DeepSeek:  base_url https://api.deepseek.com                         model deepseek-chat
+# 通义千问:  base_url https://dashscope.aliyuncs.com/compatible-mode/v1  model qwen-plus
+# 豆包:      base_url https://ark.cn-beijing.volces.com/api/v3          model 你的推理接入点 ID
+# 智谱:      base_url https://open.bigmodel.cn/api/paas/v4              model glm-4-flash
+llm:
+  base_url: https://api.deepseek.com
+  model: deepseek-chat
+  api_key_env: LLM_API_KEY   # .env 里存密钥的变量名
+  mock: auto                 # auto = 没有密钥就用假回答；true = 总是假回答；false = 必须用真模型
+  temperature: 0.8
+  max_tokens: 400
+  history_turns: 6           # 记住最近几轮对话
+  timeout_seconds: 20
