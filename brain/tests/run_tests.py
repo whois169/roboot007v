@@ -319,6 +319,178 @@ async def test_head_link():
     check("收到心跳会记下时间", b.eyes.last_hb > 0)
 
 
+# ---------------------------------------------------------------- 不联网：红外遥控
+IR_NEC = {"proto": "NEC", "bits": 32, "value": "0x20DF10EF"}
+
+
+def fresh_ir_db(name):
+    """测试用的码库文件（每次先删掉，从空的开始）。"""
+    from dog.ir import IrCodes
+    os.makedirs("data/test_logs", exist_ok=True)
+    path = f"data/test_logs/{name}.db"
+    if os.path.exists(path):
+        os.remove(path)
+    return IrCodes(path)
+
+
+async def test_ir():
+    section("红外遥控：协议、码库、学按键、发码、没学过的不发（不联网，脚本回答）")
+    from dog import protocol
+    from dog.brain import Brain
+    from dog.eyes import ConsoleEyes
+    good = [IR_NEC, {"proto": "GREE", "state": "0x" + "ab" * 8}, {"raw": [9000, 4500, 560], "khz": 38}]
+    check("合法的红外码都通过", all(protocol.check_ir_code(c) == "" for c in good))
+    bad = [{"proto": "NEC", "bits": 32, "value": "20DF"}, {"proto": "NEC", "bits": 32, "value": "0xZZ"},
+           {"proto": "NEC", "value": "0x20"}, {"raw": [0, 5]}, {"raw": [100, 100], "khz": 5}, {}, "x"]
+    check("不合法的红外码都被拦下", all(protocol.check_ir_code(c) for c in bad))
+    check("红外事件和指令的检查", protocol.check_event({"ev": "ir", "op": "learned", "code": IR_NEC}) == ""
+          and protocol.check_event({"ev": "ir", "op": "boom"}) and protocol.check_ir_cmd({"op": "send", "code": IR_NEC}) == ""
+          and protocol.check_ir_cmd({"op": "fire"}) and protocol.check_ir_cmd({"op": "learn", "timeout": 999}))
+
+    db = fresh_ir_db("ir_unit")
+    db.save("客厅空调", "关机", IR_NEC)
+    hit = db.find("空调", "关掉")
+    check("码库：说法不同也能找到（“空调 关掉”找到“客厅空调 关”）", hit and hit[0] == "客厅空调" and hit[1] == "关")
+    check("码库：没学过的找不到", db.find("电视", "开") is None)
+    check("码库：同一个按键重新学是覆盖", db.save("客厅空调", "关闭", IR_NEC) == "updated" and db.devices() == {"客厅空调": ["关"]})
+    db.close()
+
+    cfg = config.load()
+    cfg["memory"] = dict(cfg.get("memory", {}), home="ir_flow", folder="data/test_logs")
+    path = "data/test_logs/ir_flow.db"
+    if os.path.exists(path):
+        os.remove(path)
+    b = Brain(cfg, force_mock=True, eyes=ConsoleEyes())
+    b.log_dir = "data/test_logs"
+
+    class Listener:
+        heard_speech = False
+
+        def start(self, wait=None):
+            pass
+
+    b.listener, b.ack, b.chirp = Listener(), (np.zeros(10, np.float32), 24000), (np.zeros(10, np.float32), 24000)
+    b.wake = type("W", (), {"reset": lambda self: None})()
+    b.speaker.play = lambda pcm, sr: asyncio.ensure_future(asyncio.sleep(0.05))
+    b.speaker.stop = lambda: None
+
+    async def fake_synth(s):
+        return np.zeros(100, np.float32), 24000
+    b.voice.synth = fake_synth
+    sent = []
+    real_send_ir = b.eyes.send_ir
+    b.eyes.send_ir = lambda ir: sent.append(ir) or real_send_ir(ir)
+
+    class Script:                                        # 按脚本“回答”，每行一个技能
+        name = "脚本"
+        lines, seen = [], ""
+
+        async def stream(self, messages):
+            Script.seen = messages[-1]["content"]
+            for obj in Script.lines:
+                yield json.dumps(obj, ensure_ascii=False) + "\n"
+    b.llm = Script()
+
+    async def feel(ev):
+        b.eyes.receive_line(json.dumps(ev, ensure_ascii=False))
+        await asyncio.sleep(0.05)
+
+    async def until_learning():
+        for _ in range(100):
+            if b.state == "learning":
+                return True
+            await asyncio.sleep(0.02)
+        return False
+
+    # 1. 学会一个按键
+    Script.lines = [{"skill": "ir_learn", "device": "电视", "action": "开关"},
+                    {"skill": "say", "text": "请把遥控器对准我的前脸，按一下开关键。"}]
+    task = asyncio.create_task(b.respond("学一下电视的开关", via="text"))
+    learning = await until_learning()
+    check("学按键：先说完话，再进入等遥控器（屏幕 SCAN、给 ESP32 发 learn）",
+          learning and b.eyes.mode_now == "scan" and sent and sent[-1]["op"] == "learn")
+    await feel({"ev": "ir", "op": "learned", "code": IR_NEC})
+    await asyncio.wait_for(task, 5)
+    check("学按键：收到码以后存进码库并汇报“已学会”", b.ir.devices() == {"电视": ["开关"]}
+          and "已学会：电视 开关。" in b.last_reply, f"说了 {b.last_reply}")
+
+    # 2. 没按遥控器：超时
+    Script.lines = [{"skill": "ir_learn", "device": "风扇", "action": "开关"}, {"skill": "say", "text": "请按一下风扇的开关键。"}]
+    sent.clear()
+    task = asyncio.create_task(b.respond("学一下风扇的开关", via="text"))
+    await until_learning()
+    await feel({"ev": "ir", "op": "timeout"})
+    await asyncio.wait_for(task, 5)
+    check("学按键超时：汇报没收到信号，不存", "风扇" not in b.ir.devices() and any("没有收到红外信号" in s for s in b.last_reply)
+          and sent[-1]["op"] == "cancel")
+
+    # 3. 学的时候摸头顶：不学了，转去听你说
+    Script.lines = [{"skill": "ir_learn", "device": "风扇", "action": "开关"}, {"skill": "say", "text": "请按一下。"}]
+    task = asyncio.create_task(b.respond("学一下风扇的开关", via="text"))
+    await until_learning()
+    await feel({"ev": "touch", "zone": "head", "action": "tap"})
+    await asyncio.wait_for(task, 5)
+    check("学的时候摸头顶：取消学习，转去听你说", "风扇" not in b.ir.devices() and b.after_interrupt() and b.state == "listening")
+    b.to_idle()
+
+    # 4. 发码：说法不同（电源）也能找到学过的（开关）
+    Script.lines = [{"skill": "ir_send", "device": "电视", "action": "电源"}, {"skill": "say", "text": "已发送：电视 开关。"}]
+    sent.clear()
+    await b.respond("把电视打开", via="text")
+    check("大模型能看到已经学会的按键", "【我能遥控的家电】\n- 电视：开关" in Script.seen)
+    check("发码：找到学过的码发给 ESP32", sent and sent[-1] == {"op": "send", "code": IR_NEC} and b.last_reply == ["已发送：电视 开关。"])
+
+    Script.lines = [{"skill": "ir_send", "device": "电视", "action": "开关"}]
+    await b.respond("关电视", via="text")
+    check("发了码但大模型一句没说：补一句“已发送”", b.last_reply == ["已发送：电视 开关。"], f"说了 {b.last_reply}")
+
+    # 5. 没学过的按键：不发，后面的“已发送”也不说
+    Script.lines = [{"skill": "ir_send", "device": "空调", "action": "关"}, {"skill": "say", "text": "已发送：空调 关。"}]
+    sent.clear()
+    await b.respond("把空调关了", via="text")
+    check("没学过的按键：不发，告诉你还没学过", not sent and len(b.last_reply) == 1 and "还没学过" in b.last_reply[0],
+          f"说了 {b.last_reply}")
+
+    Script.lines = [{"skill": "ir_forget", "device": "电视", "action": "全部"}, {"skill": "say", "text": "已删除。"}]
+    await b.respond("把电视的遥控都忘了", via="text")
+    check("忘掉一个家电的全部按键", b.ir.devices() == {})
+    b.ir.close()
+    b.memory.close()
+
+
+async def test_ir_llm():
+    section("大模型：什么时候发红外、什么时候先学（联网）")
+    from dog import llm as llm_mod
+    cfg = config.load()
+    llm = llm_mod.make(cfg["llm"])
+    devices = "- 空调：关、制冷26\n- 电视：开关、音量加"
+
+    async def ask(text):
+        msgs = prompt.build(cfg["persona"], [], text, devices=devices, via="text")
+        calls = []
+        async for line in llm_mod.lines(llm.stream(msgs)):
+            c, _ = skills.parse(line)
+            if c:
+                calls.append(c)
+        return calls
+
+    def find(calls, name):
+        return [c for c in calls if c["skill"] == name]
+
+    c = await ask("帮我把空调关掉")
+    s = find(c, "ir_send")
+    check("“把空调关掉” → 发 空调 关", len(s) == 1 and s[0]["device"] == "空调" and s[0]["action"] == "关", str(c)[:200])
+    c = await ask("电视声音大一点")
+    s = find(c, "ir_send")
+    check("“电视声音大一点” → 发 电视 音量加", s and s[0]["device"] == "电视" and s[0]["action"] == "音量加", str(c)[:200])
+    c = await ask("把风扇打开")
+    check("没学过的风扇 → 不发码，说还没学", not find(c, "ir_send") and not find(c, "ir_learn")
+          and any("学" in x.get("text", "") for x in find(c, "say")), str(c)[:200])
+    c = await ask("学一下风扇的开关")
+    s = find(c, "ir_learn")
+    check("“学一下风扇的开关” → ir_learn 风扇", s and s[0]["device"] == "风扇", str(c)[:200])
+
+
 # ---------------------------------------------------------------- 不联网：语音模型
 VOICE = None
 
@@ -515,6 +687,11 @@ async def main():
         check("test_memory", False, f"{type(e).__name__}: {e}")
         traceback.print_exc()
     try:
+        await test_ir()
+    except Exception as e:
+        check("test_ir", False, f"{type(e).__name__}: {e}")
+        traceback.print_exc()
+    try:
         await test_speech()
     except Exception as e:
         check("test_speech", False, f"{type(e).__name__}: {e}")
@@ -524,6 +701,7 @@ async def main():
         await test_llm_judgement()
         await test_memory_llm()
         await test_proactive_llm()
+        await test_ir_llm()
     else:
         print("\n（--quick 或没有密钥：跳过要联网的大模型测试）")
     bad = [r for r in RESULTS if not r[1]]

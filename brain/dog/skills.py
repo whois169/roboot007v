@@ -22,13 +22,21 @@ SKILLS = {
                  "args": {"fact": ("str", 2, 120)}},
     "quiet":    {"desc": "安静一会儿：这段时间不主动开口（被叫到还是会回答）",
                  "args": {"minutes": ("num", 1, 120)}},
+    "ir_send":  {"desc": "用红外遥控家电：发出已经学会的那个按键（只能用【我能遥控的家电】里有的）",
+                 "args": {"device": ("str", 1, 12), "action": ("str", 1, 12)}},
+    "ir_learn": {"desc": "学一个遥控器按键：说完话以后等用户拿遥控器对着你的前脸按一下，最多等 15 秒，学到或没学到程序会自己汇报",
+                 "args": {"device": ("str", 1, 12), "action": ("str", 1, 12)}},
+    "ir_forget": {"desc": "忘掉学过的遥控按键（action 写“全部”就忘掉这个家电的所有按键）",
+                  "args": {"device": ("str", 1, 12), "action": ("str", 1, 12)}},
     "ignore":   {"desc": "不回答：这句话不是对你说的（只在【触发方式】是“看着我说话”时用，整次只输出这一行）",
                  "args": {}},
 }
 
 EXAMPLES = {"say": {"text": "收到。外部温度 22 度，晴。"}, "display": {"mode": "scan"},
             "look": {"direction": "left"}, "remember": {"fact": "用户叫小明，钥匙一般放在门口鞋柜上"},
-            "forget": {"fact": "钥匙放在鞋柜上"}, "quiet": {"minutes": 30}, "ignore": {}}
+            "forget": {"fact": "钥匙放在鞋柜上"}, "quiet": {"minutes": 30},
+            "ir_send": {"device": "空调", "action": "关"}, "ir_learn": {"device": "电视", "action": "开关"},
+            "ir_forget": {"device": "电视", "action": "全部"}, "ignore": {}}
 
 
 def menu_text() -> str:

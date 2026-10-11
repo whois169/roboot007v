@@ -16,6 +16,7 @@ import numpy as np
 
 from . import config
 from .memory import Memory
+from .ir import IrCodes
 from .attention import Attention
 from . import protocol
 from . import llm as llm_mod
@@ -42,6 +43,10 @@ class Brain:
         self.eyes.on_event = self.on_head_event   # 头部发来的事件：触摸、传感器、隐私开关、心跳
         self.history: list = []
         self.memory = Memory(**cfg.get("memory", {}))   # 第⑤块：长期记忆（data/memory/<家>.db）
+        self.ir = IrCodes(self.memory.db)               # 第⑧块：红外遥控码库（和记忆同一个文件、同一个连接）
+        self.ir_pending = None         # 大模型让学的按键：(家电, 动作)，等这次回答说完再开始学
+        self.ir_wait = None            # 正在学：等 ESP32 回 learned / timeout / fail
+        self.ir_sent = []              # 这次回答发了哪些红外按键
         self.quiet_until = 0.0         # quiet 技能设置的“安静到什么时候”
         self.attention = None          # 第⑥块：主动开口（语音模式、开了摄像头才有）
         self.privacy = False           # 头上的隐私开关拨到“隐私”了（相机和麦克风硬件断电）
@@ -312,6 +317,8 @@ class Brain:
                                               source="头部 ESP32 传感器", location=where, confidence=0.8, max_age=30))
         elif kind == "privacy":
             self.set_privacy(ev["on"])
+        elif kind == "ir":
+            self.on_ir_event(ev)
         elif kind == "hello":
             log.info("头部 ESP32 连上了：固件 %s，功能 %s", ev.get("fw", "?"), "、".join(ev.get("caps", [])) or "未说明")
             self.eyes.log(f"HEAD FW {ev.get('fw', '?')}")
@@ -329,7 +336,7 @@ class Brain:
             self.eyes.log(f"TOUCH {zone.upper()} HOLD")
             return
         self.eyes.log(f"TOUCH {zone.upper()}")
-        busy = self.state in ("thinking", "speaking")
+        busy = self.state in ("thinking", "speaking", "learning")
         if zone == "head":
             if busy:
                 self.interrupt("listen")
@@ -356,6 +363,9 @@ class Brain:
         self.eyes.log("TOUCH STOP")
         self.interrupted = then
         self.speaker.stop()
+        self.ir_pending = None
+        if self.ir_wait and not self.ir_wait.done():     # 正在学遥控器：不学了
+            self.ir_wait.set_result({"ev": "ir", "op": "cancelled"})
 
     def after_interrupt(self) -> bool:
         """回答结束时如果是被打断的，按打断的意思收尾，返回 True。"""
@@ -377,7 +387,7 @@ class Brain:
             self.sight.paused = on
         if on:
             log.info("隐私开关打开：不听、不看")
-            if self.state in ("thinking", "speaking"):
+            if self.state in ("thinking", "speaking", "learning"):
                 self.interrupt("idle")
             elif self.state == "listening":
                 self.to_idle()
@@ -500,6 +510,7 @@ class Brain:
         """想 + 说。返回 False 表示大模型判断这句不是对它说的（ignore），什么都没说。"""
         self.state = "thinking"
         self.interrupted = ""
+        self.ir_sent = []                                # 这次回答发了哪些红外按键
         t0 = self._t0 = time.perf_counter()
         first_audio = []
         self.eyes.mode("think")
@@ -535,6 +546,7 @@ class Brain:
         context = {"sensed": await self.sensed(),
                    "looked_up": self.looked_up(text) if looked_up is None else looked_up,
                    "memory": self.memory.recall(text),
+                   "devices": self.ir.text(),
                    "via": via}
         messages = prompt.build(self.persona, self.history, text, **context)
         log.debug("这次发给大模型的三栏：\n%s", messages[-1]["content"])
@@ -554,17 +566,29 @@ class Brain:
                     continue
                 if call:
                     raw.append(line.strip())
-                    await self.run_skill(call, say, said)
+                    if await self.run_skill(call, say, said) == "stop":   # 比如要发的遥控码没学过：后面的话不说了
+                        break
         except Exception as e:
             log.error("大模型调用失败（%s）：%s", type(e).__name__, e)
             self.eyes.log(f"LLM ERR {type(e).__name__[:20]}")
             self.eyes.mode("error", text="E-NET", hold=2.5)
             say(FALLBACK)
             said.append(FALLBACK)
-        if not said and not raw and not ignored:
+        if not said and self.ir_sent and not ignored:   # 发了红外码却一句没说：补一句，让人知道发了
+            msg = "已发送：" + "、".join(self.ir_sent) + "。"
+            print(f"{self.persona['name']}：{msg}")
+            say(msg)
+            said.append(msg)
+        elif not said and not raw and not ignored:
             say("未生成回答。")
         await say_q.put(None)
         await asyncio.gather(*workers)
+        if self.ir_pending and not self.interrupted and not ignored:   # 话说完了，开始等遥控器
+            msg = await self.ir_learn_flow(*self.ir_pending)
+            if msg:
+                said.append(msg)
+                raw.append(json.dumps({"skill": "say", "text": msg}, ensure_ascii=False))
+        self.ir_pending = None
         if raw:
             self.history += [{"role": "user", "content": text}, {"role": "assistant", "content": "\n".join(raw)}]
             self.history = self.history[-2 * self.cfg["llm"]["history_turns"]:]
@@ -611,6 +635,99 @@ class Brain:
                 self.attention.quiet_until = time.time() + call["minutes"] * 60
             self.eyes.log(f"QUIET {call['minutes']}M")
             log.info("安静 %s 分钟：这段时间不主动开口，被叫到还会回答", call["minutes"])
+        elif name == "ir_send":
+            hit = self.ir.find(call["device"], call["action"])
+            if not hit:
+                msg = f"还没学过{call['device']}的“{call['action']}”键。要学的话，说“学一下{call['device']}的{call['action']}”。"
+                log.info("要发的遥控码没学过：%s %s", call["device"], call["action"])
+                self.eyes.log("IR TX MISS")
+                print(f"{self.persona['name']}：{msg}")
+                said.append(msg)
+                say(msg)
+                return "stop"
+            dev, act, code = hit
+            self.eyes.send_ir({"op": "send", "code": code})
+            self.eyes.log(f"IR TX {code.get('proto', 'RAW')}")
+            log.info("红外发出：%s %s", dev, act)
+            self.ir_sent.append(f"{dev} {act}")
+            self.memory.add_event("ir", f"用红外发出：{dev} {act}")
+        elif name == "ir_learn":
+            self.ir_pending = (call["device"], call["action"])
+            self.eyes.log("IR LEARN REQ")
+        elif name == "ir_forget":
+            every = call["action"] in ("全部", "所有", "全部按键", "所有按键")
+            n = self.ir.forget(call["device"], "" if every else call["action"])
+            self.eyes.log(f"IR FORGET {n}")
+            log.info("忘掉了 %d 个遥控按键：%s %s", n, call["device"], "全部" if every else call["action"])
+
+    # ------------------------------------------------------------ 红外遥控
+    async def ir_learn_flow(self, device: str, action: str) -> str:
+        """学一个遥控按键：让 ESP32 等信号，屏幕显示 SCAN + IR LEARN；学到就存，然后汇报。返回汇报的话。"""
+        timeout = self.cfg.get("ir", {}).get("learn_seconds", 15)
+        self.state = "learning"
+        self.ir_wait = asyncio.get_running_loop().create_future()
+        self.eyes.mode("scan", text="IR LEARN")
+        self.eyes.log("IR LEARN WAIT")
+        self.eyes.send_ir({"op": "learn", "timeout": timeout})
+        log.info("等遥控器信号：%s %s（最多 %d 秒）", device, action, timeout)
+        try:
+            ev = await asyncio.wait_for(self.ir_wait, timeout + 2)    # ESP32 自己会报超时，多等 2 秒是防它没回
+        except asyncio.TimeoutError:
+            ev = {"op": "timeout"}
+        finally:
+            self.ir_wait = None
+        op = ev["op"]
+        if op == "cancelled":
+            self.eyes.send_ir({"op": "cancel"})
+            log.info("红外学习被打断了")
+            return ""
+        if op == "learned":
+            try:
+                how = self.ir.save(device, action, ev["code"])
+            except ValueError as e:
+                op, ev = "fail", {"text": str(e)}
+            else:
+                self.speaker.play(*self.chirp)
+                self.eyes.log("IR LEARNED " + ev["code"].get("proto", "RAW"))
+                self.memory.add_event("ir", f"学会了遥控按键：{device} {action}")
+                log.info("学会了：%s %s", device, action)
+                msg = f"{'已更新' if how == 'updated' else '已学会'}：{device} {action}。"
+        if op == "timeout":
+            self.eyes.send_ir({"op": "cancel"})
+            self.eyes.log("IR LEARN TIMEOUT")
+            log.info("%d 秒内没收到红外信号", timeout)
+            msg = "没有收到红外信号，学习已取消。把遥控器靠近我的前脸再试一次。"
+        elif op == "fail":
+            self.eyes.log("IR LEARN FAIL")
+            log.warning("红外学习出错：%s", ev.get("text", ""))
+            msg = "红外学习出错，没有存下来。请再试一次。"
+        await self.speak_now(msg)
+        return msg
+
+    def on_ir_event(self, ev: dict):
+        op = ev["op"]
+        if op in ("learned", "timeout", "fail") and self.ir_wait and not self.ir_wait.done():
+            self.ir_wait.set_result(ev)
+        elif op == "sent":
+            self.eyes.log("IR TX OK")
+        elif op == "fail":
+            log.warning("红外发送出错：%s", ev.get("text", ""))
+            self.eyes.log("IR TX FAIL")
+        else:
+            log.info("收到红外事件 %s，但现在不在学习，不管它", op)
+
+    async def speak_now(self, text: str):
+        """不经过大模型，直接说一句（比如红外学习的结果）。"""
+        print(f"{self.persona['name']}：{text}")
+        out = await self.voice.synth(text)
+        if not out or self.interrupted:
+            return
+        self.state = "speaking"
+        self.eyes.mode("speak")
+        self.recent_said.append((time.monotonic() + 30, re.sub(r"[\W_]+", "", text)))
+        follow = asyncio.create_task(self.level_follow(*out))
+        await self.speaker.play(*out)
+        follow.cancel()
 
     async def level_follow(self, pcm, sr):
         """播放时每 0.05 秒把当前音量发给屏幕。"""

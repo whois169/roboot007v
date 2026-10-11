@@ -9,12 +9,14 @@
 
 反方向（ESP32 → 大脑）的事件：触摸、传感器读数、隐私开关、心跳，格式见 dog/protocol.py。
 收到的每一行先过 protocol.check_event()，合法的交给 on_event（大脑注册的回调）。
-模拟器里用键盘代替：T = 摸头顶，C = 摸下巴（按住 1 秒以上 = hold），P = 拨隐私开关。
+模拟器里用键盘代替：T = 摸头顶，C = 摸下巴（按住 1 秒以上 = hold），P = 拨隐私开关，
+R = 红外学习时“拿遥控器对着它按了一下”。模拟器收到发码指令，会回一个 sent。
 """
 import asyncio
 import json
 import logging
 import os
+import random
 import time
 
 from . import hud, protocol
@@ -52,6 +54,15 @@ class Eyes:
         if "log" in cmd:
             log.debug("[屏幕] %s", " | ".join(cmd["log"]))
         self._send_line(json.dumps(cmd, ensure_ascii=False, separators=(",", ":")))
+
+    def send_ir(self, ir: dict):
+        """红外指令（学、发、取消），和屏幕指令走同一根串口。"""
+        err = protocol.check_ir_cmd(ir)
+        if err:
+            log.warning("红外指令不合规，丢掉：%s（%s）", ir, err)
+            return
+        log.debug("[红外] %s", ir)
+        self._send_line(json.dumps({"ir": ir}, ensure_ascii=False, separators=(",", ":")))
 
     def _send_line(self, line: str):
         raise NotImplementedError
@@ -105,6 +116,7 @@ class SimEyes(Eyes):
         self.scale, self.fps = scale, fps
         self.title = f"{name} HUD 模拟器（284×76）"
         self._task = None
+        self._ir_until = 0.0         # 模拟红外：学习到什么时候为止
 
     async def start(self):
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
@@ -116,11 +128,26 @@ class SimEyes(Eyes):
         self.canvas = pygame.Surface((hud.W, hud.H))
         self.r = hud.HudRenderer(hud.Gfx(self.canvas), now=time.monotonic())
         self._task = asyncio.create_task(self._loop())
-        log.info("HUD 模拟器已打开。窗口快捷键：T 摸头顶、C 摸下巴（按住 1 秒 = 长按）、P 拨隐私开关；"
+        log.info("HUD 模拟器已打开。窗口快捷键：T 摸头顶、C 摸下巴（按住 1 秒 = 长按）、P 拨隐私开关、R 模拟按遥控器；"
                  "1-9、0、-、= 切换 12 个模式，方向键移动视线，Q/A 调音量，Esc 退出")
 
     def _send_line(self, line):
-        self.r.apply(json.loads(line))     # 和串口一样：收到一行文字再解析
+        cmd = json.loads(line)             # 和串口一样：收到一行文字再解析
+        if "ir" in cmd:
+            self._sim_ir(cmd["ir"])
+        else:
+            self.r.apply(cmd)
+
+    def _sim_ir(self, ir):
+        """假装是头上的红外收发管。"""
+        if ir["op"] == "learn":
+            self._ir_until = time.monotonic() + ir.get("timeout", 15)
+            log.info("[模拟红外] 开始学习：在 HUD 窗口按 R，就当拿遥控器对着它按了一下")
+        elif ir["op"] == "cancel":
+            self._ir_until = 0.0
+        elif ir["op"] == "send":
+            log.info("[模拟红外] 发出：%s", json.dumps(ir["code"], ensure_ascii=False))
+            asyncio.get_running_loop().call_later(0.15, self._fake, {"ev": "ir", "op": "sent"})
 
     async def close(self):
         if self._task:
@@ -138,6 +165,9 @@ class SimEyes(Eyes):
         pressed = {}                                     # 触摸键按下的时间，用来分“点一下”和“按住”
         while True:
             now = time.monotonic()
+            if self._ir_until and now > self._ir_until:   # 学习超时
+                self._ir_until = 0.0
+                self._fake({"ev": "ir", "op": "timeout"})
             for key, (zone, t0, held) in list(pressed.items()):
                 if not held and now - t0 >= 1.0:          # 按住满 1 秒：发 hold
                     pressed[key] = (zone, t0, True)
@@ -159,6 +189,14 @@ class SimEyes(Eyes):
                 if e.key == pg.K_p:
                     privacy = not privacy
                     self._fake({"ev": "privacy", "on": privacy})
+                    continue
+                if e.key == pg.K_r:                      # 模拟按了一下遥控器
+                    if self._ir_until:
+                        self._ir_until = 0.0
+                        value = "0x%08X" % random.getrandbits(32)
+                        self._fake({"ev": "ir", "op": "learned", "code": {"proto": "NEC", "bits": 32, "value": value}})
+                    else:
+                        log.info("[模拟红外] 现在不在学习，R 键没用（先让它“学一下某个遥控器按键”）")
                     continue
                 ch = e.unicode
                 if ch and ch in self.KEYS:
@@ -222,7 +260,9 @@ class ConsoleEyes(Eyes):
 
     def _send_line(self, line):
         cmd = json.loads(line)
-        if "mode" in cmd:
+        if "ir" in cmd:
+            log.info("[红外] %s（控制台模式没有红外硬件）", cmd["ir"]["op"])
+        elif "mode" in cmd:
             log.info("[眼睛] %s %s", hud.LABEL[cmd["mode"]], cmd.get("text", ""))
 
 
