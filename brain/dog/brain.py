@@ -51,6 +51,7 @@ class Brain:
         self.thermal = None            # 第⑨块：最近一帧热成像的分析结果（dog/thermal.py 的 analyze）
         self.hot_since = None          # 高温点从什么时候开始一直在
         self.hot_alerted = 0.0         # 上次高温提醒的时间
+        self.comfort_since = {}        # 第⑩块：屋里不舒服（太热 / 太冷 / 太潮 / 太干）从什么时候开始
         self.quiet_until = 0.0         # quiet 技能设置的“安静到什么时候”
         self.attention = None          # 第⑥块：主动开口（语音模式、开了摄像头才有）
         self.privacy = False           # 头上的隐私开关拨到“隐私”了（相机和麦克风硬件断电）
@@ -200,10 +201,68 @@ class Brain:
         return self.board.text()
 
     def looked_up(self, text: str) -> str:
-        """【我查到的】：话题和天气有关才放天气，免得每句话都扯天气。"""
+        """【我查到的】：话题和天气有关才放天气，免得每句话都扯天气；有屋里的读数时再附上算好的室内外对比。"""
         if self.weather and self.weather.relevant(text):
-            return self.weather.text()
+            cmp = self.compare_text()
+            return self.weather.text() + (f"\n{cmp}" if cmp else "")
         return ""
+
+    # ------------------------------------------------------------ 第⑩块：室内外对比、屋里舒不舒服
+    def put_room(self, name: str, value):
+        """头部 SHT40 的读数 -> 感觉板上的“室内温度 / 湿度”。温度加上校准值（头里比屋里略热，到货后对着温度计校准）。"""
+        sc = self.cfg.get("senses", {})
+        real = self.eyes.is_real
+        if name == "room_temp":
+            key, human, unit, v = "room.temp", "室内温度", "°C", round(float(value) + sc.get("temp_offset", 0.0), 1)
+        else:
+            key, human, unit, v = "room.humidity", "室内湿度", "%", round(float(value) + sc.get("humidity_offset", 0.0))
+        self.board.put(senses_mod.Reading(
+            key, human, v, unit,
+            source="头部温湿度传感器（SHT40）" if real else "模拟器的假温湿度（SHT40 还没装）",
+            location="头壳后下方通风口，测的是我所在位置的空气", confidence=0.9 if real else 0,
+            note="" if real else "这是模拟数据，不是真的测量值；提到时要说明是模拟的", max_age=120))
+
+    def compare_text(self) -> str:
+        """程序算好的室内外对比（免得大模型自己算错）。屋里或外面的数缺一个就不给。"""
+        rt, rh = self.board.get("room.temp"), self.board.get("room.humidity")
+        if not (rt and self.weather and self.weather.data):
+            return ""
+        c = self.weather.data["current"]
+        out_t, out_h = c["temperature_2m"], c["relative_humidity_2m"]
+        d = rt.value - out_t
+        s = (f"- 室内外对比（程序算好的，直接用这些数）：屋里 {rt.value:.1f} °C（我自己测的），外面现在 {out_t:g} °C（预报的实况），"
+             + (f"屋里比外面高 {d:.1f} 度" if d > 0.4 else f"屋里比外面低 {-d:.1f} 度" if d < -0.4 else "里外差不多"))
+        if rh:
+            s += f"；湿度 屋里 {rh.value:.0f}%、外面 {out_h}%"
+        if rt.confidence <= 0:
+            s += "｜注意：屋里的读数是模拟数据"
+        return s
+
+    def comfort_issue(self) -> str:
+        """屋里持续不舒服就返回原因（给主动开口用），否则返回空字符串。"""
+        cc = self.cfg.get("comfort", {})
+        if not cc.get("enabled", True):
+            return ""
+        rt, rh = self.board.get("room.temp"), self.board.get("room.humidity")
+        now, issues = time.time(), {}
+        if rt and now - rt.t < rt.max_age:
+            if rt.value >= cc.get("hot", 28):
+                issues["hot"] = f"屋里偏热（{rt.value:.1f} °C，超过 {cc.get('hot', 28)} °C）"
+            elif rt.value <= cc.get("cold", 16):
+                issues["cold"] = f"屋里偏冷（{rt.value:.1f} °C，低于 {cc.get('cold', 16)} °C）"
+        if rh and now - rh.t < rh.max_age:
+            if rh.value >= cc.get("humid", 75):
+                issues["humid"] = f"屋里偏潮（湿度 {rh.value:.0f}%，超过 {cc.get('humid', 75)}%）"
+            elif rh.value <= cc.get("dry", 30):
+                issues["dry"] = f"屋里偏干（湿度 {rh.value:.0f}%，低于 {cc.get('dry', 30)}%）"
+        self.comfort_since = {k: self.comfort_since.get(k, now) for k in issues}     # 没了的就清掉，重新计时
+        lasted = [issues[k] for k, t0 in self.comfort_since.items() if now - t0 >= cc.get("minutes", 10) * 60]
+        if not lasted:
+            return ""
+        return ("、".join(lasted) + f"，已经持续 {cc.get('minutes', 10)} 分钟以上。"
+                "这是到点的环境提醒，必须说：先报屋里的读数和外面的天气，再给一个具体建议"
+                "（外面比屋里舒服就建议开窗；外面也不行就建议开空调或加湿 / 除湿；"
+                "【我能遥控的家电】里有能用的按键，就问用户要不要你帮他开，不要自己直接发）")
 
     # ------------------------------------------------------------ 语音模式
     async def run_voice(self):
@@ -285,7 +344,8 @@ class Brain:
         while True:
             await asyncio.sleep(1)
             self.attention.update()
-            if self.state == "idle" and not self.privacy and (p := self.attention.periodic()):
+            comfort = self.comfort_issue()
+            if self.state == "idle" and not self.privacy and (p := self.attention.periodic(comfort)):
                 self.state = "thinking"
                 asyncio.create_task(self.proactive(*p))
 
@@ -297,8 +357,10 @@ class Brain:
         self.eyes.log(f"ATTN {kind.upper()}")
         self.utt = {"via": "proactive", "kind": kind}
         try:
-            said = await self.respond(f"（没有人在问你。你想主动开口的原因：{why}）", via="proactive",
-                                      looked_up=self.weather.text() if self.weather else "")
+            looked = self.weather.text() if self.weather else ""
+            if (cmp := self.compare_text()):
+                looked += f"\n{cmp}"
+            said = await self.respond(f"（没有人在问你。你想主动开口的原因：{why}）", via="proactive", looked_up=looked)
             self.record("proactive" if said else "proactive_skip", why=why, reply=self.last_reply)
             if not said:
                 log.info("大模型觉得不值得说，保持安静")
@@ -315,6 +377,8 @@ class Brain:
         kind = ev["ev"]
         if kind == "touch":
             self.on_touch(ev["zone"], ev["action"])
+        elif kind == "sensor" and ev["name"] in ("room_temp", "room_humidity"):
+            self.put_room(ev["name"], ev["value"])
         elif kind == "sensor":
             name = ev["name"]
             human, unit, where = protocol.SENSORS[name]

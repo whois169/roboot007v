@@ -12,6 +12,7 @@
 模拟器里用键盘代替：T = 摸头顶，C = 摸下巴（按住 1 秒以上 = hold），P = 拨隐私开关，
 R = 红外学习时“拿遥控器对着它按了一下”。模拟器收到发码指令，会回一个 sent。
 模拟器还假装有热成像：按大脑要的频率发假房间的热画面（dog/thermal.py 的 FakeScene），H = 打开 / 关掉假灶台。
+还假装有 SHT40 温湿度：每 5 秒发一次屋里的温度、湿度，[ ] 键调温度（每次 1 度），, . 键调湿度（每次 5%）。
 """
 import asyncio
 import json
@@ -128,6 +129,8 @@ class SimEyes(Eyes):
         self._ir_until = 0.0         # 模拟红外：学习到什么时候为止
         self._th_hz, self._th_next, self._th_draw = 0, 0.0, 0.0   # 模拟热成像：发给大脑每秒几帧、下一帧何时发、何时重画
         self.scene = thermal.FakeScene()
+        self.room = [24.0, 55.0]     # 模拟 SHT40：屋里温度、湿度
+        self._room_next = 0.0
 
     async def start(self):
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
@@ -139,7 +142,7 @@ class SimEyes(Eyes):
         self.canvas = pygame.Surface((hud.W, hud.H))
         self.r = hud.HudRenderer(hud.Gfx(self.canvas), now=time.monotonic())
         self._task = asyncio.create_task(self._loop())
-        log.info("HUD 模拟器已打开。窗口快捷键：T 摸头顶、C 摸下巴（按住 1 秒 = 长按）、P 拨隐私开关、R 模拟按遥控器、H 开关假灶台；"
+        log.info("HUD 模拟器已打开。窗口快捷键：T 摸头顶、C 摸下巴（按住 1 秒 = 长按）、P 拨隐私开关、R 模拟按遥控器、H 开关假灶台、[ ] 调屋里温度、, . 调湿度；"
                  "1-9、0、-、= 切换 12 个模式，方向键移动视线，Q/A 调音量，Esc 退出")
 
     def _send_line(self, line):
@@ -161,6 +164,12 @@ class SimEyes(Eyes):
         elif ir["op"] == "send":
             log.info("[模拟红外] 发出：%s", json.dumps(ir["code"], ensure_ascii=False))
             asyncio.get_running_loop().call_later(0.15, self._fake, {"ev": "ir", "op": "sent"})
+
+    def _send_room(self):
+        self._room_next = time.monotonic() + 5
+        t, h = self.room
+        self._fake({"ev": "sensor", "name": "room_temp", "value": round(t + random.uniform(-0.1, 0.1), 1), "unit": "°C"})
+        self._fake({"ev": "sensor", "name": "room_humidity", "value": round(h + random.uniform(-0.5, 0.5)), "unit": "%"})
 
     async def close(self):
         if self._task:
@@ -185,6 +194,8 @@ class SimEyes(Eyes):
                 if self._th_hz and now >= self._th_next:  # 按大脑要的频率，把这一帧发给大脑
                     self._th_next = now + 1 / self._th_hz
                     self._fake(thermal.encode(fr))
+            if now >= self._room_next:                    # 模拟 SHT40：每 5 秒发一次
+                self._send_room()
             if self._ir_until and now > self._ir_until:   # 学习超时
                 self._ir_until = 0.0
                 self._fake({"ev": "ir", "op": "timeout"})
@@ -209,6 +220,13 @@ class SimEyes(Eyes):
                 if e.key == pg.K_p:
                     privacy = not privacy
                     self._fake({"ev": "privacy", "on": privacy})
+                    continue
+                if e.key in (pg.K_LEFTBRACKET, pg.K_RIGHTBRACKET, pg.K_COMMA, pg.K_PERIOD):   # 调假的屋里温湿度
+                    i = 0 if e.key in (pg.K_LEFTBRACKET, pg.K_RIGHTBRACKET) else 1
+                    step = (1.0 if i == 0 else 5.0) * (1 if e.key in (pg.K_RIGHTBRACKET, pg.K_PERIOD) else -1)
+                    self.room[i] = max(0.0 if i == 0 else 5.0, min(45.0 if i == 0 else 95.0, self.room[i] + step))
+                    log.info("[模拟温湿度] 屋里 %.0f°C、%.0f%%", *self.room)
+                    self._send_room()
                     continue
                 if e.key == pg.K_h:                      # 假灶台：开 / 关
                     self.scene.stove = not self.scene.stove

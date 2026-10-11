@@ -607,6 +607,111 @@ async def test_thermal_llm():
     check("问室温：用温湿度的读数，不拿热成像的 52 度回答", "22" in said and "52" not in said, said[:120])
 
 
+# ---------------------------------------------------------------- 室内外对比、屋里舒不舒服
+FAKE_WEATHER = {"place": "成都", "current": {"temperature_2m": 18.0, "relative_humidity_2m": 70, "apparent_temperature": 17.0,
+                                            "weather_code": 3, "wind_speed_10m": 6.0},
+                "daily": {"time": ["2026-10-12", "2026-10-13"], "weather_code": [3, 61], "temperature_2m_max": [21.0, 19.0],
+                          "temperature_2m_min": [15.0, 14.0], "precipitation_probability_max": [10, 70]}}
+
+
+def comfort_brain(**senses):
+    from dog.brain import Brain
+    from dog.eyes import ConsoleEyes
+    cfg = config.load()
+    cfg["senses"] = dict(cfg.get("senses", {}), **senses)
+    cfg["memory"] = dict(cfg.get("memory", {}), home="comfort_test", folder="data/test_logs")
+    b = Brain(cfg, force_mock=True, eyes=ConsoleEyes())
+    b.weather.data, b.weather.fetched = FAKE_WEATHER, time.time()
+    return b
+
+
+async def test_comfort():
+    section("室内外对比、屋里舒不舒服（不联网）")
+    import datetime
+    from dog import protocol
+    from dog.attention import Attention
+    check("头部温湿度事件合法", protocol.check_event({"ev": "sensor", "name": "room_temp", "value": 24.3, "unit": "°C"}) == ""
+          and protocol.check_event({"ev": "sensor", "name": "room_humidity", "value": 55}) == "")
+
+    b = comfort_brain()
+
+    async def feel(name, v):
+        b.eyes.receive_line(json.dumps({"ev": "sensor", "name": name, "value": v}))
+        await asyncio.sleep(0.02)
+
+    check("还没有屋里的读数：不给对比（不编）", b.compare_text() == "")
+    await feel("room_temp", 24.3)
+    await feel("room_humidity", 55)
+    rt = b.board.get("room.temp")
+    check("头部 SHT40 的读数成了“室内温度”（模拟器的标成模拟数据）", rt and rt.value == 24.3 and rt.confidence == 0)
+    cmp = b.compare_text()
+    check("对比由程序算好：屋里比外面高 6.3 度，带湿度", "屋里比外面高 6.3 度" in cmp and "屋里 55%" in cmp and "外面 70%" in cmp, cmp)
+    check("聊到温度时【我查到的】里有对比，不相关的话不带",
+          "室内外对比" in b.looked_up("现在多少度") and b.looked_up("帮我扫描一下") == "")
+    b.memory.close()
+
+    b = comfort_brain(temp_offset=-1.5)
+    await feel("room_temp", 24.3)
+    check("温度校准值（temp_offset）会加上去", b.board.get("room.temp").value == 22.8)
+
+    await feel("room_temp", 30.0)
+    await feel("room_humidity", 80)
+    check("刚变热：还不提醒（要持续 10 分钟）", b.comfort_issue() == "")
+    b.comfort_since = {k: v - 601 for k, v in b.comfort_since.items()}
+    why = b.comfort_issue()
+    check("偏热、偏潮持续 10 分钟：给出提醒原因", "偏热" in why and "偏潮" in why and "必须说" in why, why[:80])
+    await feel("room_temp", 25.0)
+    await feel("room_humidity", 55)
+    check("恢复正常：不提醒，计时清零", b.comfort_issue() == "" and b.comfort_since == {})
+    b.memory.close()
+
+    class S:
+        present = True
+    t = [datetime.datetime(2026, 10, 12, 15, 0).timestamp()]
+    a = Attention(config.load()["attention"], S(), clock=lambda: t[0])
+    for _ in range(3):
+        t[0] += 1
+        a.update()
+    p = a.periodic("屋里偏热")
+    check("有人在：屋里不舒服就主动说", p and p[0] == "comfort")
+    a.spoke("comfort")
+    t[0] += 3600
+    check("提醒过一次：2 小时内不再说", (a.periodic("屋里偏热") or ("",))[0] != "comfort")
+    S.present = False
+    t[0] += 3 * 3600
+    a.update()
+    check("没人在：不说", a.periodic("屋里偏热") is None)
+
+
+async def test_comfort_llm():
+    section("大模型：室内外对比、屋里太热时的提醒（联网）")
+    b = comfort_brain()
+    b.llm = __import__("dog.llm", fromlist=["x"]).make(b.cfg["llm"])
+    b.speaker.play = lambda pcm, sr: asyncio.ensure_future(asyncio.sleep(0))
+
+    async def fake_synth(s):
+        return np.zeros(100, np.float32), 24000
+    b.voice.synth = fake_synth
+    b.board.put(__import__("dog.senses", fromlist=["x"]).Reading(
+        "room.temp", "室内温度", 24.3, "°C", source="头部温湿度传感器（SHT40）", location="头壳后下方通风口", confidence=0.9))
+    await b.respond("屋里和外面温差多少", via="text")
+    said = "".join(b.last_reply)
+    check("问温差：说出屋里 24.3、外面 18、差 6.3 度", "24.3" in said and "18" in said and "6.3" in said, said[:120])
+
+    b.board.put(__import__("dog.senses", fromlist=["x"]).Reading(
+        "room.temp", "室内温度", 30.5, "°C", source="头部温湿度传感器（SHT40）", location="头壳后下方通风口", confidence=0.9))
+    b.ir.save("空调", "制冷26", IR_NEC)
+    sent = []
+    b.eyes.send_ir = lambda ir: sent.append(ir)
+    b.comfort_since = {"hot": time.time() - 3600}
+    why = b.comfort_issue()
+    await b.proactive("comfort", why)
+    said = "".join(b.last_reply)
+    check("屋里太热的提醒：报读数、建议开窗（外面凉快）、不自己开空调", "30.5" in said and "窗" in said and not sent, said[:150])
+    b.ir.forget("空调")
+    b.memory.close()
+
+
 # ---------------------------------------------------------------- 不联网：语音模型
 VOICE = None
 
@@ -813,6 +918,11 @@ async def main():
         check("test_thermal", False, f"{type(e).__name__}: {e}")
         traceback.print_exc()
     try:
+        await test_comfort()
+    except Exception as e:
+        check("test_comfort", False, f"{type(e).__name__}: {e}")
+        traceback.print_exc()
+    try:
         await test_speech()
     except Exception as e:
         check("test_speech", False, f"{type(e).__name__}: {e}")
@@ -824,6 +934,7 @@ async def main():
         await test_proactive_llm()
         await test_ir_llm()
         await test_thermal_llm()
+        await test_comfort_llm()
     else:
         print("\n（--quick 或没有密钥：跳过要联网的大模型测试）")
     bad = [r for r in RESULTS if not r[1]]

@@ -95,10 +95,13 @@ class Attention:
         self.pending = None
         return kind, why
 
-    def periodic(self):
-        """不需要你看着它的提醒（比如坐太久）。返回 (类型, 原因) 或 None。"""
+    def periodic(self, comfort: str = ""):
+        """不需要你看着它的提醒（坐太久、屋里太热太潮……）。返回 (类型, 原因) 或 None。
+        comfort：大脑算好的“屋里持续不舒服”的原因，没有就是空字符串。只在有人的时候说。"""
         if not self.present or self.present_since is None:
             return None
+        if comfort and not self.blocked("comfort"):
+            return "comfort", comfort
         mins = (self.clock() - self.present_since) / 60
         if mins >= self.cfg.get("sitting_minutes", 60) and not self.blocked("sit"):
             return "sit", f"摄像头已经连续 {mins:.0f} 分钟看到用户在你面前，用户一直没离开过。这是到点的久坐提醒，必须说：直接提醒用户起来活动"
