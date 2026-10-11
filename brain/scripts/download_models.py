@@ -26,6 +26,12 @@ MODELS = [
     ("说话检测 VAD（silero，约 2MB）",
      f"{BASE}/asr-models/silero_vad.onnx",
      "silero_vad.onnx"),
+    ("人脸识别 SFace（OpenCV，认人用，约 37MB）",
+     "https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx",
+     "face_recognition_sface_2021dec.onnx"),
+    ("本地语音合成 Kokoro v1.1（中英，100 多种中文音色，约 140MB）",
+     f"{BASE}/tts-models/kokoro-int8-multi-lang-v1_1.tar.bz2",
+     "kokoro-int8-multi-lang-v1_1"),
 ]
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

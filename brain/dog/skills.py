@@ -28,6 +28,10 @@ SKILLS = {
                  "args": {"device": ("str", 1, 12), "action": ("str", 1, 12)}},
     "ir_forget": {"desc": "忘掉学过的遥控按键（action 写“全部”就忘掉这个家电的所有按键）",
                   "args": {"device": ("str", 1, 12), "action": ("str", 1, 12)}},
+    "enroll":   {"desc": "登记一个人的脸：说完话以后看着面前最近的那张脸几秒，存下来，以后就认得他（程序会自己汇报登记成没成）",
+                 "args": {"name": ("str", 1, 10), "relation": ("enum", ["用户本人", "家人", "朋友", "访客"])}},
+    "forget_person": {"desc": "删掉一个登记过的人（名字和脸部特征都删掉）",
+                      "args": {"name": ("str", 1, 10)}},
     "ignore":   {"desc": "不回答：这句话不是对你说的（只在【触发方式】是“看着我说话”时用，整次只输出这一行）",
                  "args": {}},
 }
@@ -36,7 +40,8 @@ EXAMPLES = {"say": {"text": "收到。外部温度 22 度，晴。"}, "display":
             "look": {"direction": "left"}, "remember": {"fact": "用户叫小明，钥匙一般放在门口鞋柜上"},
             "forget": {"fact": "钥匙放在鞋柜上"}, "quiet": {"minutes": 30},
             "ir_send": {"device": "空调", "action": "关"}, "ir_learn": {"device": "电视", "action": "开关"},
-            "ir_forget": {"device": "电视", "action": "全部"}, "ignore": {}}
+            "ir_forget": {"device": "电视", "action": "全部"}, "enroll": {"name": "阿峰", "relation": "用户本人"},
+            "forget_person": {"name": "小李"}, "ignore": {}}
 
 
 def menu_text() -> str:

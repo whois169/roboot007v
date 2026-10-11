@@ -712,6 +712,209 @@ async def test_comfort_llm():
     b.memory.close()
 
 
+# ---------------------------------------------------------------- 认人
+def face_vec(seed, noise=0.0, base=None):
+    """假的脸部特征：同一个 seed = 同一个人，noise 越大越不像。"""
+    rng = np.random.default_rng(seed)
+    v = rng.normal(size=128) if base is None else base
+    if noise:
+        v = v + np.random.default_rng().normal(scale=noise / np.sqrt(128), size=128)   # noise = 偏差占整体的比例
+    return (v / np.linalg.norm(v)).astype(np.float32)
+
+
+class FakeCam:
+    """假摄像头：只提供人脸和特征。"""
+    recognize = True
+
+    def __init__(self):
+        self.faces, self.feats, self.t = [], [], 0.0
+
+    def show(self, *people):
+        """people：[(x, 宽, 特征)]"""
+        self.faces = [(x, 0.5, w, 0.95, 0.9) for x, w, _ in people]
+        self.feats = [v for _, _, v in people]
+        self.t = time.monotonic()
+
+    def features(self):
+        return list(self.faces), list(self.feats), self.t
+
+    def latest(self):
+        return list(self.faces), 0.0, self.t or time.monotonic(), None
+
+
+def face_brain():
+    from dog.brain import Brain
+    from dog.eyes import ConsoleEyes
+    from dog.people import FaceID
+    from dog.vision import Sight
+    cfg = config.load()
+    cfg["memory"] = dict(cfg.get("memory", {}), home="face_test", folder="data/test_logs")
+    path = "data/test_logs/face_test.db"
+    if os.path.exists(path):
+        os.remove(path)
+    b = Brain(cfg, force_mock=True, eyes=ConsoleEyes())
+    b.log_dir = "data/test_logs"
+    sight = Sight(dict(cfg["vision"], near_face_width=0.12), b.eyes)
+    sight.cam = FakeCam()
+    sight.faceid = FaceID(b.people, 0.42)
+    sight.on_event = b.on_sight_event
+    b.sight = sight
+    b.board.add_provider(sight.readings)
+    b.speaker.play = lambda pcm, sr: asyncio.ensure_future(asyncio.sleep(0.01))
+    b.ack = b.chirp = (np.zeros(10, np.float32), 24000)
+
+    async def fake_synth(s):
+        return np.zeros(100, np.float32), 24000
+    b.voice.synth = fake_synth
+    return b
+
+
+async def test_faces():
+    section("认人：特征比对、投票、登记、陌生人汇报（不联网，假摄像头）")
+    import cv2
+    from dog.people import People, FaceID, Tracker
+    rec = cv2.FaceRecognizerSF.create(config.rel("models/face_recognition_sface_2021dec.onnx"), "")
+    out = rec.feature(np.random.default_rng(0).integers(0, 255, (112, 112, 3), dtype=np.uint8))
+    check("SFace 模型能加载，一张脸算出 128 个数", out.size == 128)
+
+    import sqlite3
+    db = sqlite3.connect(":memory:")
+    p = People(db)
+    feng = face_vec(1)
+    p.add("阿峰", "用户本人", [face_vec(1, 0.3, feng) for _ in range(5)])
+    p.add("妈妈", "家人", [face_vec(2, 0.3) for _ in range(5)])
+    fid = FaceID(p, 0.42)
+    n, r, sim = fid.identify(face_vec(1, 0.5, feng))
+    check("认出登记过的人（特征有偏差也认得）", n == "阿峰" and r == "用户本人", f"相似度 {sim:.2f}")
+    check("没登记过的人：不认识", fid.identify(face_vec(99))[0] is None)
+    check("同一个人再登记是补充，不是新加", p.add("阿峰", "用户本人", [face_vec(1, 0.3, feng)]) == "updated"
+          and len(p.all()) == 2 and dict((a, c) for a, _, c in p.all())["阿峰"] == 6)
+    check("删掉一个人", p.forget("妈妈") and [a for a, _, _ in p.all()] == ["阿峰"])
+    t = Tracker()
+    for x in ("阿峰", None, "阿峰"):
+        t.add(x)
+    check("投票：5 次里不到 3 次一样，先不下结论", t.who() is None)
+    t.add("阿峰")
+    check("投票：3 次认出同一个人，才算认出", t.who() == "阿峰")
+
+    b = face_brain()
+    s = b.sight
+    events = []
+    real_event = b.on_sight_event
+
+    async def spy(name, desc):
+        events.append(name)
+        await real_event(name, desc)
+    s.on_event = spy
+
+    async def frames(*people, n=4):
+        for _ in range(n):
+            s.cam.show(*people)
+            await s._recognize(s.cam.faces, time.monotonic())
+            await asyncio.sleep(0.01)
+
+    await frames((0.5, 0.2, face_vec(5)))
+    check("一个人都没登记时：不报陌生人，提示还没登记", "stranger" not in events
+          and "还没有登记过任何人" in b.board.get("camera.faces").value)
+
+    class Script:
+        name = "脚本"
+        lines = []
+
+        async def stream(self, messages):
+            for obj in Script.lines:
+                yield json.dumps(obj, ensure_ascii=False) + "\n"
+    b.llm = Script()
+    me = face_vec(7)
+
+    async def keep_showing(v, sec=1.5):
+        end = time.monotonic() + sec
+        while time.monotonic() < end:
+            s.cam.show((0.5, 0.25, face_vec(7, 0.3, v)))
+            await asyncio.sleep(0.12)
+
+    Script.lines = [{"skill": "enroll", "name": "阿峰", "relation": "用户本人"},
+                    {"skill": "say", "text": "请正对我，离近一点，保持几秒。"}]
+    shower = asyncio.create_task(keep_showing(me))
+    await b.respond("记住我，我叫阿峰", via="text")
+    await shower
+    check("登记：说完话看几秒脸，存下来并汇报", [a for a, _, _ in b.people.all()] == ["阿峰"]
+          and "已登记：阿峰，用户本人。" in b.last_reply, str(b.last_reply))
+
+    events.clear()
+    await frames((0.5, 0.25, face_vec(7, 0.3, me)))
+    rd = b.board.get("camera.faces").value
+    check("登记以后：认出来，发“认出了”事件，感觉板写名字", s.who == "阿峰" and "person_recognized" in events
+          and "认出是 阿峰（用户本人）" in rd, rd)
+
+    Script.lines = [{"skill": "enroll", "name": "小明", "relation": "朋友"}, {"skill": "say", "text": "请正对我。"}]
+    shower = asyncio.create_task(keep_showing(me))
+    await b.respond("记住他，他叫小明", via="text")
+    await shower
+    check("同一张脸想登记成别人：不登记，说已经是谁", len(b.people.all()) == 1 and "已经登记过，是阿峰" in "".join(b.last_reply))
+
+    Script.lines = [{"skill": "enroll", "name": "小明", "relation": "朋友"}, {"skill": "say", "text": "请正对我。"}]
+    s.cam.show()
+    b.cfg["vision"]["enroll_seconds"] = 1
+    await b.respond("记住他，他叫小明", via="text")
+    check("登记时没看到脸：取消并说明", "没有看清脸" in "".join(b.last_reply) and len(b.people.all()) == 1)
+
+    called = []
+
+    async def fake_proactive(kind, why, then_listen=False):
+        called.append((kind, why))
+        b.to_idle()
+    b.proactive = fake_proactive
+    b.attention = type("A", (), {"blocked": lambda self, k: ""})()
+    b.to_idle()                                          # 真实流程里说完话会回到待机
+    s.who = None
+    s.tracker.reset()
+    events.clear()
+    await frames((0.2, 0.2, face_vec(42)))
+    await asyncio.sleep(0.05)
+    check("看到没登记过的人：主动汇报（安全汇报）", "stranger" in events and called and called[0][0] == "stranger"
+          and "必须说" in called[0][1], str(called)[:100])
+    await frames((0.5, 0.25, face_vec(7, 0.3, me)), (0.2, 0.15, face_vec(42)))
+    rd = b.board.get("camera.faces").value
+    check("两个人：写出认出的和没登记的", "阿峰" in rd and "1 个没登记过的人" in rd, rd)
+
+    Script.lines = [{"skill": "forget_person", "name": "阿峰"}, {"skill": "say", "text": "已删除。"}]
+    await b.respond("把阿峰删掉", via="text")
+    check("删掉登记的人", b.people.all() == [])
+    b.memory.close()
+
+
+async def test_faces_llm():
+    section("大模型：什么时候登记、用名字（联网）")
+    from dog import llm as llm_mod
+    cfg = config.load()
+    llm = llm_mod.make(cfg["llm"])
+
+    async def ask(text, sensed=""):
+        msgs = prompt.build(cfg["persona"], [], text, sensed=sensed, via="text")
+        calls = []
+        async for line in llm_mod.lines(llm.stream(msgs)):
+            c, _ = skills.parse(line)
+            if c:
+                calls.append(c)
+        return calls
+
+    c = await ask("记住我，我叫阿峰")
+    e = [x for x in c if x["skill"] == "enroll"]
+    check("“记住我，我叫阿峰” → 登记 阿峰（用户本人）", e and e[0]["name"] == "阿峰" and e[0]["relation"] == "用户本人", str(c)[:160])
+    c = await ask("这是我妈妈，你记住她")
+    e = [x for x in c if x["skill"] == "enroll"]
+    check("“这是我妈妈，记住她” → 登记 妈妈（家人）", e and "妈" in e[0]["name"] and e[0]["relation"] == "家人", str(c)[:160])
+    seen = "- 看到的人：1 张人脸，最近的一个在我正前方，离我很近，正对着我；认出是 阿峰（用户本人）｜来源：本地人脸检测｜可信度：高"
+    c = await ask("你知道我是谁吗", seen)
+    said = "".join(x.get("text", "") for x in c if x["skill"] == "say")
+    check("认出来以后问“我是谁” → 说出阿峰", "阿峰" in said, said[:100])
+    seen = "- 看到的人：1 张人脸，最近的一个在我正前方，离我很近，正对着我；还没认清是谁（离近一点、正对我会认得更快）｜来源：本地人脸检测｜可信度：高"
+    c = await ask("你知道我是谁吗", seen)
+    said = "".join(x.get("text", "") for x in c if x["skill"] == "say")
+    check("还没认清时 → 不乱猜名字", "阿峰" not in said, said[:100])
+
+
 # ---------------------------------------------------------------- 不联网：语音模型
 VOICE = None
 
@@ -923,6 +1126,11 @@ async def main():
         check("test_comfort", False, f"{type(e).__name__}: {e}")
         traceback.print_exc()
     try:
+        await test_faces()
+    except Exception as e:
+        check("test_faces", False, f"{type(e).__name__}: {e}")
+        traceback.print_exc()
+    try:
         await test_speech()
     except Exception as e:
         check("test_speech", False, f"{type(e).__name__}: {e}")
@@ -935,6 +1143,7 @@ async def main():
         await test_ir_llm()
         await test_thermal_llm()
         await test_comfort_llm()
+        await test_faces_llm()
     else:
         print("\n（--quick 或没有密钥：跳过要联网的大模型测试）")
     bad = [r for r in RESULTS if not r[1]]

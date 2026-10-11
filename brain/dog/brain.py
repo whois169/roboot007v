@@ -17,6 +17,7 @@ import numpy as np
 from . import config
 from .memory import Memory
 from .ir import IrCodes
+from .people import People, FaceID
 from .attention import Attention
 from . import protocol
 from . import thermal as thermal_mod
@@ -46,6 +47,8 @@ class Brain:
         self.memory = Memory(**cfg.get("memory", {}))   # 第⑤块：长期记忆（data/memory/<家>.db）
         self.ir = IrCodes(self.memory.db)               # 第⑧块：红外遥控码库（和记忆同一个文件、同一个连接）
         self.ir_pending = None         # 大模型让学的按键：(家电, 动作)，等这次回答说完再开始学
+        self.people = People(self.memory.db)            # 第⑪块：认人（登记过的人和脸部特征，和记忆同一个文件）
+        self.enroll_pending = None     # 大模型让登记的人：(名字, 关系)，等这次回答说完再开始看脸
         self.ir_wait = None            # 正在学：等 ESP32 回 learned / timeout / fail
         self.ir_sent = []              # 这次回答发了哪些红外按键
         self.thermal = None            # 第⑨块：最近一帧热成像的分析结果（dog/thermal.py 的 analyze）
@@ -125,6 +128,10 @@ class Brain:
         sight = Sight(dict(vc, **att), self.eyes, llm_mod.make_vision(vc.get("model", {})))
         sight.may_move = lambda: self.state == "idle"          # 说话、想事情的时候眼睛听大模型的
         sight.on_event = self.on_sight_event                  # 有人进出、看图结果记进事件日志
+        sight.faceid = FaceID(self.people, vc.get("match_threshold", 0.42))
+        if not sight.cam.recognize:
+            log.info("认人：关（没开或没有 SFace 模型，先运行 python scripts/download_models.py）")
+            sight.faceid = None
         if await sight.start():
             self.sight = sight
             self.board.add_provider(sight.readings)
@@ -181,8 +188,17 @@ class Brain:
         return ""
 
     async def on_sight_event(self, name: str, desc: str):
-        """摄像头的事件（有人出现、离开、看图描述）记进事件日志。"""
+        """摄像头的事件（有人出现、离开、认出是谁、陌生人、看图描述）记进事件日志；陌生人要主动汇报。"""
         self.memory.add_event(name, desc)
+        if name == "stranger" and self.attention and self.state == "idle" and not self.privacy:
+            why = self.attention.blocked("stranger")
+            if why:
+                log.info("看到陌生人，但先不说：%s", why)
+                return
+            self.state = "thinking"
+            asyncio.create_task(self.proactive(
+                "stranger", f"{desc}。这是安全汇报，必须说：报告发现一名未登记人员和方位；"
+                            "如果【我自己感觉到的】里同时认出了登记过的人，就问他要不要登记这位（说“记住他，他叫××”）"))
 
     def look_when_called(self):
         """被叫到：记一下有互动，同时在后台截一张图去看（没配看图模型就不截）。"""
@@ -663,6 +679,12 @@ class Brain:
                 said.append(msg)
                 raw.append(json.dumps({"skill": "say", "text": msg}, ensure_ascii=False))
         self.ir_pending = None
+        if self.enroll_pending and not self.interrupted and not ignored:   # 话说完了，开始看脸登记
+            msg = await self.enroll_flow(*self.enroll_pending)
+            if msg:
+                said.append(msg)
+                raw.append(json.dumps({"skill": "say", "text": msg}, ensure_ascii=False))
+        self.enroll_pending = None
         if raw:
             self.history += [{"role": "user", "content": text}, {"role": "assistant", "content": "\n".join(raw)}]
             self.history = self.history[-2 * self.cfg["llm"]["history_turns"]:]
@@ -725,6 +747,13 @@ class Brain:
             log.info("红外发出：%s %s", dev, act)
             self.ir_sent.append(f"{dev} {act}")
             self.memory.add_event("ir", f"用红外发出：{dev} {act}")
+        elif name == "enroll":
+            self.enroll_pending = (call["name"].strip(), call["relation"])
+            self.eyes.log("FACE ENROLL REQ")
+        elif name == "forget_person":
+            gone = self.people.forget(call["name"])
+            self.eyes.log("FACE FORGET" if gone else "FACE FORGET MISS")
+            log.info("删掉了登记的人：%s" if gone else "要删的人没登记过：%s", call["name"])
         elif name == "ir_learn":
             self.ir_pending = (call["device"], call["action"])
             self.eyes.log("IR LEARN REQ")
@@ -810,6 +839,40 @@ class Brain:
             self.eyes.log("IR LEARN FAIL")
             log.warning("红外学习出错：%s", ev.get("text", ""))
             msg = "红外学习出错，没有存下来。请再试一次。"
+        await self.speak_now(msg)
+        return msg
+
+    # ------------------------------------------------------------ 认人：登记
+    async def enroll_flow(self, name: str, relation: str) -> str:
+        """看着面前最大那张脸收集 5 组特征，存起来。返回汇报的话。"""
+        if not (self.sight and self.sight.faceid):
+            msg = "摄像头或认人功能没开，无法登记。"
+            await self.speak_now(msg)
+            return msg
+        self.state = "learning"
+        self.eyes.mode("scan", text="FACE SCAN")
+        self.eyes.log("FACE ENROLL WAIT")
+        log.info("登记 %s（%s）：看着面前最大那张脸收集特征", name, relation)
+        vecs = await self.sight.collect(5, self.cfg.get("vision", {}).get("enroll_seconds", 8))
+        if self.interrupted:
+            return ""
+        if len(vecs) < 3:
+            msg = "没有看清脸，登记取消。请正对我、离近一点再试一次。"
+            self.eyes.log("FACE ENROLL FAIL")
+        else:
+            other, _, sim = self.sight.faceid.identify(np.mean(vecs, axis=0))
+            if other and other != name and sim >= 0.55:
+                msg = f"这张脸已经登记过，是{other}。要改名就先让我忘掉{other}。"
+                self.eyes.log("FACE ENROLL DUP")
+            else:
+                how = self.people.add(name, relation, vecs)
+                self.sight.tracker.reset()                       # 马上按新登记的重新认
+                self.sight.who = None
+                self.speaker.play(*self.chirp)
+                self.eyes.log("FACE ENROLLED")
+                self.memory.add_event("people", f"登记了人脸：{name}（{relation}）")
+                msg = f"{'已更新' if how == 'updated' else '已登记'}：{name}，{relation}。"
+        log.info(msg)
         await self.speak_now(msg)
         return msg
 

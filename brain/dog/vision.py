@@ -1,8 +1,10 @@
 """看：本地一直看（人脸检测 + 动静检测），画面不出电脑。
 只在“有事”的时候截一张 512px 的图交给看图模型：有人出现、有人叫它、空闲太久。
 
-Camera  后台线程：读摄像头、检测人脸和动静，只保存“最新一帧”和检测结果
-Sight   asyncio 这边：根据检测结果判断事件、让眼睛跟着人看、截图看图、给大模型写“我看到了什么”
+Camera  后台线程：读摄像头、检测人脸和动静，只保存“最新一帧”和检测结果；
+        开了认人时，还给够大、够正的脸算 SFace 脸部特征（128 个数字，不存照片）
+Sight   asyncio 这边：根据检测结果判断事件、认出是谁（dog/people.py）、让眼睛跟着人看、截图看图、
+        给大模型写“我看到了什么”
 """
 import asyncio
 import logging
@@ -15,9 +17,11 @@ import cv2
 import numpy as np
 
 from . import config
+from .people import Tracker
 
 log = logging.getLogger("vision")
 FACE_MODEL = "models/face_detection_yunet_2023mar.onnx"
+RECOG_MODEL = "models/face_recognition_sface_2021dec.onnx"
 DETECT_W = 320                 # 检测时把画面缩到这个宽度，又快又够用
 
 try:
@@ -27,9 +31,13 @@ except AttributeError:
 
 
 class Camera(threading.Thread):
-    def __init__(self, index=0, detect_fps=5, face_min_score=0.8):
+    def __init__(self, index=0, detect_fps=5, face_min_score=0.8, recognize=True, recog_fps=2, recog_min_width=0.08):
         super().__init__(daemon=True, name="camera")
         self.index, self.period, self.min_score = index, 1 / detect_fps, face_min_score
+        self.recognize = recognize and os.path.exists(config.rel(RECOG_MODEL))
+        self.recog_period, self.recog_min_width = 1 / recog_fps, recog_min_width
+        self.feats = []                # 和 faces 一一对应：脸部特征（128 个数）或 None（太小、太歪、这一轮没算）
+        self.feats_t = 0.0             # 特征是什么时候算的
         self.lock = threading.Lock()
         self.frame = None              # 最新一帧（BGR），只在内存里
         self.faces = []                # [(x 中心 0–1, y 中心 0–1, 宽 0–1, 分数, 正对程度 0–1)]，x 按画面从左到右
@@ -47,8 +55,9 @@ class Camera(threading.Thread):
             self.ready.set()
             return
         det = cv2.FaceDetectorYN.create(config.rel(FACE_MODEL), "", (DETECT_W, 240), self.min_score)
+        rec = cv2.FaceRecognizerSF.create(config.rel(RECOG_MODEL), "") if self.recognize else None
         prev = None
-        last_detect = 0.0
+        last_detect = last_recog = 0.0
         self.ready.set()
         while self.running:
             ok, frame = cap.read()
@@ -68,11 +77,30 @@ class Camera(threading.Thread):
             _, found = det.detect(small)
             faces = [] if found is None else [
                 ((f[0] + f[2] / 2) / sw, (f[1] + f[3] / 2) / sh, f[2] / sw, float(f[-1]), facing(f)) for f in found]
+            feats, feats_t = None, 0.0
+            if rec is not None and found is not None and now - last_recog >= self.recog_period:
+                last_recog, feats_t = now, now
+                feats = []
+                k = w / sw                                   # 在小图上找脸，回到原图上抠脸算特征（更准）
+                for f, info in zip(found, faces):
+                    if info[2] < self.recog_min_width or info[4] < 0.3 or sum(v is not None for v in feats) >= 3:
+                        feats.append(None)
+                        continue
+                    big = f.copy()
+                    big[:14] *= k
+                    try:
+                        feats.append(rec.feature(rec.alignCrop(frame, big)).ravel().copy())
+                    except cv2.error:
+                        feats.append(None)
             gray = cv2.GaussianBlur(cv2.cvtColor(small, cv2.COLOR_BGR2GRAY), (9, 9), 0)
             motion = 0.0 if prev is None else float(np.mean(cv2.absdiff(gray, prev) > 25))
             prev = gray
             with self.lock:
                 self.faces, self.motion, self.updated = faces, motion, now
+                if feats is not None:
+                    self.feats, self.feats_t = feats, feats_t
+                elif len(self.feats) != len(faces):
+                    self.feats, self.feats_t = [None] * len(faces), 0.0
         cap.release()
 
     def snapshot(self, size=512) -> bytes | None:
@@ -90,6 +118,11 @@ class Camera(threading.Thread):
     def latest(self):
         with self.lock:
             return list(self.faces), self.motion, self.updated, (None if self.frame is None else self.frame.copy())
+
+    def features(self):
+        """(人脸列表, 对应的特征列表, 特征算出来的时间)"""
+        with self.lock:
+            return list(self.faces), list(self.feats), self.feats_t
 
     def stop(self):
         self.running = False
@@ -120,7 +153,13 @@ class Sight:
         self.cfg = cfg
         self.eyes = eyes
         self.vlm = vlm                       # 看图模型；None = 没配，截图不上传
-        self.cam = Camera(cfg.get("camera_index", 0), cfg.get("detect_fps", 5), cfg.get("face_min_score", 0.8))
+        self.cam = Camera(cfg.get("camera_index", 0), cfg.get("detect_fps", 5), cfg.get("face_min_score", 0.8),
+                          cfg.get("recognize", True), cfg.get("recog_fps", 2), cfg.get("recog_min_width", 0.08))
+        self.faceid = None                   # 认人（大脑在 setup 时给）：people.FaceID
+        self.tracker = Tracker()
+        self.who = None                      # 现在面前最大那张脸是谁：名字 / "?" 陌生人 / None 还说不准或没人
+        self.face_ids = []                   # 和 faces 一一对应：(名字 or None, 关系, 相似度) 或 None（没算）
+        self._feats_seen = 0.0
         self.may_move = lambda: True         # 大脑告诉我：现在能不能自己转眼睛（说话时别乱动）
         self.on_event = None                 # 有事时回调 on_event(名字, 说明)，第⑥块“主动开口”用
         self.present = False                 # 现在是不是有人
@@ -204,6 +243,7 @@ class Sight:
             elif self.present and now - self.last_face > gone:
                 self.present = False
                 await self._event("person_left", f"人走了（{gone} 秒没看到人脸）")
+            await self._recognize(faces, now)
 
             # 视线跟着最大的那张脸（任何模式下都跟，说话时也看着人）；闲着时屏幕切到 TRACK 锁定框
             if self.cfg.get("follow_face", True):
@@ -229,9 +269,58 @@ class Sight:
                 self.touch()
                 self.snapshot_later("空闲巡视")
 
+    # ------------------------------------------------ 认人
+    async def _recognize(self, faces, now):
+        """有新算出来的特征就认一遍；最大那张脸的结果投票，定下来是谁（或陌生人）时发事件。"""
+        if not faces:
+            if self.who is not None and now - self.last_face > 1.5:
+                self.who = None
+                self.tracker.reset()
+            self.face_ids = []
+            return
+        if not self.faceid:
+            return
+        fs, feats, t = self.cam.features()
+        if t <= self._feats_seen or len(feats) != len(fs):
+            return
+        self._feats_seen = t
+        self.face_ids = [None if v is None else self.faceid.identify(v) for v in feats]
+        i = max(range(len(fs)), key=lambda k: fs[k][2])
+        if self.face_ids[i] is None:
+            return
+        self.tracker.add(self.face_ids[i][0])
+        who = self.tracker.who()
+        if who is None or who == self.who:
+            return
+        self.who = who
+        if who == "?":
+            if self.faceid.people.all():                  # 一个人都没登记时，谁都是“陌生人”，就不报了
+                where = {"left": "我左前方", "right": "我右前方", "center": "我正前方"}[face_direction(fs[i][0])]
+                await self._event("stranger", f"看到一个没登记过的人，在{where}")
+        else:
+            rel = next((r for n, r, _ in self.faceid.people.all() if n == who), "")
+            self.faceid.people.seen(who)
+            await self._event("person_recognized", f"认出了：{who}（{rel}）")
+
+    async def collect(self, n=5, timeout=8.0) -> list:
+        """登记用：收集最大那张脸的 n 组特征（要够近、够正），超时返回已经收到的。"""
+        got, last = [], 0.0
+        end = time.monotonic() + timeout
+        while time.monotonic() < end and len(got) < n:
+            await asyncio.sleep(0.1)
+            fs, feats, t = self.cam.features()
+            if not fs or t <= last or len(feats) != len(fs):
+                continue
+            i = max(range(len(fs)), key=lambda k: fs[k][2])
+            if feats[i] is not None and fs[i][2] >= self.cfg.get("near_face_width", 0.12) * 0.8 and fs[i][4] >= 0.5:
+                got.append(feats[i])
+                last = t
+        return got
+
     async def _event(self, name, desc):
         log.info("[看] %s", desc)
-        self.eyes.log({"person_appeared": "EVT PERSON IN", "person_left": "EVT PERSON OUT"}.get(name, "EVT " + name))
+        self.eyes.log({"person_appeared": "EVT PERSON IN", "person_left": "EVT PERSON OUT",
+                       "stranger": "EVT UNKNOWN PERSON", "person_recognized": "EVT ID MATCH"}.get(name, "EVT " + name))
         if self.on_event:
             await self.on_event(name, desc)
 
@@ -285,6 +374,7 @@ class Sight:
             near = "很近" if big[2] > 0.25 else "不远" if big[2] > 0.12 else "比较远"
             value = f"{len(faces)} 张人脸，最近的一个在{where[face_direction(big[0])]}，离我{near}" + \
                     ("，正对着我" if big[4] >= self.cfg.get("facing_min", 0.6) else "，没有正对着我")
+            value += self._who_text(faces.index(big), len(faces))
         else:
             seen = f"（上次看到人脸是 {ago(self.last_face)}）" if self.last_face else ""
             value = f"没有人脸{seen}"
@@ -298,6 +388,26 @@ class Sight:
             out.append(Reading("camera.sight", "看图描述", desc, source=f"看图模型（因为「{reason}」拍的一张照片）",
                                location=loc, confidence=0.6, note="可能看错", max_age=1800, t=wall(t)))
         return out
+
+    def _who_text(self, i, n) -> str:
+        """认人的结果，接在“看到的人”后面。"""
+        if not self.faceid:
+            return ""
+        if not self.faceid.people.all():
+            return "；还没有登记过任何人，认不出是谁"
+        if self.who and self.who != "?":
+            rel = next((r for nm, r, _ in self.faceid.people.all() if nm == self.who), "")
+            s = f"；认出是 {self.who}（{rel}）"
+        elif self.who == "?":
+            s = "；这个人没登记过（陌生人）"
+        else:
+            s = "；还没认清是谁（离近一点、正对我会认得更快）"
+        others = [x for k, x in enumerate(self.face_ids) if k != i and x is not None]
+        if n > 1 and others:
+            known = [x[0] for x in others if x[0]]
+            unknown = len(others) - len(known)
+            s += "；另外还有：" + "、".join(known + ([f"{unknown} 个没登记过的人"] if unknown else []))
+        return s
 
     def stop(self):
         self.cam.stop()

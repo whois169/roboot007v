@@ -32,6 +32,11 @@ vision:
   snapshot_size: 512         # 截图长边多少像素
   wait_on_wake_seconds: 1.0  # 被叫以后，最多等看图结果多久再去问大模型
   save_snapshots: false      # true = 每张上传的截图也存一份到 data/snapshots（调试用）
+  recognize: true            # 认人（第⑪块）：本地 SFace 算脸部特征，只存 128 个数字，不存照片
+  recog_fps: 2               # 每秒认几次
+  recog_min_width: 0.08      # 脸太小（离得太远）不认，免得认错
+  match_threshold: 0.42      # 像到多少才算认出（0–1）；老认错人就调高，老认不出就调低（官方建议最低 0.363）
+  enroll_seconds: 8          # 登记时最多看多久
   model:                     # 看图模型（OpenAI 兼容接口）。三项填全才会上传截图，否则只用本地检测
     base_url: ""             # 例：https://dashscope.aliyuncs.com/compatible-mode/v1
     model: ""                # 例：qwen-vl-plus
@@ -51,6 +56,7 @@ attention:
     first: 720
     sit: 60
     comfort: 120             # 屋里太热 / 太冷 / 太潮 / 太干：2 小时提醒一次
+    stranger: 30             # 看到没登记过的人：30 分钟最多汇报一次
 
 # ---------------- 长期记忆（第⑤块） ----------------
 memory:
