@@ -210,7 +210,7 @@ def chamfer_pts(cx, cy, w, h, ch):
 def check(cmd) -> str:
     if not isinstance(cmd, dict):
         return "指令不是 JSON 对象"
-    bad = set(cmd) - {"mode", "gaze", "level", "text", "hold", "status", "log", "thermal"}
+    bad = set(cmd) - {"mode", "gaze", "level", "text", "hold", "status", "log"}
     if bad:
         return f"不认识的字段：{sorted(bad)}"
     if "mode" in cmd and cmd["mode"] not in MODES:
@@ -263,6 +263,7 @@ class HudRenderer:
         # 数据流
         self.lines = []                           # 屏幕上的行：{"s": 文字, "y": 位置, "typed": 已经打出几个字}
         self.queue = deque(maxlen=40)             # 还没进屏幕的行
+        self.thermal, self.thermal_sim = None, False   # 热成像画面（set_thermal）
 
     # ---------------- 收指令
     def apply(self, cmd: dict):
@@ -497,19 +498,53 @@ class HudRenderer:
         self.g.fill_rect(CX - text_width(s) / 2 - 2, BOTTOM - 9, text_width(s) + 4, 9, BG)
         self.g.text(CX - text_width(s) / 2, BOTTOM - 8, s, mix(BG, c, f))
 
+    def set_thermal(self, frame, sim=False):
+        """热成像画面：h 行 × w 列的温度（°C），从左上角开始，列 0 = 狗的左边。
+        ESP32 上是固件自己从 MLX90640 读到的那一帧；模拟器里是假房间。"""
+        self.thermal, self.thermal_sim = frame, sim
+
     def _thermal(self, f):
-        """假热成像（全屏）：两个慢慢移动的热点，铁红色伪彩。以后换成热成像模块的真数据。"""
-        t, cell = self.now, 4
-        hx, hy = CX + 90 * math.sin(t * 0.5), CY + 8 * math.sin(t * 0.9)
-        hx2, hy2 = CX - 70 + 15 * math.sin(t * 0.35), CY + 4
-        for y in range(TOP, BOTTOM - 10, cell):
-            for x in range(8, W - 8, cell):
-                d1 = ((x - hx) ** 2 + (y - hy) ** 2) / 500
-                d2 = ((x - hx2) ** 2 + (y - hy2) ** 2) / 200
-                temp = 22 + 1.5 * math.sin(x * 0.05 + y * 0.13) + 13 * math.exp(-d1) + 8 * math.exp(-d2)
-                self.g.fill_rect(x, y, cell, cell, mix(BG, iron(0.1 + (temp - 22) / 16), f))
-        s = f"MAX {35 + 0.4 * math.sin(t):.1f}C  MIN 20.6C  SIM"
-        self.g.text(CX - text_width(s) / 2, BOTTOM - 8, s, mix(BG, WHITE, f))
+        """热成像（全屏）：中间是热画面（每个点画成 3×2 像素），最热点用角标框出来；
+        左边写最高、最低温度，右边是色标。画面左右镜像，像照镜子：狗左边的东西出现在你看到的右边。"""
+        fr = self.thermal
+        if not fr:
+            s = "NO THERMAL DATA"
+            self.g.text(CX - text_width(s) / 2, CY - 3, s, mix(BG, WHITE, f))
+            return
+        h, w = len(fr), len(fr[0])
+        cw, chh = 3, 2
+        x0, y0 = CX - w * cw // 2, CY - h * chh // 2 + 1
+        lo = min(min(r) for r in fr)
+        hi = max(max(r) for r in fr)
+        span = max(hi - lo, 4.0)                                  # 温差太小时别把噪声放大成满屏花
+        # 颜色按温度的平方根分配：有一个很烫的东西时，其他东西（人、热水）也还看得清
+        hr = hc = 0
+        for r in range(h):
+            row = fr[r]
+            for c in range(w):
+                v = row[c]
+                if v >= fr[hr][hc]:
+                    hr, hc = r, c
+                self.g.fill_rect(x0 + (w - 1 - c) * cw, y0 + r * chh, cw, chh, mix(BG, iron(((v - lo) / span) ** 0.5), f))
+        bx, by = x0 + (w - 1 - hc) * cw + 1, y0 + hr * chh + 1      # 最热点：四个角标
+        col = mix(BG, WHITE, f)
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                cx, cy = bx + sx * 5, by + sy * 5
+                self.g.line(cx, cy, cx - sx * 2, cy, col)
+                self.g.line(cx, cy, cx, cy - sy * 2, col)
+        lx = x0 - 8                                               # 左边：数字
+        for k, (name, v) in enumerate((("MAX", hi), ("MIN", lo))):
+            t = f"{name} {v:.1f}C"
+            self.g.text(lx - text_width(t), CY - 10 + k * 11, t, mix(BG, WHITE if k == 0 else CYAN, f))
+        if self.thermal_sim:
+            self.g.text(lx - text_width("SIM"), CY + 12, "SIM", mix(BG, AMBER, f))
+        rx = x0 + w * cw + 8                                      # 右边：色标
+        top, bot = y0 + 2, y0 + h * chh - 2
+        for y in range(top, bot):
+            self.g.line(rx, y, rx + 3, y, mix(BG, iron((1 - (y - top) / (bot - top)) ** 0.5), f))
+        self.g.text(rx + 7, top - 1, f"{hi:.0f}", mix(BG, WHITE, f))
+        self.g.text(rx + 7, bot - 6, f"{lo:.0f}", mix(BG, CYAN, f))
 
     def _online(self, ocx, c, f):
         col = mix(BG, WHITE, f)

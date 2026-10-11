@@ -491,6 +491,122 @@ async def test_ir_llm():
     check("“学一下风扇的开关” → ir_learn 风扇", s and s[0]["device"] == "风扇", str(c)[:200])
 
 
+# ---------------------------------------------------------------- 不联网：热成像
+def thermal_brain(**th):
+    from dog.brain import Brain
+    from dog.eyes import ConsoleEyes
+    cfg = config.load()
+    cfg["thermal"] = dict(cfg.get("thermal", {}), **th)
+    cfg["memory"] = dict(cfg.get("memory", {}), home="thermal_test", folder="data/test_logs")
+    b = Brain(cfg, force_mock=True, eyes=ConsoleEyes())
+    b.log_dir = "data/test_logs"
+    return b
+
+
+async def test_thermal():
+    section("热成像：帧格式、分析、感觉板、屏幕、高温主动提醒（不联网）")
+    import pygame
+    from dog import protocol, thermal
+    scene = thermal.FakeScene(seed=1)
+    fr = scene.frame(3.0)
+    ev = thermal.encode(fr)
+    back = thermal.decode(json.loads(json.dumps(ev)))
+    check("一帧热画面编码再解码，误差小于 0.2°C，一行不到 1.2 KB",
+          float(np.abs(back - fr).max()) < 0.2 and len(json.dumps(ev)) < 1200 and protocol.check_event(ev) == "")
+    bad = [dict(ev, px=ev["px"][:-8]), dict(ev, px="@@@"), dict(ev, min=60, max=20), dict(ev, w=100)]
+    check("不合法的热画面被拦下", all(protocol.check_event(e) for e in bad))
+    check("热成像指令检查", protocol.check_thermal_cmd({"hz": 1}) == "" and protocol.check_thermal_cmd({"hz": 99})
+          and protocol.check_thermal_cmd({"fps": 1}))
+
+    a = thermal.analyze(back)
+    cup = [s for s in a["hot"] if 50 <= s["peak"] <= 54]
+    person = [s for s in a["hot"] if 33 <= s["peak"] <= 36]
+    check("分析：找到热水杯（右前方偏下、比人体热）", cup and "右前方" in cup[0]["where"] and "偏下" in cup[0]["where"]
+          and "热水" in cup[0]["guess"], str(a["hot"])[:200])
+    check("分析：找到人（大小和温度像人）", person and "像人" in person[0]["guess"])
+    check("分析：找到冷窗户（左前方偏上）", a["cold"] and "左前方" in a["cold"]["where"] and a["cold"]["temp"] < 19)
+    m = thermal.analyze(back, mirror=True)
+    check("装反了可以镜像（mirror）：热水杯变到左边", "左前方" in [s for s in m["hot"] if s["peak"] > 50][0]["where"])
+    flat = thermal.analyze(np.full((24, 32), 23.0, np.float32) + np.random.default_rng(0).normal(0, 0.2, (24, 32)))
+    check("全是室温：没有热源、没有冷点", not flat["hot"] and flat["cold"] is None and "没有明显热源" in thermal.describe(flat))
+
+    surf = pygame.Surface((hud.W, hud.H))
+    r = hud.HudRenderer(hud.Gfx(surf), now=0)
+    r.apply({"mode": "thermal"})
+    r.tick(0.5)
+    r.set_thermal(fr.tolist(), sim=True)
+    r.tick(1.0)
+    check("屏幕：没有数据和有数据时都能画热成像", r.mode == "thermal")
+
+    b = thermal_brain(alert_seconds=0)
+    called = []
+
+    async def fake_proactive(kind, why, then_listen=False):
+        called.append((kind, why))
+        b.to_idle()
+    b.proactive = fake_proactive
+
+    async def feel(frame):
+        b.eyes.receive_line(json.dumps(thermal.encode(frame)))
+        await asyncio.sleep(0.05)
+
+    await feel(fr)
+    rd = b.board.get("thermal")
+    check("热画面进了感觉板（模拟数据标成假数据）", rd and "52" in rd.value and rd.confidence == 0 and "表面温度" in rd.note,
+          rd.value[:80] if rd else "")
+    check("没有高温：不提醒", not called)
+    scene.stove = True
+    await feel(scene.frame(3.0))
+    check("发现 60°C 以上的高温点：屏幕 ALERT，主动提醒", len(called) == 1 and called[0][0] == "hot"
+          and "必须说" in called[0][1] and b.eyes.mode_now in ("alert", "idle"), str(called)[:120])
+    await feel(scene.frame(4.0))
+    check("同一处高温 10 分钟内不重复提醒", len(called) == 1)
+    b.hot_alerted = -1e9
+    await b.on_head_event({"ev": "privacy", "on": True})
+    await feel(scene.frame(5.0))
+    check("隐私开关打开时不提醒", len(called) == 1)
+    b.memory.close()
+
+    b = thermal_brain(alert_seconds=3)
+    b.proactive = fake_proactive
+    called.clear()
+    await feel(scene.frame(3.0))
+    check("高温要持续 alert_seconds 秒才提醒（一闪而过不算）", not called and b.hot_since is not None)
+    b.memory.close()
+
+
+async def test_thermal_llm():
+    section("大模型：用热成像回答（联网）")
+    from dog import llm as llm_mod
+    from dog import senses as senses_mod
+    from dog import thermal
+    cfg = config.load()
+    llm = llm_mod.make(cfg["llm"])
+    a = thermal.analyze(thermal.FakeScene(seed=1).frame(3.0))
+    board = senses_mod.SenseBoard()
+    board.put(senses_mod.Reading("thermal", "热成像", thermal.describe(a), source="模拟器的假房间（热成像模块还没装）",
+                                 location="前脸，视野约 55°×35°，只看得到正前方", confidence=0, max_age=5,
+                                 note="测的是物体表面温度，不是空气温度；热源是什么是按温度和大小猜的，不一定对"))
+    board.put(senses_mod.Reading("room.temp", "室内温度", 22.0, "°C", source="温湿度传感器（还没装，现在是假数据）",
+                                 location="屋里（模拟）", confidence=0))
+
+    async def ask(text):
+        msgs = prompt.build(cfg["persona"], [], text, sensed=board.text(), via="text")
+        calls = []
+        async for line in llm_mod.lines(llm.stream(msgs)):
+            c, _ = skills.parse(line)
+            if c:
+                calls.append(c)
+        return calls, "".join(c.get("text", "") for c in calls if c["skill"] == "say")
+
+    calls, said = await ask("看看前面哪里最热")
+    check("“哪里最热” → 切到热成像，报出 52 度和方向，说明是模拟数据",
+          any(c["skill"] == "display" and c["mode"] == "thermal" for c in calls) and "52" in said and "右" in said
+          and any(w in said for w in ("模拟", "假数据", "未安装", "尚未安装")), said[:120])
+    calls, said = await ask("屋里现在多少度")
+    check("问室温：用温湿度的读数，不拿热成像的 52 度回答", "22" in said and "52" not in said, said[:120])
+
+
 # ---------------------------------------------------------------- 不联网：语音模型
 VOICE = None
 
@@ -692,6 +808,11 @@ async def main():
         check("test_ir", False, f"{type(e).__name__}: {e}")
         traceback.print_exc()
     try:
+        await test_thermal()
+    except Exception as e:
+        check("test_thermal", False, f"{type(e).__name__}: {e}")
+        traceback.print_exc()
+    try:
         await test_speech()
     except Exception as e:
         check("test_speech", False, f"{type(e).__name__}: {e}")
@@ -702,6 +823,7 @@ async def main():
         await test_memory_llm()
         await test_proactive_llm()
         await test_ir_llm()
+        await test_thermal_llm()
     else:
         print("\n（--quick 或没有密钥：跳过要联网的大模型测试）")
     bad = [r for r in RESULTS if not r[1]]

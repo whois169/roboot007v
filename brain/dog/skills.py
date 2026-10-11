@@ -12,7 +12,7 @@ DISPLAY_MODES = ("scan", "thermal", "alert", "idle")
 SKILLS = {
     "say":      {"desc": "说一句话。每次只放一句短话（不超过 40 字），想说多句就分成多行",
                  "args": {"text": ("str", 1, 80)}},
-    "display":  {"desc": "切换屏幕模式：scan 扫描、thermal 热成像（现在是假数据）、alert 警告、idle 待机",
+    "display":  {"desc": "切换屏幕模式：scan 扫描、thermal 热成像（屏幕显示热画面）、alert 警告、idle 待机",
                  "args": {"mode": ("enum", list(DISPLAY_MODES))}},
     "look":     {"desc": "看向某个方向",
                  "args": {"direction": ("enum", list(DIRECTIONS))}},

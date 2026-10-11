@@ -19,6 +19,7 @@ from .memory import Memory
 from .ir import IrCodes
 from .attention import Attention
 from . import protocol
+from . import thermal as thermal_mod
 from . import llm as llm_mod
 from . import prompt, skills
 from .audio import Microphone, Speaker
@@ -47,6 +48,9 @@ class Brain:
         self.ir_pending = None         # 大模型让学的按键：(家电, 动作)，等这次回答说完再开始学
         self.ir_wait = None            # 正在学：等 ESP32 回 learned / timeout / fail
         self.ir_sent = []              # 这次回答发了哪些红外按键
+        self.thermal = None            # 第⑨块：最近一帧热成像的分析结果（dog/thermal.py 的 analyze）
+        self.hot_since = None          # 高温点从什么时候开始一直在
+        self.hot_alerted = 0.0         # 上次高温提醒的时间
         self.quiet_until = 0.0         # quiet 技能设置的“安静到什么时候”
         self.attention = None          # 第⑥块：主动开口（语音模式、开了摄像头才有）
         self.privacy = False           # 头上的隐私开关拨到“隐私”了（相机和麦克风硬件断电）
@@ -75,6 +79,9 @@ class Brain:
         log.info("语音合成：%s", self.voice.name)
         weather_job = asyncio.create_task(self.weather.start()) if self.weather else None   # 和下面的加载一起进行
         await self.eyes.start()
+        th = self.cfg.get("thermal", {})
+        if th.get("hz", 1):
+            self.eyes.send_thermal({"hz": th.get("hz", 1)})       # 让头部每秒发热画面过来
         self.eyes.log("BOOT ROBODOG BRAIN")                        # 开机自检：屏幕上逐行打出真实的初始化过程
         react = self.cfg["react"]
         self.ack = ((tts_mod.beep(), 24000) if react.get("ack", "beep") == "beep"
@@ -284,7 +291,8 @@ class Brain:
 
     async def proactive(self, kind: str, why: str, then_listen=False):
         """主动开口：把“为什么想说”交给大模型，值得说才说（不值得它会 ignore）。"""
-        self.attention.spoke(kind)                  # 不管最后说没说，都算一次，免得反复问大模型
+        if self.attention:
+            self.attention.spoke(kind)              # 不管最后说没说，都算一次，免得反复问大模型
         log.info("想主动开口（%s）：%s", kind, why)
         self.eyes.log(f"ATTN {kind.upper()}")
         self.utt = {"via": "proactive", "kind": kind}
@@ -319,6 +327,8 @@ class Brain:
             self.set_privacy(ev["on"])
         elif kind == "ir":
             self.on_ir_event(ev)
+        elif kind == "thermal":
+            self.on_thermal(ev)
         elif kind == "hello":
             log.info("头部 ESP32 连上了：固件 %s，功能 %s", ev.get("fw", "?"), "、".join(ev.get("caps", [])) or "未说明")
             self.eyes.log(f"HEAD FW {ev.get('fw', '?')}")
@@ -659,6 +669,41 @@ class Brain:
             n = self.ir.forget(call["device"], "" if every else call["action"])
             self.eyes.log(f"IR FORGET {n}")
             log.info("忘掉了 %d 个遥控按键：%s %s", n, call["device"], "全部" if every else call["action"])
+
+    # ------------------------------------------------------------ 热成像
+    def on_thermal(self, ev: dict):
+        """收到一帧热画面：分析，放上感觉板；有持续的高温点就主动提醒。"""
+        th = self.cfg.get("thermal", {})
+        frame = thermal_mod.decode(ev)
+        a = self.thermal = thermal_mod.analyze(frame, fov=tuple(th.get("fov", (55, 35))), mirror=th.get("mirror", False),
+                                               min_rise=th.get("min_rise", 4.0))
+        real = self.eyes.is_real
+        self.board.put(senses_mod.Reading(
+            "thermal", "热成像", thermal_mod.describe(a),
+            source="头部热成像（MLX90640）" if real else "模拟器的假房间（热成像模块还没装）",
+            location="前脸，视野约 55°×35°，只看得到正前方", confidence=0.8 if real else 0, max_age=5,
+            note="测的是物体表面温度，不是空气温度；热源是什么是按温度和大小猜的，不一定对"))
+        now = time.monotonic()
+        limit = th.get("alert_temp", 60)
+        if a["max"] < limit:
+            if a["max"] < limit - 5:                       # 降下来了：下次再热起来可以再提醒
+                self.hot_since = None
+            return
+        if self.hot_since is None:
+            self.hot_since = now
+            self.eyes.log(f"TH HOT {a['max']:.0f}C")
+        lasted = now - self.hot_since
+        if (lasted >= th.get("alert_seconds", 5) and now - self.hot_alerted >= th.get("alert_repeat_minutes", 10) * 60
+                and self.state == "idle" and not self.privacy):
+            self.hot_alerted = now
+            spot = a["hot"][0] if a["hot"] else {"where": "画面里", "peak": a["max"], "guess": ""}
+            log.warning("热成像发现高温：%s %.1f°C，已经 %.0f 秒", spot["where"], spot["peak"], lasted)
+            self.state = "thinking"
+            self.eyes.mode("alert", text=f"HOT {spot['peak']:.0f}C", hold=2)
+            why = (f"热成像发现高温点：{spot['where']} {spot['peak']:.1f}°C，已经持续 {lasted:.0f} 秒（{spot['guess']}）。"
+                   "这是安全提醒，必须说：报出温度和方向，提醒用户去确认是不是忘了关火或关电器")
+            self.memory.add_event("thermal", f"热成像发现高温点：{spot['where']} {spot['peak']:.1f}°C")
+            asyncio.create_task(self.proactive("hot", why))
 
     # ------------------------------------------------------------ 红外遥控
     async def ir_learn_flow(self, device: str, action: str) -> str:

@@ -5,6 +5,8 @@
   {"ir":{"op":"learn","timeout":15}}                         开始学：等遥控器对着红外接收头按一下，最多等 timeout 秒
   {"ir":{"op":"send","code":{"proto":"NEC","bits":32,"value":"0x20DF10EF"}}}   发一个码
   {"ir":{"op":"cancel"}}                                     不学了
+              热成像指令：
+  {"thermal":{"hz":1}}                                       每秒发几帧热画面过来（0 = 不发，最多 8）
 ESP32 → 大脑：事件，都带 "ev" 字段，格式见 EVENTS，进来先过 check_event()：
 
   {"ev":"hello","fw":"0.1.0","caps":["touch","light"]}       开机或重连时发一次：固件版本、有哪些功能
@@ -17,8 +19,11 @@ ESP32 → 大脑：事件，都带 "ev" 字段，格式见 EVENTS，进来先过
   {"ev":"ir","op":"timeout"}                                  学习时一直没收到信号
   {"ev":"ir","op":"sent"}                                     码发完了
   {"ev":"ir","op":"fail","text":"..."}                        学习或发送出错
+  {"ev":"thermal","w":32,"h":24,"min":21.3,"max":55.2,"px":"<base64>"}   一帧热画面（格式见 dog/thermal.py）
 完整说明见 docs/头部通信协议.md。
 """
+from . import thermal
+
 
 ZONES = ("head", "chin")
 ACTIONS = ("tap", "hold", "release")
@@ -29,8 +34,6 @@ SENSORS = {
     "presence": ("毫米波检测到有人", "", "屏幕上方（LD2410，人背对着、不动也能测到）"),
     "presence_distance": ("毫米波测到的人的距离", "cm", "屏幕上方（LD2410）"),
     "head_temp": ("头内温度", "°C", "头壳里（ESP32 旁边，测的是头里不是屋里）"),
-    "thermal_max": ("热成像最高温度", "°C", "前脸热成像（MLX90640）"),
-    "thermal_min": ("热成像最低温度", "°C", "前脸热成像（MLX90640）"),
 }
 
 
@@ -61,6 +64,8 @@ def check_event(ev) -> str:
     elif kind == "error":
         if not isinstance(ev.get("code", ""), str):
             return "error 的 code 要是文字"
+    elif kind == "thermal":
+        return thermal.check(ev)
     elif kind == "ir":
         if ev.get("op") not in IR_EVENTS:
             return f"ir 事件的 op 只能是 {IR_EVENTS}"
@@ -106,6 +111,15 @@ def check_ir_code(code) -> str:
 def _is_hex(s) -> bool:
     return (isinstance(s, str) and s[:2].lower() == "0x" and 3 <= len(s) <= 2 + 2 * 64
             and all(c in "0123456789abcdefABCDEF" for c in s[2:]))
+
+
+def check_thermal_cmd(th) -> str:
+    """大脑发给 ESP32 的热成像指令（{"thermal": ...} 里面那一层）。"""
+    if not isinstance(th, dict) or set(th) != {"hz"}:
+        return "thermal 指令只有 hz 一个字段"
+    if isinstance(th["hz"], bool) or not isinstance(th["hz"], (int, float)) or not 0 <= th["hz"] <= 8:
+        return "thermal 的 hz 要是 0–8"
+    return ""
 
 
 def check_ir_cmd(ir) -> str:

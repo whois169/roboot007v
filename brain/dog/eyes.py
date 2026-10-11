@@ -11,6 +11,7 @@
 收到的每一行先过 protocol.check_event()，合法的交给 on_event（大脑注册的回调）。
 模拟器里用键盘代替：T = 摸头顶，C = 摸下巴（按住 1 秒以上 = hold），P = 拨隐私开关，
 R = 红外学习时“拿遥控器对着它按了一下”。模拟器收到发码指令，会回一个 sent。
+模拟器还假装有热成像：按大脑要的频率发假房间的热画面（dog/thermal.py 的 FakeScene），H = 打开 / 关掉假灶台。
 """
 import asyncio
 import json
@@ -19,7 +20,7 @@ import os
 import random
 import time
 
-from . import hud, protocol
+from . import hud, protocol, thermal
 
 log = logging.getLogger("eyes")
 
@@ -64,6 +65,14 @@ class Eyes:
         log.debug("[红外] %s", ir)
         self._send_line(json.dumps({"ir": ir}, ensure_ascii=False, separators=(",", ":")))
 
+    def send_thermal(self, th: dict):
+        """热成像指令：每秒发几帧过来。"""
+        err = protocol.check_thermal_cmd(th)
+        if err:
+            log.warning("热成像指令不合规，丢掉：%s（%s）", th, err)
+            return
+        self._send_line(json.dumps({"thermal": th}, separators=(",", ":")))
+
     def _send_line(self, line: str):
         raise NotImplementedError
 
@@ -83,7 +92,7 @@ class Eyes:
             return
         if ev["ev"] == "hb":
             self.last_hb = time.monotonic()
-        elif ev["ev"] != "sensor":
+        elif ev["ev"] not in ("sensor", "thermal"):        # 读数和热画面太频繁，不打印
             log.debug("[头部] %s", line)
         if self.on_event:
             asyncio.get_running_loop().create_task(self.on_event(ev))
@@ -117,6 +126,8 @@ class SimEyes(Eyes):
         self.title = f"{name} HUD 模拟器（284×76）"
         self._task = None
         self._ir_until = 0.0         # 模拟红外：学习到什么时候为止
+        self._th_hz, self._th_next, self._th_draw = 0, 0.0, 0.0   # 模拟热成像：发给大脑每秒几帧、下一帧何时发、何时重画
+        self.scene = thermal.FakeScene()
 
     async def start(self):
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
@@ -128,13 +139,15 @@ class SimEyes(Eyes):
         self.canvas = pygame.Surface((hud.W, hud.H))
         self.r = hud.HudRenderer(hud.Gfx(self.canvas), now=time.monotonic())
         self._task = asyncio.create_task(self._loop())
-        log.info("HUD 模拟器已打开。窗口快捷键：T 摸头顶、C 摸下巴（按住 1 秒 = 长按）、P 拨隐私开关、R 模拟按遥控器；"
+        log.info("HUD 模拟器已打开。窗口快捷键：T 摸头顶、C 摸下巴（按住 1 秒 = 长按）、P 拨隐私开关、R 模拟按遥控器、H 开关假灶台；"
                  "1-9、0、-、= 切换 12 个模式，方向键移动视线，Q/A 调音量，Esc 退出")
 
     def _send_line(self, line):
         cmd = json.loads(line)             # 和串口一样：收到一行文字再解析
         if "ir" in cmd:
             self._sim_ir(cmd["ir"])
+        elif "thermal" in cmd:
+            self._th_hz = cmd["thermal"]["hz"]
         else:
             self.r.apply(cmd)
 
@@ -165,6 +178,13 @@ class SimEyes(Eyes):
         pressed = {}                                     # 触摸键按下的时间，用来分“点一下”和“按住”
         while True:
             now = time.monotonic()
+            if now >= self._th_draw:                      # 模拟热成像：屏幕一直用自己的传感器画（每秒 4 帧，和真模块差不多）
+                self._th_draw = now + 0.25
+                fr = self.scene.frame(now)
+                self.r.set_thermal(fr.tolist(), sim=True)
+                if self._th_hz and now >= self._th_next:  # 按大脑要的频率，把这一帧发给大脑
+                    self._th_next = now + 1 / self._th_hz
+                    self._fake(thermal.encode(fr))
             if self._ir_until and now > self._ir_until:   # 学习超时
                 self._ir_until = 0.0
                 self._fake({"ev": "ir", "op": "timeout"})
@@ -189,6 +209,10 @@ class SimEyes(Eyes):
                 if e.key == pg.K_p:
                     privacy = not privacy
                     self._fake({"ev": "privacy", "on": privacy})
+                    continue
+                if e.key == pg.K_h:                      # 假灶台：开 / 关
+                    self.scene.stove = not self.scene.stove
+                    log.info("[模拟热成像] 假灶台%s", "打开（90°C 以上）" if self.scene.stove else "关掉")
                     continue
                 if e.key == pg.K_r:                      # 模拟按了一下遥控器
                     if self._ir_until:
@@ -262,6 +286,8 @@ class ConsoleEyes(Eyes):
         cmd = json.loads(line)
         if "ir" in cmd:
             log.info("[红外] %s（控制台模式没有红外硬件）", cmd["ir"]["op"])
+        elif "thermal" in cmd:
+            pass
         elif "mode" in cmd:
             log.info("[眼睛] %s %s", hud.LABEL[cmd["mode"]], cmd.get("text", ""))
 

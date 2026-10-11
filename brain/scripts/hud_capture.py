@@ -14,7 +14,7 @@ import pygame
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dog import hud  # noqa: E402
+from dog import hud, thermal  # noqa: E402
 
 SCALE = 3
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "hud_shots")
@@ -49,6 +49,7 @@ def main():
     r = hud.HudRenderer(hud.Gfx(surf), now=0.0, seed=7)
     send = lambda cmd: r.apply(json.loads(json.dumps(cmd)))      # 和串口一样：先变成一行 JSON 再解析
     send({"status": {"temp": 22.1, "sim": True, "bat": 87}})
+    scene = thermal.FakeScene(seed=3)                            # 热成像用模拟器的假房间
     t, frames, shots = 0.0, [], []
     last_sec, tele_n = -1, 0
     for mode, dur, extra, logs, wanted in SEQ:
@@ -84,6 +85,8 @@ def main():
                 send({"gaze": [0.45 * math.sin(t * 0.9), 0.3 * math.sin(t * 1.7)]})
             else:
                 send({"gaze": [0, 0]})
+            if mode == "thermal" and i % 8 == 0:
+                r.set_thermal(scene.frame(t).tolist(), sim=True)
             r.tick(t)
             big = pygame.transform.scale(surf, (hud.W * SCALE, hud.H * SCALE))
             img = Image.frombytes("RGB", big.get_size(), pygame.image.tobytes(big, "RGB"))
