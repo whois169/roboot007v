@@ -86,7 +86,8 @@ class Voice:
     def client(self):
         import httpx
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=httpx.Timeout(self.timeout, connect=2))
+            # trust_env=False：不走系统代理。语音服务只在本机或家里局域网上，走代理反而会被代理拦下（报 503）
+            self._client = httpx.AsyncClient(timeout=httpx.Timeout(self.timeout, connect=2), trust_env=False)
         return self._client
 
     async def health(self) -> dict | None:
