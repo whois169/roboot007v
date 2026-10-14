@@ -154,15 +154,11 @@ asr:
 
 # ---------------- 语音合成 ----------------
 tts:
-  engine: local              # local = 本地 MeloTTS（快、稳定、不联网）；edge = 微软 edge-tts（音色好，但国内常常很慢）
-  local:
-    model_dir: models/vits-melo-tts-zh_en
-    speed: 1.1               # 语速，1.0 = 正常
-    num_threads: 4
-  edge:                      # 只上传要说的文字
-    voice: zh-CN-YunyangNeural  # 中性、冷静的男声；其他可选：zh-CN-XiaoxiaoNeural、zh-CN-YunxiNeural
-    rate: "+5%"
-    pitch: "+0Hz"
+  url: http://127.0.0.1:8765  # 语音合成服务的地址（桌面 RoboDog_TTS 文件夹，双击 start.bat 启动）
+                             # 大脑搬到树莓派以后，改成笔记本在家里局域网的地址，比如 http://192.168.1.20:8765
+  speaker: ""                # 音色，空 = 用服务那边 config.json 里的默认音色（uncle_fu）
+  effect: ""                 # 机械感 off / light / medium，空 = 用服务那边的默认
+  timeout_seconds: 30
 
 # ---------------- 大模型（OpenAI 兼容接口，换厂家只改这里） ----------------
 # DeepSeek:  base_url https://api.deepseek.com                         model deepseek-chat

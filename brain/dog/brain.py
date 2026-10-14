@@ -91,7 +91,10 @@ class Brain:
         self.ack = ((tts_mod.beep(), 24000) if react.get("ack", "beep") == "beep"
                     else await self.voice.cached(react.get("ack_text", "在。")))
         self.chirp = (tts_mod.chirp(), 24000)
-        self.eyes.log("TTS " + ("LOCAL MELO" if self.cfg["tts"].get("engine") == "local" else "EDGE") + " OK")
+        h = await self.voice.health()
+        if h:
+            log.info("语音合成服务在线：音色 %s，机械感 %s", h.get("default_speaker"), h.get("effect"))
+        self.eyes.log("TTS QWEN3 OK" if h else "TTS OFFLINE")
         await self.setup_vision()
         self.eyes.log("CAM OK FACE YUNET" if self.sight else "CAM OFF")
         self.setup_senses()
@@ -604,18 +607,14 @@ class Brain:
         t0 = self._t0 = time.perf_counter()
         first_audio = []
         self.eyes.mode("think")
-        say_q: asyncio.Queue = asyncio.Queue()           # 里面放的是“正在合成”的任务，按说话顺序排
+        say_q: asyncio.Queue = asyncio.Queue()           # 里面放的是“已经开始要声音”的句子，按说话顺序排
 
-        async def synth(s):
-            t1 = time.perf_counter()
-            out = await self.voice.synth(s)
-            log.debug("合成「%s」用时 %.2f 秒", s[:10], time.perf_counter() - t1)
-            return out
-
-        async def play_worker():                          # 每句一到就开始合成（并行），播放按顺序
-            while (job := await say_q.get()) is not None:
-                out = await job
-                if not out or self.interrupted:            # 被摸了一下：后面的都不说了
+        async def play_worker():                          # 每句一出来就去要声音（服务那边排队合成），播放按顺序、边收边播
+            while (u := await say_q.get()) is not None:
+                if self.interrupted:                       # 被摸了一下：后面的都不说了
+                    u.cancel()
+                    continue
+                if await u.first() is None or self.interrupted:
                     continue
                 if not first_audio:
                     first_audio.append(time.perf_counter() - t0)
@@ -624,13 +623,11 @@ class Brain:
                 self.state = "speaking"
                 self.eyes.mode("speak")
                 self.utt["resp"] = round(first_audio[0], 2)
-                follow = asyncio.create_task(self.level_follow(*out))   # 声波跟着音量动
-                await self.speaker.play(*out)
-                follow.cancel()
+                await self.speaker.play_stream(u.chunks(), u.sr, on_chunk=self.level_chunk(u.sr))
                 self.recent_said = [x for x in self.recent_said if time.monotonic() < x[0]]   # 只留 30 秒内的
 
         def say(s):
-            say_q.put_nowait(asyncio.create_task(synth(s)))
+            say_q.put_nowait(self.voice.say(s))
 
         workers = [asyncio.create_task(play_worker())]
         context = {"sensed": await self.sensed(),
@@ -891,21 +888,22 @@ class Brain:
     async def speak_now(self, text: str):
         """不经过大模型，直接说一句（比如红外学习的结果）。"""
         print(f"{self.persona['name']}：{text}")
-        out = await self.voice.synth(text)
-        if not out or self.interrupted:
+        u = self.voice.say(text)
+        if await u.first() is None or self.interrupted:
             return
         self.state = "speaking"
         self.eyes.mode("speak")
         self.recent_said.append((time.monotonic() + 30, re.sub(r"[\W_]+", "", text)))
-        follow = asyncio.create_task(self.level_follow(*out))
-        await self.speaker.play(*out)
-        follow.cancel()
+        await self.speaker.play_stream(u.chunks(), u.sr, on_chunk=self.level_chunk(u.sr))
 
-    async def level_follow(self, pcm, sr):
-        """播放时每 0.05 秒把当前音量发给屏幕。"""
-        for v in envelope(pcm, sr):
-            self.eyes.level(v)
-            await asyncio.sleep(0.05)
+    def level_chunk(self, sr):
+        """边收边播时，每段开始播就把这一段的音量（每 0.05 秒一个）排好时间发给屏幕，声波跟着动。"""
+        loop = asyncio.get_running_loop()
+
+        def on_chunk(pcm):
+            for i, v in enumerate(envelope(pcm, sr)):
+                loop.call_later(i * 0.05, self.eyes.level, v)
+        return on_chunk
 
 
 _CN_DIGITS = "零一二三四五六七八九"

@@ -35,6 +35,58 @@ def check(name, ok, detail=""):
     print(f"  {'通过' if ok else '失败'}  {name}" + (f"（{detail}）" if detail else ""), flush=True)
 
 
+
+# ---------------------------------------------------------------- 测试用的假嘴巴、假扬声器（不出声、不连语音合成服务）
+class FakeUtt:
+    sr = 24000
+
+    def __init__(self, text):
+        self.text = text
+
+    async def first(self):
+        return np.zeros(2400, np.float32)
+
+    async def chunks(self):
+        yield np.zeros(2400, np.float32)
+
+    def cancel(self):
+        pass
+
+
+class FakeVoice:
+    name = "假语音（测试）"
+
+    def say(self, text):
+        return FakeUtt(text)
+
+    async def synth(self, text):
+        return np.zeros(2400, np.float32), 24000
+
+    async def cached(self, text):
+        return np.zeros(2400, np.float32), 24000
+
+    async def health(self):
+        return {"default_speaker": "fake", "effect": "off"}
+
+
+def mute(b, seconds=0.0, plays=None, stops=None):
+    """把大脑的嘴巴和扬声器换成假的：每句话“播” seconds 秒；plays、stops 记下播了几句、被停了几次。"""
+    b.voice = FakeVoice()
+    b.speaker.play = lambda pcm, sr: asyncio.ensure_future(asyncio.sleep(0))
+
+    async def fake_stream(chunks, sr):
+        async for _ in chunks:
+            pass
+        await asyncio.sleep(seconds)
+
+    def play_stream(chunks, sr, on_chunk=None, **_):
+        if plays is not None:
+            plays.append(1)
+        return asyncio.ensure_future(fake_stream(chunks, sr))
+    b.speaker.play_stream = play_stream
+    b.speaker.stop = (lambda: stops.append(1)) if stops is not None else (lambda: None)
+
+
 SKIPPED = []
 
 
@@ -149,7 +201,7 @@ async def test_memory_llm():
         cfg = config.load()
         cfg["memory"] = dict(cfg.get("memory", {}), home="e2e_test", folder="data/test_memory")
         b = Brain(cfg, eyes=ConsoleEyes())
-        b.speaker.play = lambda pcm, sr: asyncio.ensure_future(asyncio.sleep(0))
+        mute(b)
         return b
 
     b = make()
@@ -216,7 +268,7 @@ def test_attention():
     a.quiet_until = 0
     t[0] = datetime.datetime(2026, 10, 9, 23, 30).timestamp()
     check("夜里 23:30 不主动说", a.blocked("sit") != "")
-    check("本地合成前把 % 和时间转成能念的中文",
+    check("合成前把 % 和时间转成能念的中文",
           speakable("降水概率59%，现在22:14，外面20°C") == "降水概率百分之59，现在22点14分，外面20度")
 
 
@@ -238,7 +290,7 @@ async def test_proactive_llm():
     cfg = config.load()
     cfg["memory"] = dict(cfg.get("memory", {}), home="e2e_proactive", folder="data/test_memory")
     b = Brain(cfg, eyes=ConsoleEyes())
-    b.speaker.play = lambda pcm, sr: asyncio.ensure_future(asyncio.sleep(0))
+    mute(b)
     b.log_dir = "data/test_logs"
     b.memory.db.executescript("DELETE FROM facts; DELETE FROM events; DELETE FROM daily;")
     b.memory.add_fact("用户每天早上七点出门")
@@ -280,8 +332,7 @@ async def test_head_link():
     b.listener, b.ack, b.chirp = FakeListener(), (np.zeros(10, np.float32), 24000), (np.zeros(10, np.float32), 24000)
     b.wake = type("W", (), {"reset": lambda self: None})()
     plays, stops = [], []
-    b.speaker.play = lambda pcm, sr: plays.append(1) or asyncio.ensure_future(asyncio.sleep(0.4))
-    b.speaker.stop = lambda: stops.append(1)
+    mute(b, 0.4, plays, stops)
 
     async def feel(ev):                                  # 模拟 ESP32 发来一行，等大脑处理完
         b.eyes.receive_line(json.dumps(ev))
@@ -371,12 +422,8 @@ async def test_ir():
 
     b.listener, b.ack, b.chirp = Listener(), (np.zeros(10, np.float32), 24000), (np.zeros(10, np.float32), 24000)
     b.wake = type("W", (), {"reset": lambda self: None})()
-    b.speaker.play = lambda pcm, sr: asyncio.ensure_future(asyncio.sleep(0.05))
-    b.speaker.stop = lambda: None
+    mute(b, 0.05)
 
-    async def fake_synth(s):
-        return np.zeros(100, np.float32), 24000
-    b.voice.synth = fake_synth
     sent = []
     real_send_ir = b.eyes.send_ir
     b.eyes.send_ir = lambda ir: sent.append(ir) or real_send_ir(ir)
@@ -687,11 +734,8 @@ async def test_comfort_llm():
     section("大模型：室内外对比、屋里太热时的提醒（联网）")
     b = comfort_brain()
     b.llm = __import__("dog.llm", fromlist=["x"]).make(b.cfg["llm"])
-    b.speaker.play = lambda pcm, sr: asyncio.ensure_future(asyncio.sleep(0))
+    mute(b)
 
-    async def fake_synth(s):
-        return np.zeros(100, np.float32), 24000
-    b.voice.synth = fake_synth
     b.board.put(__import__("dog.senses", fromlist=["x"]).Reading(
         "room.temp", "室内温度", 24.3, "°C", source="头部温湿度传感器（SHT40）", location="头壳后下方通风口", confidence=0.9))
     await b.respond("屋里和外面温差多少", via="text")
@@ -760,12 +804,9 @@ def face_brain():
     sight.on_event = b.on_sight_event
     b.sight = sight
     b.board.add_provider(sight.readings)
-    b.speaker.play = lambda pcm, sr: asyncio.ensure_future(asyncio.sleep(0.01))
+    mute(b, 0.01)
     b.ack = b.chirp = (np.zeros(10, np.float32), 24000)
 
-    async def fake_synth(s):
-        return np.zeros(100, np.float32), 24000
-    b.voice.synth = fake_synth
     return b
 
 
@@ -916,35 +957,31 @@ async def test_faces_llm():
 
 
 # ---------------------------------------------------------------- 不联网：语音模型
-VOICE = None
+TTS_UP = None
 
 
 async def speech(text):
-    """用本地合成造一段测试语音（16k）。"""
-    global VOICE
+    """用语音合成服务造一段测试语音（16k）。服务没开返回 None。"""
     from dog.audio import resample
-    from dog.tts import LocalVoice
-    VOICE = VOICE or LocalVoice("models/vits-melo-tts-zh_en", speed=1.0)
-    pcm, sr = await VOICE.synth(text)
-    return resample(pcm, sr, 16000)
+    from dog.tts import Voice
+    out = await Voice(**config.load()["tts"]).synth(text)
+    return None if out is None else resample(out[0], out[1], 16000)
 
 
 async def test_speech():
-    section("语音模型：唤醒词、说话检测、识别、合成（都在本机）")
+    section("语音模型：唤醒词、说话检测、识别（测试语音由语音合成服务合成）")
     from dog.hearing import Listener, Recognizer, WakeWord
     cfg = config.load()
     w = cfg["wake"]
     kws = WakeWord(w["keywords"], w["threshold"], w["boost"])
     sil = np.zeros(8000, np.float32)
-    from dog.audio import resample
-    from dog.tts import EdgeVoice
-    out = await EdgeVoice("zh-CN-YunxiNeural").synth(w["keywords"][0])
+    out = await speech(w["keywords"][0])
     name = f"备用唤醒词「{w['keywords'][0]}」能唤醒"
-    if out is None:
-        skip(name, "连不上 edge-tts；本地合成的声音唤醒模型认不出，只能用 edge-tts 的声音或真人测")
+    audio = np.concatenate([sil, out, sil])
+    if any(kws.feed(audio[i:i + 1600]) for i in range(0, len(audio), 1600)):
+        check(name, True)
     else:
-        audio = np.concatenate([sil, resample(out[0], out[1], 16000), sil])
-        check(name, any(kws.feed(audio[i:i + 1600]) for i in range(0, len(audio), 1600)))
+        skip(name, "合成的声音唤醒模型认不出（真人可以）；唤醒词只是备用，不算失败")
     kws2 = WakeWord(w["keywords"], w["threshold"], w["boost"])
     other = await speech("今天天气不错，我们出去走走吧")
     check("普通句子不会误唤醒", not any(kws2.feed(other[i:i + 1600]) for i in range(0, len(other), 1600)))
@@ -1029,7 +1066,7 @@ async def run_flow(text, att=True, look=True, via_echo=False, mock=False, touch=
             b.recent_said = [(time.monotonic() + 30, re.sub(r"[\W_]+", "", text))]
 
     b.setup = setup
-    b.speaker.play = lambda pcm, sr: asyncio.ensure_future(asyncio.sleep(0))   # 不出声
+    mute(b)
     errors = []
 
     class Catch(logging.Handler):                       # 过程中出现任何报错都记下来
@@ -1130,12 +1167,17 @@ async def main():
     except Exception as e:
         check("test_faces", False, f"{type(e).__name__}: {e}")
         traceback.print_exc()
-    try:
-        await test_speech()
-    except Exception as e:
-        check("test_speech", False, f"{type(e).__name__}: {e}")
-        traceback.print_exc()
-    await test_flow(online)
+    from dog.tts import Voice
+    if await Voice(**config.load()["tts"]).health():
+        try:
+            await test_speech()
+        except Exception as e:
+            check("test_speech", False, f"{type(e).__name__}: {e}")
+            traceback.print_exc()
+        await test_flow(online)
+    else:
+        for name in ("语音模型（唤醒词、说话检测、识别）", "完整流程（看着它说话）"):
+            skip(name, "语音合成服务没开，造不出测试语音。先双击桌面 RoboDog_TTS 里的 start.bat")
     if online:
         await test_llm_judgement()
         await test_memory_llm()

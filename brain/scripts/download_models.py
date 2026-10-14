@@ -1,4 +1,4 @@
-"""下载语音模型到 brain/models/（第一次运行前执行一次；树莓派上也一样）。
+"""下载本地模型（唤醒词、说话检测、语音识别、人脸）到 brain/models/（第一次运行前执行一次；树莓派上也一样）。
 
 用法：python scripts/download_models.py
 网络断了再运行一次就行，会从断的地方接着下。
@@ -17,9 +17,6 @@ MODELS = [
     ("语音识别 SenseVoice（中英日韩粤；下载约 1GB，解压后只留 230MB 的压缩版）",
      f"{BASE}/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2",
      "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17"),
-    ("本地语音合成 MeloTTS（中英混合，约 160MB）",
-     f"{BASE}/tts-models/vits-melo-tts-zh_en.tar.bz2",
-     "vits-melo-tts-zh_en"),
     ("人脸检测 YuNet（OpenCV，约 300KB）",
      "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx",
      "face_detection_yunet_2023mar.onnx"),
@@ -29,9 +26,6 @@ MODELS = [
     ("人脸识别 SFace（OpenCV，认人用，约 37MB）",
      "https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx",
      "face_recognition_sface_2021dec.onnx"),
-    ("本地语音合成 Kokoro v1.1（中英，100 多种中文音色，约 140MB）",
-     f"{BASE}/tts-models/kokoro-int8-multi-lang-v1_1.tar.bz2",
-     "kokoro-int8-multi-lang-v1_1"),
 ]
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -78,7 +72,7 @@ def main():
                 t.extractall(DEST)
             os.remove(fname)
             # SenseVoice 包里同时带了完整精度（900MB）和 int8 压缩版（230MB），我们只用 int8。
-            # 注意有的包里 int8 只是个几百字节的占位文件（比如 MeloTTS），那就不能删完整版
+            # 注意有的包里 int8 只是个几百字节的占位文件，那就不能删完整版
             fp32 = os.path.join(target, "model.onnx")
             int8 = os.path.join(target, "model.int8.onnx")
             if os.path.exists(fp32) and os.path.exists(int8) and os.path.getsize(int8) > 1_000_000:

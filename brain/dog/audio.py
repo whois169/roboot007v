@@ -69,9 +69,63 @@ class Speaker:
         self._busy += 1
         return asyncio.create_task(self._play(pcm, sample_rate))
 
+    def play_stream(self, chunks, sample_rate: int, on_chunk=None, prebuffer_seconds=0.3) -> asyncio.Task:
+        """边收边播：chunks 是一段一段到的声音（async 迭代器）。先攒 prebuffer_seconds 再开始，免得刚开头就断。
+        on_chunk(段) 在每段开始播时调用（屏幕声波用）。"""
+        self._busy += 1
+        return asyncio.create_task(self._play_stream(chunks, sample_rate, on_chunk, prebuffer_seconds))
+
     def stop(self):
         """马上停止正在播放的声音（被摸了一下要它别说了）。"""
         sd.stop()
+        self._abort = True
+        s = getattr(self, "_stream", None)
+        if s is not None:
+            try:
+                s.abort()
+            except Exception:
+                pass
+
+    async def _play_stream(self, chunks, sr, on_chunk, prebuffer):
+        try:
+            async with self._lock:
+                self._abort = False
+                stream = sd.OutputStream(samplerate=sr, channels=1, dtype="float32", device=self.device, latency="high")
+                self._stream = stream
+                pending, started = [], False
+                try:
+                    async for x in chunks:
+                        if self._abort:
+                            break
+                        pending.append(x)
+                        if not started and sum(map(len, pending)) < prebuffer * sr:
+                            continue
+                        if not started:
+                            stream.start()
+                            started = True
+                        for p in pending:
+                            if on_chunk:
+                                on_chunk(p)
+                            await asyncio.to_thread(stream.write, p.reshape(-1, 1))
+                        pending = []
+                    if pending and not self._abort:      # 整句比攒的量还短
+                        if not started:
+                            stream.start()
+                        for p in pending:
+                            if on_chunk:
+                                on_chunk(p)
+                            await asyncio.to_thread(stream.write, p.reshape(-1, 1))
+                    if not self._abort:
+                        await asyncio.to_thread(stream.stop)     # 等缓冲里的声音播完
+                except sd.PortAudioError:
+                    if not self._abort:
+                        raise
+                finally:
+                    self._stream = None
+                    stream.close()
+        finally:
+            self._busy -= 1
+            self._last_end = time.monotonic()
 
     async def _play(self, pcm, sr):
         try:
