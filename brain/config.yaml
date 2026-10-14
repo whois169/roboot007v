@@ -156,8 +156,8 @@ asr:
 tts:
   url: http://127.0.0.1:8765  # 语音合成服务的地址（桌面 RoboDog_TTS 文件夹，双击 start.bat 启动）
                              # 大脑搬到树莓派以后，改成笔记本在家里局域网的地址，比如 http://192.168.1.20:8765
-  speaker: ""                # 音色，空 = 用服务那边 config.json 里的默认音色（uncle_fu）
-  effect: ""                 # 机械感 off / light / medium，空 = 用服务那边的默认
+  speaker: ""                # 音色，空 = 用服务那边 config.json 里的默认音色（现在是 dylan）
+  effect: ""                 # 音效 off / light / medium（机械感）/ broadcast（广播），空 = 用服务那边的默认
   timeout_seconds: 30
 
 # ---------------- 大模型（OpenAI 兼容接口，换厂家只改这里） ----------------
