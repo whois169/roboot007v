@@ -18,3 +18,5 @@ renders/
 bb/out/bb01.glb
 bb/out/bb01_data.js
 bb/preview/
+bb/out/mujoco/
+bb/out/sim.json

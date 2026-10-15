@@ -23,6 +23,7 @@ import trimesh
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import *  # noqa: E402,F401,F403
 import model as M  # noqa: E402
+from pack import pack_viewer  # noqa: E402
 
 V = cq.Vector
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
@@ -134,7 +135,7 @@ def interference(pose):
     hits = []
     for i in range(len(PARTS)):
         for j in range(i + 1, len(PARTS)):
-            if known(PARTS[i].name, PARTS[j].name):
+            if known(PARTS[i].name, PARTS[j].name) or is_visual(PARTS[i].name) or is_visual(PARTS[j].name):
                 continue
             a, b = bbs[i], bbs[j]
             if a.xmax < b.xmin or b.xmax < a.xmin or a.ymax < b.ymin or b.ymax < a.ymin or a.zmax < b.zmin or b.zmax < a.zmin:
@@ -161,6 +162,11 @@ def is_wheel(n):
     return "麦轮" in n
 
 
+def is_visual(n):
+    """只用来显示的零件（滚子、侧板），都在麦轮外包络里面，查碰撞用外包络代替。"""
+    return "麦轮滚子" in n or "麦轮侧板" in n
+
+
 # ---------------------------------------------------------------- 重量、重心
 def part_mass(p, frame_vol, bed_vol):
     for key in sorted(PART_MASS, key=len, reverse=True):
@@ -178,13 +184,25 @@ def is_bed(n):
 
 
 def is_frame(n):
-    return not is_bed(n) and any(k in n for k in ("侧板", "底板", "前板", "后板", "甲板", "2020横梁", "滑撬"))
+    return not is_bed(n) and not is_wheel(n) and any(k in n for k in ("侧板", "底板", "前板", "后板", "甲板", "2020横梁", "滑撬"))
 
 
 FRAME_VOL = sum(p.vol for p in PARTS if is_frame(p.name))
 BED_VOL = sum(p.vol for p in PARTS if is_bed(p.name))
 for p in PARTS:
     p.m = part_mass(p, FRAME_VOL, BED_VOL)
+
+
+def tri_margin(p, tri):
+    """点 p 到三角形各边的最小有向距离（正 = 在里面）。"""
+    a, b, c = tri
+    if (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) < 0:
+        b, c = c, b                                   # 统一成逆时针
+    out = []
+    for u, v in ((a, b), (b, c), (c, a)):
+        e = v - u
+        out.append((e[0] * (p[1] - u[1]) - e[1] * (p[0] - u[0])) / np.linalg.norm(e))
+    return min(out)
 
 
 def com(pose, payload):
@@ -230,7 +248,7 @@ def sweep():
     hits = []
     ground = {}        # 阶段 -> (最低, 零件)
     req_c, req_d = fcl.CollisionRequest(), fcl.DistanceRequest()
-    parts = [p for p in PARTS if not any(k in p.name for k in SWEEP_SKIP)]
+    parts = [p for p in PARTS if not any(k in p.name for k in SWEEP_SKIP) and not is_visual(p.name)]
     for stage, th, bz, pt in sweep_steps():
         tfs = {g: group_tf(g, th, bz, pt) for g in ("body", "head", *LEGS)}
         boxes = []
@@ -269,159 +287,164 @@ def sweep():
     return near, hits, ground
 
 
-# ---------------------------------------------------------------- 开始
-report = [f"笨笨 Mini（BB-01）骨架检查报告  {time.strftime('%Y-%m-%d %H:%M')}", "改尺寸：bb/config.py；重新生成：python bb/build.py", ""]
-rep = report.append
+if __name__ == "__main__":
+    # ---------------------------------------------------------------- 开始
+    report = [f"笨笨 Mini（BB-01）骨架检查报告  {time.strftime('%Y-%m-%d %H:%M')}", "改尺寸：bb/config.py；重新生成：python bb/build.py", ""]
+    rep = report.append
 
-rep("【姿态】")
-for k, ps in POSES.items():
-    lo, hi, zmin = pose_geometry(ps)
-    L, W, H = hi - lo
-    ps["dims"] = (L, W, H)
-    rep(f"  {ps['name']}：摆臂 {ps['theta']:+.1f}°，头 {ps['pitch']:+.0f}°，机身底离地 {ps['bz']:.0f} mm → "
-        f"长 {L:.0f} × 宽 {W:.0f} × 高 {H:.0f} mm")
-    low = min((z, n) for n, z in zmin.items() if not is_wheel(n) and "滑撬" not in n)
-    wheel = min(z for n, z in zmin.items() if is_wheel(n))
-    skid = min(z for n, z in zmin.items() if "滑撬" in n)
-    rep(f"      滑撬离地 {skid:.0f} mm；轮子最低 {wheel:.1f} mm；除轮子和滑撬外最低的是 {low[1]}（{low[0]:.0f} mm）")
-rep(f"  机身坐上滑撬时的摆臂角 {THETA_GROUND:+.1f}°（从这里往上翻，轮子离地）")
-rep("")
+    rep("【姿态】")
+    for k, ps in POSES.items():
+        lo, hi, zmin = pose_geometry(ps)
+        L, W, H = hi - lo
+        ps["dims"] = (L, W, H)
+        rep(f"  {ps['name']}：摆臂 {ps['theta']:+.1f}°，头 {ps['pitch']:+.0f}°，机身底离地 {ps['bz']:.0f} mm → "
+            f"长 {L:.0f} × 宽 {W:.0f} × 高 {H:.0f} mm")
+        low = min((z, n) for n, z in zmin.items() if not is_wheel(n) and "滑撬" not in n)
+        wheel = min(z for n, z in zmin.items() if is_wheel(n))
+        skid = min(z for n, z in zmin.items() if "滑撬" in n)
+        rep(f"      滑撬离地 {skid:.0f} mm；轮子最低 {wheel:.1f} mm；除轮子和滑撬外最低的是 {low[1]}（{low[0]:.0f} mm）")
+    rep(f"  机身坐上滑撬时的摆臂角 {THETA_GROUND:+.1f}°（从这里往上翻，轮子离地）")
+    rep("")
 
-rep("【干涉检查】（实体求交，> 2 mm³ 算撞；转轴、皮带、卡槽这些本来就套在一起的不算）")
-for k, ps in POSES.items():
-    hits = interference(ps)
-    ps["hits"] = hits
-    rep(f"  {ps['name']}：{len(hits)} 处" + ("" if not hits else "：" + "；".join(f"{a} ↔ {b} {v:.0f} mm³" for v, a, b in hits[:20])))
-print(f"干涉检查完 {time.time() - t0:.0f} 秒")
-rep("")
+    rep("【干涉检查】（实体求交，> 2 mm³ 算撞；转轴、皮带、卡槽这些本来就套在一起的不算）")
+    for k, ps in POSES.items():
+        hits = interference(ps)
+        ps["hits"] = hits
+        rep(f"  {ps['name']}：{len(hits)} 处" + ("" if not hits else "：" + "；".join(f"{a} ↔ {b} {v:.0f} mm³" for v, a, b in hits[:20])))
+    print(f"干涉检查完 {time.time() - t0:.0f} 秒")
+    rep("")
 
-rep("【折叠过程 + 抬头低头】（每 2° 摆一次，算不同刚体之间的最近距离；40 mm 以外不细算；髋部轴承座和臂座之间固定的 1 mm / 3 mm 转动缝不算）")
-near, shits, ground = sweep()
-if shits:
-    seen = set()
-    for stage, th, pt, a, b, d in shits:
-        if (a, b) in seen:
-            continue
-        seen.add((a, b))
-        rep(f"  撞：{stage}，摆臂 {th:+.0f}°、头 {pt:+.0f}° 时 {a} ↔ {b}" + (f"（进地 {d:.1f} mm）" if b == "地面" else ""))
-else:
-    rep("  全程没有相撞，也没有零件进到地面以下")
-CN = dict(body="机身", head="屏幕头", **{k: v[2] + "腿" for k, v in LEGS.items()})
-for (ga, gb), (d, a, b, stage, th, pt) in sorted(near.items(), key=lambda x: x[1][0]):
-    rep(f"  {CN[ga]} ↔ {CN[gb]}：最近 {d:.1f} mm（{a} ↔ {b}，{stage}，摆臂 {th:+.0f}°、头 {pt:+.0f}°）")
-for stage, (z, n) in ground.items():
-    rep(f"  {stage}：除轮子和滑撬外离地最低 {z:.0f} mm（{n}）")
-print(f"折叠轨迹完 {time.time() - t0:.0f} 秒")
-rep("")
+    rep("【折叠过程 + 抬头低头】（每 2° 摆一次，算不同刚体之间的最近距离；40 mm 以外不细算；髋部轴承座和臂座之间固定的 1 mm / 3 mm 转动缝不算）")
+    near, shits, ground = sweep()
+    if shits:
+        seen = set()
+        for stage, th, pt, a, b, d in shits:
+            if (a, b) in seen:
+                continue
+            seen.add((a, b))
+            rep(f"  撞：{stage}，摆臂 {th:+.0f}°、头 {pt:+.0f}° 时 {a} ↔ {b}" + (f"（进地 {d:.1f} mm）" if b == "地面" else ""))
+    else:
+        rep("  全程没有相撞，也没有零件进到地面以下")
+    CN = dict(body="机身", head="屏幕头", **{k: v[2] + "腿" for k, v in LEGS.items()})
+    for (ga, gb), (d, a, b, stage, th, pt) in sorted(near.items(), key=lambda x: x[1][0]):
+        rep(f"  {CN[ga]} ↔ {CN[gb]}：最近 {d:.1f} mm（{a} ↔ {b}，{stage}，摆臂 {th:+.0f}°、头 {pt:+.0f}°）")
+    for stage, (z, n) in ground.items():
+        rep(f"  {stage}：除轮子和滑撬外离地最低 {z:.0f} mm（{n}）")
+    print(f"折叠轨迹完 {time.time() - t0:.0f} 秒")
+    rep("")
 
-rep("【重量和重心】")
-dep = POSES["deploy"]
-xf = HIP_X + ARM * math.cos(math.radians(STANCE_DEG))
-yw = BODY_W / 2 + WHEEL_GAP + WHEEL_W / 2
-summary = {}
-for label, pl in (("空车", False), (f"满载 {PAYLOAD:.0f} kg", True)):
-    m, c = com(dep, pl)
-    h = c[2]
-    front = (c[0] + xf) / (2 * xf)
-    nf, nr = m * front / 2, m * (1 - front) / 2
-    lever = ARM * math.cos(math.radians(STANCE_DEG)) / 1000
-    tip_side = math.degrees(math.atan((yw - abs(c[1])) / h))
-    tip_fwd = math.degrees(math.atan((xf - c[0]) / h))
-    tip_back = math.degrees(math.atan((xf + c[0]) / h))
-    # 抬左前腿：重心要在 前右、后左、后右 三个轮子围成的三角形里；算到对角线（前右—后左）的距离
-    a, b = np.array([xf, -yw]), np.array([-xf, yw])
-    dvec = b - a
-    cross = dvec[0] * (c[1] - a[1]) - dvec[1] * (c[0] - a[0])
-    margin = -cross / np.linalg.norm(dvec)          # 正 = 在三角形里面（远离抬起的那条腿）
-    rep(f"  {label}：{m:.1f} kg，重心 x {c[0]:+.0f} / y {c[1]:+.0f} / 离地 {h:.0f} mm")
-    rep(f"      前轮各 {nf:.1f} kg、后轮各 {nr:.1f} kg；撑住车身的髋扭矩 前 {nf * 9.81 * lever:.1f} / 后 {nr * 9.81 * lever:.1f} N·m")
-    rep(f"      侧翻临界 {tip_side:.0f}°，往前翻 {tip_fwd:.0f}°，往后翻 {tip_back:.0f}°")
-    rep(f"      抬左前腿：重心离对角线 {margin:+.0f} mm（{'在三条腿里面' if margin > 0 else '在外面，会往抬起的那边倒'}，第 3 步仿真处理）")
-    summary[label] = dict(mass=round(m, 1), com=[round(float(v)) for v in c], tip_side=round(tip_side), tip_fwd=round(tip_fwd),
-                          tip_back=round(tip_back), lift_margin=round(float(margin)))
-# 从趴着撑起来（满载）：沿第①段反着走，髋扭矩最大的地方
-m, c0 = com(dep, True)
-worst = (0, 0)
-for _, th, bz, _ in [s for s in sweep_steps() if s[0].startswith("①")]:
-    x = HIP_X + ARM * math.cos(math.radians(th))
-    front = (c0[0] + x) / (2 * x)
-    tq = max(front, 1 - front) * m / 2 * 9.81 * ARM * math.cos(math.radians(th)) / 1000
-    worst = max(worst, (tq, th))
-rep(f"  满载从趴着撑起来：髋扭矩最大 {worst[0]:.1f} N·m（摆臂 {worst[1]:+.0f}°）；髋驱动额定约 {6.9 * 3:.1f} N·m")
-rep("")
+    rep("【重量和重心】")
+    dep = POSES["deploy"]
+    xf = HIP_X + ARM * math.cos(math.radians(STANCE_DEG))
+    yw = BODY_W / 2 + WHEEL_GAP + WHEEL_W / 2
+    summary = {}
+    for label, pl in (("空车", False), (f"满载 {PAYLOAD:.0f} kg", True)):
+        m, c = com(dep, pl)
+        h = c[2]
+        front = (c[0] + xf) / (2 * xf)
+        nf, nr = m * front / 2, m * (1 - front) / 2
+        lever = ARM * math.cos(math.radians(STANCE_DEG)) / 1000
+        tip_side = math.degrees(math.atan((yw - abs(c[1])) / h))
+        tip_fwd = math.degrees(math.atan((xf - c[0]) / h))
+        tip_back = math.degrees(math.atan((xf + c[0]) / h))
+        # 原地直接抬一条腿（其他腿不动）：重心要落在另外三个轮子围成的三角形里
+        wheels = {k: np.array([LEGS[k][0] * xf, LEGS[k][1] * yw]) for k in LEGS}
+        margins = {k: tri_margin(c[:2], [wheels[j] for j in LEGS if j != k]) for k in LEGS}
+        rep(f"  {label}：{m:.1f} kg，重心 x {c[0]:+.0f} / y {c[1]:+.0f} / 离地 {h:.0f} mm")
+        rep(f"      前轮各 {nf:.1f} kg、后轮各 {nr:.1f} kg；撑住车身的髋扭矩 前 {nf * 9.81 * lever:.1f} / 后 {nr * 9.81 * lever:.1f} N·m")
+        rep(f"      侧翻临界 {tip_side:.0f}°，往前翻 {tip_fwd:.0f}°，往后翻 {tip_back:.0f}°")
+        rep("      其他腿不动、直接抬一条腿，重心离三轮三角形的边：" + "，".join(f"{LEGS[k][2]} {v:+.0f} mm" for k, v in margins.items())
+            + "（正 = 在里面；要靠调姿势加大，见仿真报告）")
+        summary[label] = dict(mass=round(m, 1), com=[round(float(v)) for v in c], tip_side=round(tip_side), tip_fwd=round(tip_fwd),
+                              tip_back=round(tip_back), lift_margin={LEGS[k][2]: round(float(v)) for k, v in margins.items()})
+    # 从趴着撑起来（满载）：沿第①段反着走，髋扭矩最大的地方
+    m, c0 = com(dep, True)
+    worst = (0, 0)
+    for _, th, bz, _ in [s for s in sweep_steps() if s[0].startswith("①")]:
+        x = HIP_X + ARM * math.cos(math.radians(th))
+        front = (c0[0] + x) / (2 * x)
+        tq = max(front, 1 - front) * m / 2 * 9.81 * ARM * math.cos(math.radians(th)) / 1000
+        worst = max(worst, (tq, th))
+    rep(f"  满载从趴着撑起来：髋扭矩最大 {worst[0]:.1f} N·m（摆臂 {worst[1]:+.0f}°）；髋驱动额定约 {6.9 * 3:.1f} N·m")
+    rep("")
 
-rep("【整机宽度】")
-rep(f"  机身 {BODY_W:.0f} + 两边各（间隙 {WHEEL_GAP:.0f} + 轮宽 {WHEEL_W:.0f} + 轮子电机 {WHEEL_MOTOR_W:.0f} + 外板 {OUTER_PLATE_T:.0f}）"
-    f"= {2 * M.half_width():.0f} mm")
-rep("")
+    rep("【整机宽度】")
+    rep(f"  机身 {BODY_W:.0f} + 两边各（间隙 {WHEEL_GAP:.0f} + 轮宽 {WHEEL_W:.0f} + 轮子电机 {WHEEL_MOTOR_W:.0f} + 外板 {OUTER_PLATE_T:.0f}）"
+        f"= {2 * M.half_width():.0f} mm")
+    rep("")
 
-total_m = sum(p.m for p in PARTS) + MASS_SHELLS
-rep(f"零件 {len(PARTS)} 个，自重合计 {total_m:.1f} kg（含外壳 {MASS_SHELLS} kg）；用时 {time.time() - t0:.0f} 秒")
+    total_m = sum(p.m for p in PARTS) + MASS_SHELLS
+    rep(f"零件 {len(PARTS)} 个，自重合计 {total_m:.1f} kg（含外壳 {MASS_SHELLS} kg）；用时 {time.time() - t0:.0f} 秒")
 
-with open(os.path.join(OUT, "report.txt"), "w", encoding="utf-8") as f:
-    f.write("\n".join(report) + "\n")
-print("\n".join(report))
-
-
-# ---------------------------------------------------------------- GLB（各刚体组在自己的局部坐标里，按 组|颜色 分节点）+ rig.json
-COL = dict(armor="#4b5159", alu="#b9bfc7", profile="#9ea5ad", black="#1b1d20", motor="#2c3035", steel="#d3d7db",
-           trim="#c8cdd3", pcb="#1f6b48", battery="#2f5c9e", printed="#6e747b", glass="#0c1a22", wheel="#26292d")
-EMISSIVE = dict(glass=(0.0, 0.35, 0.45))
-METAL = ("alu", "steel", "trim", "profile")
+    with open(os.path.join(OUT, "report.txt"), "w", encoding="utf-8") as f:
+        f.write("\n".join(report) + "\n")
+    print("\n".join(report))
 
 
-def lin(v):
-    """sRGB 0–255 → 线性 0–255。"""
-    x = v / 255
-    return round(255 * (x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4))
+    # ---------------------------------------------------------------- GLB（各刚体组在自己的局部坐标里，按 组|颜色 分节点）+ rig.json
+    COL = dict(armor="#4b5159", alu="#b9bfc7", profile="#9ea5ad", black="#1b1d20", motor="#2c3035", steel="#d3d7db",
+               trim="#c8cdd3", pcb="#1f6b48", battery="#2f5c9e", printed="#6e747b", glass="#0c1a22", wheel="#26292d")
+    EMISSIVE = dict(glass=(0.0, 0.35, 0.45))
+    METAL = ("alu", "steel", "trim", "profile")
 
 
-def gl(p):
-    """机身坐标 (X前 Y左 Z上, mm) -> glTF (x=左, y=上, z=前, m)，是旋转不是镜像。"""
-    return [p[1] / 1000.0, p[2] / 1000.0, p[0] / 1000.0]
+    def lin(v):
+        """sRGB 0–255 → 线性 0–255。"""
+        x = v / 255
+        return round(255 * (x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4))
 
 
-scene = trimesh.Scene()
-for g in ("body", "head", *LEGS):
-    bycol = {}
-    for p in PARTS:
-        if p.g != g:
-            continue
-        vs, fs = p.s.tessellate(0.1, 0.12)
-        if not fs:
-            continue
-        v = np.array([[q.x, q.y, q.z] for q in vs])
-        bycol.setdefault(p.c, []).append(trimesh.Trimesh(vertices=np.column_stack([v[:, 1], v[:, 2], v[:, 0]]) / 1000.0,
-                                                         faces=np.array(fs), process=False))
-    for c, ms in bycol.items():
-        mesh = trimesh.util.concatenate(ms)
-        rgb = [lin(int(COL[c][i:i + 2], 16)) for i in (1, 3, 5)]          # glTF 的颜色是线性空间
-        mesh.visual = trimesh.visual.TextureVisuals(material=trimesh.visual.material.PBRMaterial(
-            name=c, baseColorFactor=rgb + [255], metallicFactor=0.85 if c in METAL else (0.4 if c == "motor" else 0.05),
-            roughnessFactor=0.35 if c in METAL else (0.1 if c == "glass" else 0.7),
-            emissiveFactor=list(EMISSIVE.get(c, (0, 0, 0)))))
-        scene.add_geometry(mesh, node_name=f"{g}|{c}", geom_name=f"{g}|{c}")
-scene.export(os.path.join(OUT, "bb01.glb"))
+    def gl(p):
+        """机身坐标 (X前 Y左 Z上, mm) -> glTF (x=左, y=上, z=前, m)，是旋转不是镜像。"""
+        return [p[1] / 1000.0, p[2] / 1000.0, p[0] / 1000.0]
 
-rig = dict(
-    pivots={g: gl((LEGS[g][0] * HIP_X, 0, HIP_Z)) for g in LEGS} | {"head": gl((NECK_X, 0, PIVOT_Z)), "body": [0, 0, 0]},
-    sign={g: LEGS[g][0] for g in LEGS},
-    R=R / 1000, HIP_Z=HIP_Z / 1000, ARM=ARM / 1000, SKID_H=SKID_H / 1000,
-    deck=M.DECK / 1000, bed=[(BED_X0 + PROFILE) / 1000, (BED_X1 - PROFILE) / 1000], bed_half_w=(RAIL_Y - PROFILE / 2) / 1000,
-    payload=PAYLOAD, payload_up=PAYLOAD_UP / 1000,
-    theta=dict(stance=STANCE_DEG, ground=THETA_GROUND, fold=THETA_FOLD),
-    pitch=HEAD_PITCH,
-    dims={POSES[k]["name"]: [round(float(v)) for v in POSES[k]["dims"]] for k in POSES},
-    hits={POSES[k]["name"]: len(POSES[k]["hits"]) for k in POSES},
-    sweep_hits=len(shits),
-    near={f"{CN[a]}↔{CN[b]}": round(v[0], 1) for (a, b), v in near.items()},
-    mass=summary,
-)
-with open(os.path.join(OUT, "rig.json"), "w", encoding="utf-8") as f:
-    json.dump(rig, f, ensure_ascii=False, indent=1)
-# 网页查看器用：模型 + 参数打包成一个 .js（Artifact 不能直接放 .glb）
-with open(os.path.join(OUT, "bb01.glb"), "rb") as f:
-    glb64 = base64.b64encode(f.read()).decode("ascii")
-with open(os.path.join(OUT, "bb01_data.js"), "w", encoding="utf-8") as f:
-    f.write("window.BB01 = " + json.dumps(dict(rig=rig, glb=glb64), ensure_ascii=False) + ";\n")
-print(f"导出 bb/out/bb01.glb、rig.json、bb01_data.js，共 {time.time() - t0:.0f} 秒")
+
+    def node_of(p):
+        """GLB 节点：麦轮单独一组（原点在轮轴上，能转），其余按刚体组。"""
+        if p.g in LEGS and is_wheel(p.name):
+            return p.g + "w", np.array([LEGS[p.g][0] * ARM, 0.0, 0.0])
+        return p.g, np.zeros(3)
+
+
+    scene = trimesh.Scene()
+    for g in ("body", "head", *LEGS, *[k + "w" for k in LEGS]):
+        bycol = {}
+        for p in PARTS:
+            ng, off = node_of(p)
+            if ng != g or p.c == "envelope":
+                continue
+            vs, fs = p.s.tessellate(0.1, 0.12) if "滚子" not in p.name else p.s.tessellate(0.3, 0.3)
+            if not fs:
+                continue
+            v = np.array([[q.x, q.y, q.z] for q in vs]) - off
+            bycol.setdefault(p.c, []).append(trimesh.Trimesh(vertices=np.column_stack([v[:, 1], v[:, 2], v[:, 0]]) / 1000.0,
+                                                             faces=np.array(fs), process=False))
+        for c, ms in bycol.items():
+            mesh = trimesh.util.concatenate(ms)
+            rgb = [lin(int(COL[c][i:i + 2], 16)) for i in (1, 3, 5)]          # glTF 的颜色是线性空间
+            mesh.visual = trimesh.visual.TextureVisuals(material=trimesh.visual.material.PBRMaterial(
+                name=c, baseColorFactor=rgb + [255], metallicFactor=0.85 if c in METAL else (0.4 if c == "motor" else 0.05),
+                roughnessFactor=0.35 if c in METAL else (0.1 if c == "glass" else 0.7),
+                emissiveFactor=list(EMISSIVE.get(c, (0, 0, 0)))))
+            scene.add_geometry(mesh, node_name=f"{g}|{c}", geom_name=f"{g}|{c}")
+    scene.export(os.path.join(OUT, "bb01.glb"))
+
+    rig = dict(
+        pivots={g: gl((LEGS[g][0] * HIP_X, 0, HIP_Z)) for g in LEGS} | {"head": gl((NECK_X, 0, PIVOT_Z)), "body": [0, 0, 0]},
+        sign={g: LEGS[g][0] for g in LEGS},
+        wheel={g: gl((LEGS[g][0] * ARM, 0, 0)) for g in LEGS},           # 轮轴在摆臂坐标里的位置
+        R=R / 1000, HIP_Z=HIP_Z / 1000, ARM=ARM / 1000, SKID_H=SKID_H / 1000,
+        deck=M.DECK / 1000, bed=[(BED_X0 + PROFILE) / 1000, (BED_X1 - PROFILE) / 1000], bed_half_w=(RAIL_Y - PROFILE / 2) / 1000,
+        payload=PAYLOAD, payload_up=PAYLOAD_UP / 1000,
+        theta=dict(stance=STANCE_DEG, ground=THETA_GROUND, fold=THETA_FOLD),
+        pitch=HEAD_PITCH,
+        dims={POSES[k]["name"]: [round(float(v)) for v in POSES[k]["dims"]] for k in POSES},
+        hits={POSES[k]["name"]: len(POSES[k]["hits"]) for k in POSES},
+        sweep_hits=len(shits),
+        near={f"{CN[a]}↔{CN[b]}": round(v[0], 1) for (a, b), v in near.items()},
+        mass=summary,
+    )
+    with open(os.path.join(OUT, "rig.json"), "w", encoding="utf-8") as f:
+        json.dump(rig, f, ensure_ascii=False, indent=1)
+    pack_viewer()
+    print(f"导出 bb/out/bb01.glb、rig.json、bb01_data.js，共 {time.time() - t0:.0f} 秒")

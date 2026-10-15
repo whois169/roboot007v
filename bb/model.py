@@ -217,10 +217,42 @@ def leg_parts_FL():
         ("箱形臂座", stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R, hub0 + 2, my1), "armor"),
         ("摆臂外板", stadium_xz(0, ARM, ARM_END_R, my1, oy1), "alu"),
         ("轮子电机GIM4310", cyl_y(ARM, 0, WHEEL_MOTOR_D, wy1, my1), "motor"),
-        ("麦轮152", cyl_y(ARM, 0, WHEEL_D, wy0, wy1), "wheel"),
+        ("麦轮外包络", cyl_y(ARM, 0, WHEEL_D, wy0, wy1), "envelope"),      # 只用来查碰撞，不显示
         ("麦轮轮毂", cyl_y(ARM, 0, 60, wy0 - 1, wy1 + 1), "trim"),
+        ("麦轮侧板内", cyl_y(ARM, 0, WHEEL_PLATE_D, wy0, wy0 + WHEEL_PLATE_T), "steel"),
+        ("麦轮侧板外", cyl_y(ARM, 0, WHEEL_PLATE_D, wy1 - WHEEL_PLATE_T, wy1), "steel"),
     ]
+    yc = (wy0 + wy1) / 2
+    barrel = roller_solid()
+    for k in range(ROLLERS):
+        p, a = roller_axis(k, -1)                    # 左前轮：着地那个滚子的轴线朝“前右”
+        s = barrel
+        ang = math.degrees(math.acos(max(-1.0, min(1.0, a[2]))))
+        ax = (-a[1], a[0], 0.0)                      # z × a
+        if ang > 1e-6:
+            s = s.rotate(V(0, 0, 0), V(*ax), ang)
+        P.append((f"麦轮滚子{k + 1:02d}", s.translate(V(ARM + p[0], yc + p[1], p[2])), "wheel"))
     return P
+
+
+def roller_axis(k, s):
+    """第 k 个滚子的中心和轴向（轮心坐标）。s = 着地滚子轴线的左右方向：-1 朝前右（左前、右后轮），+1 朝前左。"""
+    al = 2 * math.pi * k / ROLLERS
+    t = (-math.sin(al), 0.0, math.cos(al))
+    c45 = math.sqrt(0.5)
+    return (ROLLER_C * math.cos(al), 0.0, ROLLER_C * math.sin(al)), (c45 * t[0], s * c45, c45 * t[2])
+
+
+def roller_radius(tau):
+    """滚子在轴向位置 tau 处的半径：外缘正好落在 Φ152 圆柱上。"""
+    return WHEEL_D / 2 - math.sqrt(ROLLER_C ** 2 + tau * tau / 2)
+
+
+def roller_solid():
+    """一个桶形滚子，轴线沿 Z、中心在原点。"""
+    n = 12
+    pts = [(0.0, -ROLLER_H)] + [(roller_radius(-ROLLER_H + 2 * ROLLER_H * i / n), -ROLLER_H + 2 * ROLLER_H * i / n) for i in range(n + 1)] + [(0.0, ROLLER_H)]
+    return cq.Workplane("XZ").polyline(pts).close().revolve(360, (0, 0, 0), (0, 1, 0)).val()
 
 
 def half_width():
