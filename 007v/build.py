@@ -382,21 +382,7 @@ if __name__ == "__main__":
 
 
     # ---------------------------------------------------------------- GLB（各刚体组在自己的局部坐标里，按 组|颜色 分节点）+ rig.json
-    COL = dict(armor="#4b5159", alu="#b9bfc7", profile="#9ea5ad", black="#1b1d20", motor="#2c3035", steel="#d3d7db",
-               trim="#c8cdd3", pcb="#1f6b48", battery="#2f5c9e", printed="#6e747b", glass="#0c1a22", wheel="#26292d")
-    EMISSIVE = dict(glass=(0.0, 0.35, 0.45))
-    METAL = ("alu", "steel", "trim", "profile")
-
-
-    def lin(v):
-        """sRGB 0–255 → 线性 0–255。"""
-        x = v / 255
-        return round(255 * (x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4))
-
-
-    def gl(p):
-        """机身坐标 (X前 Y左 Z上, mm) -> glTF (x=左, y=上, z=前, m)，是旋转不是镜像。"""
-        return [p[1] / 1000.0, p[2] / 1000.0, p[0] / 1000.0]
+    from look import COL, EMISSIVE, METAL, gl, lin
 
 
     def node_of(p):
