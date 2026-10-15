@@ -14,9 +14,9 @@ node_modules/
 out/robodog.glb
 out/mujoco/meshes/
 renders/
-# 笨笨 Mini：bb/build.py 生成的 3D 模型和打包数据（重新跑就有）
-bb/out/bb01.glb
-bb/out/bb01_data.js
-bb/preview/
-bb/out/mujoco/
-bb/out/sim.json
+# 机械狗007v：007v/build.py 生成的 3D 模型和打包数据（重新跑就有）
+007v/out/007v.glb
+007v/out/007v_data.js
+007v/preview/
+007v/out/mujoco/
+007v/out/sim.json

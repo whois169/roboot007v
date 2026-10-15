@@ -1,12 +1,12 @@
-"""导出笨笨 Mini（BB-01）的 MuJoCo 仿真模型：bb/out/mujoco/bb01.xml + meshes/*.stl
+"""导出机械狗007v的 MuJoCo 仿真模型：007v/out/mujoco/007v.xml + meshes/*.stl
 
 刚体：机身（自由浮动）、屏幕头、4 个摆臂、4 个麦轮、每个麦轮 12 个能自由转的 45° 滚子。
-重量、重心、惯量按 CAD 实体逐个零件算（重量表在 bb/config.py）；外壳 1.5 kg 按机身盒子算。
+重量、重心、惯量按 CAD 实体逐个零件算（重量表在 007v/config.py）；外壳 1.5 kg 按机身盒子算。
 碰撞：只有滚子（每个滚子 7 个球，外缘落在 Φ152 圆柱上）、机身盒子、滑撬、头部盒子和地面碰，不算自碰撞。
 执行器都是力矩电机，控制器在 run_sim.py 里写（模拟真实电机的位置/速度环 + 力矩上限）。
 货物：机身上的 cargo 刚体，run_sim.py 按场景把 PAYLOAD_MASS 换成 0 或 10。
 
-用法：python bb/sim/export_mujoco.py      （run_sim.py 会自动调用）
+用法：python 007v/sim/export_mujoco.py      （run_sim.py 会自动调用）
 """
 import math
 import os
@@ -15,8 +15,8 @@ import sys
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-BB = os.path.dirname(HERE)
-sys.path.insert(0, BB)
+ROOT = os.path.dirname(HERE)
+sys.path.insert(0, ROOT)
 import cadquery as cq  # noqa: E402
 import trimesh  # noqa: E402
 
@@ -24,7 +24,7 @@ import build as B  # noqa: E402
 import model as M  # noqa: E402
 from config import *  # noqa: E402,F401,F403
 
-MJ = os.path.join(BB, "out", "mujoco")
+MJ = os.path.join(ROOT, "out", "mujoco")
 MESH = os.path.join(MJ, "meshes")
 R = WHEEL_D / 2
 WHEEL_YC = BODY_W / 2 + WHEEL_GAP + WHEEL_W / 2
@@ -171,8 +171,8 @@ def main():
     for k in B.LEGS:
         qpos_stand += [math.radians(STANCE_DEG), 0] + [0] * ROLLERS
     qpos_stand += [0]
-    xml = f'''<mujoco model="bb01">
-  <!-- 由 bb/sim/export_mujoco.py 生成，不要手改 -->
+    xml = f'''<mujoco model="dog007v">
+  <!-- 由 007v/sim/export_mujoco.py 生成，不要手改 -->
   <compiler angle="radian" meshdir="meshes" autolimits="true"/>
   <option timestep="0.0005" integrator="implicitfast" cone="elliptic"/>
   <visual><global offwidth="1280" offheight="720"/></visual>
@@ -220,9 +220,9 @@ def main():
   <keyframe><key name="stand" qpos="{f(qpos_stand)}"/></keyframe>
 </mujoco>
 '''
-    with open(os.path.join(MJ, "bb01.xml"), "w", encoding="utf-8") as fo:
+    with open(os.path.join(MJ, "007v.xml"), "w", encoding="utf-8") as fo:
         fo.write(xml)
-    print(f"导出 bb/out/mujoco/bb01.xml：机身 {mb:.2f} kg，头 {mh:.2f} kg，网格 {len(assets)} 个")
+    print(f"导出 007v/out/mujoco/007v.xml：机身 {mb:.2f} kg，头 {mh:.2f} kg，网格 {len(assets)} 个")
 
 
 if __name__ == "__main__":

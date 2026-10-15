@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>笨笨 Mini 外观方案</title>
+<title>机械狗007v 外观方案</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -59,7 +59,7 @@ td:last-child { font-family: var(--font-data); font-variant-numeric: tabular-num
   <section class="bay" aria-label="3D 效果图，可以拖动旋转、滚轮缩放">
     <canvas id="scene"></canvas>
     <div class="hud">
-      <div class="tag">BB-01 · BENBEN MINI · <b>LOOK v8</b><br>拖动旋转 · 滚轮缩放</div>
+      <div class="tag">MECH DOG · 007V MINI · <b>LOOK v2</b><br>拖动旋转 · 滚轮缩放</div>
       <div class="readout" id="readout"></div>
     </div>
     <div class="controls">
@@ -78,8 +78,6 @@ td:last-child { font-family: var(--font-data); font-variant-numeric: tabular-num
         <button data-drive="fwd" aria-pressed="false">前进</button>
         <button data-drive="side" aria-pressed="false">横移</button>
         <button data-drive="spin" aria-pressed="false">原地转</button>
-        <button id="bed" aria-pressed="true">栏板</button>
-        <button id="holo" aria-pressed="false">机械臂预留</button>
       </div>
       <div class="seg" role="group" aria-label="灯光和视角"><em>看</em>
         <button id="night" aria-pressed="false">夜间</button>
@@ -90,17 +88,16 @@ td:last-child { font-family: var(--font-data); font-variant-numeric: tabular-num
   </section>
 
   <aside class="panel">
-    <h1><small>笨笨 MINI · 外观 v8</small>BB-01 运输单元</h1>
-    <p class="lede">方盒装甲机身，四条单段摆臂，末端是麦克纳姆轮；前面一颗能抬头、低头的屏幕脸；头分三段：中间屏幕头能点头，两边是固定的饱满肩座，雷达坐在左肩座顶上；货斗右前角预留了机械臂接口；背上是能插拔栏板的货斗。左下角能切换头的角度、表情、折叠、行驶方式，以及装上、拆下栏板。</p>
+    <h1><small>机械狗007v · 外观 v2</small>007v 运输单元</h1>
+    <p class="lede">方盒装甲机身，四条单段摆臂，末端是麦克纳姆轮；前面一颗能抬头、低头的屏幕脸。比 v1 少了小腿，结构更简单，机械线条更多。左下角能切换头的角度、表情、折叠和行驶方式。</p>
 
     <div>
       <h2>这一版定下来的</h2>
       <ul class="points">
-        <li><b>头能上下转</b>抬头 35° 看站着的人，平视看路，低头 20° 看脚下。它不高，人站着是往下看，抬头以后屏幕正对着你的脸。相机在脸的下沿。</li>
-        <li><b>三段式头部</b>中间是屏幕头，能抬头、低头；两边是把原来的细支架做宽、做饱满的两块肩座，侧面下宽上窄（底部前后拉宽像底座，上半截往里斜收），固定不动，俯仰电机藏在里面，外侧露出银色电机凸台和青色灯环。三块顶面齐平，缝里各嵌一条青色灯线，合起来像一颗完整的头。左肩座顶上是雷达，半埋在底座里，不加罩子；右肩座底座前脸放热成像窗、斜面上两颗红外收发管，顶上一截短天线。抬头看人时，中间屏幕头会挡住雷达右前方一小片，平视、低头时不挡。</li>
-        <li><b>机械臂接口（预留）</b>货斗右前角，和传感塔一左一右。现在只留一块和车架连在一起的加强安装板（4 个螺纹孔）和一个航空插座（供电 + 通信），臂本身等以后定了要干什么再设计。左下角“机械臂预留”能看到一只半透明的示意臂，表示大概的尺寸和能伸到哪里。用臂时四条摆臂把车身放低，会更稳。</li>
-        <li><b>货斗 + 卡槽栏板</b>取消了背上两根罐子。四边是带插槽的铝型材导轨，3D 打印的栏板往下一插就卡住，能随时拆。栏板六边形镂空减重，以后可以换高栏、网兜或者整只箱子。</li>
-        <li><b>单段摆臂 + 麦克纳姆轮</b>每条腿一个髋关节，摆臂在外侧挡住轮子；四个麦轮能前进、横移、原地转。</li>
+        <li><b>头能上下转</b>抬头 35° 看站着的人，平视看路，低头 20° 看脚下。它只有 40 cm 高，人站着是往下看，抬头以后屏幕正对着你的脸。</li>
+        <li><b>单段摆臂，没有小腿</b>每条腿只有一个髋关节。摆臂在外侧，像护板一样挡住轮子。调车身高低、单腿抬起、折叠，都靠这一个关节。</li>
+        <li><b>麦克纳姆轮</b>轮子外圈一圈斜着的小滚子，四个轮子配合能前进、横着走、原地转圈，在超市过道里很灵活。</li>
+        <li><b>硬核机械线条</b>上下两层装甲、银色倒角边、中腰一圈凹槽灯带、髋部散热鳍片、减震器、两侧储能罐、警示条纹和喷码。</li>
       </ul>
     </div>
 
@@ -108,9 +105,8 @@ td:last-child { font-family: var(--font-data); font-variant-numeric: tabular-num
       <h2>尺寸（估算）</h2>
       <table>
         <tr><td>机身</td><td>40 × 24 × 15 cm</td></tr>
-        <tr><td>展开</td><td>约 60 × 41 × 45 cm（抬头时）</td></tr>
-        <tr><td>货斗</td><td>内部约 25 × 20 cm，栏板高 7 cm</td></tr>
-        <tr><td>折叠</td><td>约 40 × 41 × 30 cm</td></tr>
+        <tr><td>展开</td><td>约 60 × 41 × 42 cm</td></tr>
+        <tr><td>折叠</td><td>约 40 × 41 × 28 cm</td></tr>
         <tr><td>摆臂</td><td>17 cm，1 个髋关节</td></tr>
         <tr><td>轮子</td><td>4 × Φ110 mm 麦克纳姆轮</td></tr>
         <tr><td>电机</td><td>4 髋 + 4 轮 + 1 头部俯仰 = 9 个</td></tr>
@@ -121,9 +117,8 @@ td:last-child { font-family: var(--font-data); font-variant-numeric: tabular-num
       <h2>要注意的</h2>
       <ul class="points warn">
         <li><b>麦克纳姆轮怕烂路</b>超市、商场、平整人行道很好用；草地、碎石、坑洼路会打滑、颠簸，小滚子也容易卡进缝里。常走烂路就换普通橡胶轮，样子可以保留类似的轮毂造型。</li>
-        <li><b>折叠时轮子翘在四角</b>同一侧的前后摆臂是对着收的，要往上翻到 60° 左右轮子才不会撞在一起，轮子会翘到约 26 cm 高；最高处是左肩座上的雷达，折叠高度约 30 cm。</li>
+        <li><b>折叠时轮子翘在四角</b>同一侧的前后摆臂是对着收的，要往上翻到 60° 左右轮子才不会撞在一起，所以折叠高度约 28 cm，轮子在最高处。</li>
         <li><b>上台阶能力变小</b>没有膝关节，抬腿只能沿着圆弧转，估计能上 8–10 cm 的小坎，15 cm 的路沿比较勉强，要仿真确认。</li>
-        <li><b>雷达看不到低处</b>雷达在约 42 cm 高扫一圈，比这矮的东西（台阶、宠物、地上的箱子）它扫不到，要靠前脸下沿的深度相机看近处和低处。货物别堆得比雷达高。</li>
       </ul>
     </div>
 
@@ -221,7 +216,7 @@ td:last-child { font-family: var(--font-data); font-variant-numeric: tabular-num
   const stencilTex = decalTex(512, 128, (g, w, h) => {
     g.fillStyle = 'rgba(214,220,224,0.85)';
     g.font = '800 92px "Barlow Condensed", "Arial Narrow", sans-serif';
-    g.fillText('BB-01', 8, 92);
+    g.fillText('007V', 8, 92);
     g.font = '500 22px "IBM Plex Mono", monospace';
     g.fillText('CARGO 5KG · UEG-LOG', 250, 52);
     g.fillText('MAX STEP 0.10M', 250, 84);
@@ -403,142 +398,56 @@ td:last-child { font-family: var(--font-data); font-variant-numeric: tabular-num
     glow(body, new THREE.Vector3(-0.216, 0.04, z * 0.07), new THREE.Vector3(-1, 0, 0), 0.12, 0.05, 0xffb000);
   }
 
-  // 顶部货斗：四边卡槽导轨（铝型材样式，栏板往下一插就卡住）+ 防滑底板 + 绑带横杆
-  const bedFloor = plate(0.25, 0.006, 0.2, 0.002, M.dark);
-  bedFloor.position.set(-0.065, 0.075, 0);
-  body.add(bedFloor);
-  for (const x of [-0.16, -0.1, -0.04, 0.02]) {
-    const tie = box(0.004, 0.005, 0.19, M.steel);
-    tie.position.set(x, 0.0805, 0);
+  // 顶部：两侧储能罐（参考图那两根大圆柱）+ 中间货舱 + 绑带导轨 + 雷达
+  for (const z of [-1, 1]) {
+    const pod = new THREE.Group();
+    pod.position.set(-0.05, 0.098, z * 0.095);
+    body.add(pod);
+    const tank = cyl(0.026, 0.25, M.shell, 32); tank.rotation.z = Math.PI / 2; pod.add(tank);
+    for (const x of [-0.127, 0.127]) {
+      const cap = cyl(0.027, 0.012, M.silver, 32); cap.rotation.z = Math.PI / 2; cap.position.x = x; pod.add(cap);
+      const ring = cyl(0.014, 0.004, M.dark, 24); ring.rotation.z = Math.PI / 2; ring.position.x = x + Math.sign(x) * 0.007; pod.add(ring);
+    }
+    for (const x of [-0.06, 0, 0.06]) {
+      const band = cyl(0.0275, 0.008, M.dark, 32); band.rotation.z = Math.PI / 2; band.position.x = x; pod.add(band);
+    }
+    const lightBar = box(0.1, 0.004, 0.003, M.cyan); lightBar.position.set(0.03, 0, z * 0.026); pod.add(lightBar);
+    const strap = box(0.02, 0.03, 0.054, M.dark); strap.position.set(-0.1, -0.014, 0); pod.add(strap);
+    const strap2 = strap.clone(); strap2.position.x = 0.08; pod.add(strap2);
+  }
+  const bay2 = plate(0.24, 0.006, 0.13, 0.002, M.dark);
+  bay2.position.set(-0.03, 0.074, 0);
+  body.add(bay2);
+  for (const x of [-0.12, -0.05, 0.02, 0.09]) {
+    const tie = box(0.004, 0.006, 0.12, M.steel);
+    tie.position.set(x, 0.078, 0);
     body.add(tie);
   }
-  function rail(len, alongX) {                                 // 一根带卡槽的导轨
-    const g = new THREE.Group();
-    g.add(box(alongX ? len : 0.018, 0.018, alongX ? 0.018 : len, M.steel));
-    const slot = box(alongX ? len : 0.006, 0.003, alongX ? 0.006 : len, M.seam);   // 顶面的插槽
-    slot.position.y = 0.0091;
-    g.add(slot);
-    for (const s of [-1, 1]) {                                 // 两侧的 T 形槽
-      const tg = box(alongX ? len : 0.002, 0.004, alongX ? 0.002 : len, M.seam);
-      if (alongX) tg.position.z = s * 0.0091; else tg.position.x = s * 0.0091;
-      g.add(tg);
-    }
-    return g;
-  }
-  const RAIL_Y = 0.081;
-  for (const z of [-1, 1]) { const r = rail(0.272, true); r.position.set(-0.064, RAIL_Y, z * 0.112); body.add(r); }
-  for (const x of [-0.195, 0.062]) { const r = rail(0.242, false); r.position.set(x, RAIL_Y, 0); body.add(r); }
-  for (const [x, z] of [[-0.195, 1], [-0.195, -1], [0.062, 1], [0.062, -1]]) {   // 四角的琥珀色定位块
-    const c = box(0.02, 0.02, 0.02, M.amber);
-    c.position.set(x, RAIL_Y, z * 0.112);
-    body.add(c);
-  }
-
-  // 可拆的打印栏板：六边形镂空减重，插在卡槽里；中间放一个示例货箱
-  M.printed = new THREE.MeshStandardMaterial({ color: srgb(0x30363a), roughness: 0.72, metalness: 0.1 });
-  function hexPanel(len, h, t) {
-    const s = new THREE.Shape();
-    const c = 0.008;
-    s.moveTo(-len / 2, -h / 2); s.lineTo(len / 2, -h / 2); s.lineTo(len / 2, h / 2 - c); s.lineTo(len / 2 - c, h / 2);
-    s.lineTo(-len / 2 + c, h / 2); s.lineTo(-len / 2, h / 2 - c); s.lineTo(-len / 2, -h / 2);
-    const r = 0.0072, dx = 0.0165, dy = 0.0145;
-    let row = 0;
-    for (let y = -h / 2 + 0.017; y <= h / 2 - 0.016; y += dy, row++) {
-      for (let x = -len / 2 + 0.017 + (row % 2 ? dx / 2 : 0); x <= len / 2 - 0.016; x += dx) {
-        const p = new THREE.Path();
-        for (let k = 0; k < 6; k++) {
-          const a = Math.PI / 6 + k * Math.PI / 3;
-          k ? p.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)) : p.moveTo(x + r * Math.cos(a), y + r * Math.sin(a));
-        }
-        p.closePath();
-        s.holes.push(p);
-      }
-    }
-    const g = new THREE.ExtrudeGeometry(s, { depth: t, bevelEnabled: false });
-    g.translate(0, 0, -t / 2);
-    const m = new THREE.Mesh(g, M.printed);
-    m.castShadow = true; m.receiveShadow = true;
-    const grp = new THREE.Group();
-    grp.add(m);
-    const cap = box(len - 0.02, 0.005, t + 0.002, M.amber);    // 顶边一条琥珀色反光条
-    cap.position.y = h / 2 - 0.006;
-    grp.add(cap);
-    return grp;
-  }
-  const bed = new THREE.Group();
-  body.add(bed);
-  for (const z of [-1, 1]) { const p = hexPanel(0.25, 0.07, 0.006); p.position.set(-0.065, 0.119, z * 0.112); bed.add(p); }
-  const rearPanel = hexPanel(0.206, 0.07, 0.006); rearPanel.rotation.y = Math.PI / 2; rearPanel.position.set(-0.195, 0.119, 0); bed.add(rearPanel);
-  const frontPanel = hexPanel(0.206, 0.05, 0.006); frontPanel.rotation.y = Math.PI / 2; frontPanel.position.set(0.062, 0.109, 0); bed.add(frontPanel);
-  const crate = plate(0.13, 0.062, 0.15, 0.006, M.dark);
-  crate.position.set(-0.09, 0.109, 0);
-  bed.add(crate);
-  const crateLid = plate(0.126, 0.008, 0.146, 0.003, M.shell);
-  crateLid.position.set(-0.09, 0.143, 0);
-  bed.add(crateLid);
-  for (const x of [-0.12, -0.06]) {
-    const strap = box(0.012, 0.072, 0.152, M.amber);
-    strap.position.set(x, 0.11, 0);
-    bed.add(strap);
-  }
-
-  // ======== 机械臂接口（预留）：货斗右前角，和左边的传感塔一左一右
-  // 现在只做：和车架连在一起的加强安装板（4 个螺纹孔）+ 航空插座（供电 + CAN）；臂本身以后再设计
-  const ARM_X = 0.022, ARM_Z = -0.07, ARM_Y = 0.081;
-  const armPlate = plate(0.07, 0.008, 0.07, 0.004, M.steel);
-  armPlate.position.set(ARM_X, ARM_Y, ARM_Z);
-  body.add(armPlate);
-  const armRing = new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.0016, 8, 40), M.amber);
-  armRing.rotation.x = Math.PI / 2; armRing.position.set(ARM_X, ARM_Y + 0.0045, ARM_Z);
-  body.add(armRing);
-  for (const [dx, dz] of [[-0.024, -0.024], [0.024, -0.024], [-0.024, 0.024], [0.024, 0.024]]) {
-    const hole = cyl(0.0035, 0.002, M.black, 12); hole.position.set(ARM_X + dx, ARM_Y + 0.0045, ARM_Z + dz); body.add(hole);
-  }
-  const gx = cyl(0.008, 0.012, M.silver, 20); gx.position.set(ARM_X - 0.045, ARM_Y + 0.002, ARM_Z + 0.02); body.add(gx);   // 航空插座
-  const gxCap = cyl(0.006, 0.003, M.amber, 16); gxCap.position.set(ARM_X - 0.045, ARM_Y + 0.0095, ARM_Z + 0.02); body.add(gxCap);
-  const armTagTex = decalTex(256, 48, (g, w, h) => {
-    g.fillStyle = 'rgba(255,176,0,0.9)'; g.font = '600 28px "IBM Plex Mono", monospace'; g.fillText('ARM PORT', 8, 34);
-  });
-  const armTag = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.0094), decalMat(armTagTex));
-  armTag.rotation.x = -Math.PI / 2; armTag.position.set(ARM_X - 0.002, ARM_Y + 0.0043, ARM_Z - 0.03);
-  body.add(armTag);
-  // 全息示意：半透明青色 + 轮廓线，表示以后的机械臂大概多大、伸到哪里
-  const holo = new THREE.Group();
-  holo.position.set(ARM_X, ARM_Y + 0.004, ARM_Z);
-  holo.visible = false;
-  body.add(holo);
-  const holoMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.14, depthWrite: false });
-  const holoLine = new THREE.LineBasicMaterial({ color: 0x5ff3ff, transparent: true, opacity: 0.75 });
-  function holoPart(geo, pos, rotZ = 0, parent = holo) {
-    const m = new THREE.Mesh(geo, holoMat);
-    m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), holoLine));
-    m.position.copy(pos); m.rotation.z = rotZ;
-    parent.add(m);
-    return m;
-  }
-  const yaw = new THREE.Group(); yaw.rotation.y = 0.35; holo.add(yaw);          // 转台略朝右前
-  holoPart(new THREE.CylinderGeometry(0.03, 0.034, 0.024, 20), new THREE.Vector3(0, 0.012, 0), 0, yaw);
-  holoPart(new THREE.BoxGeometry(0.04, 0.04, 0.05), new THREE.Vector3(0, 0.044, 0), 0, yaw);
-  const A1 = 0.17, A2 = 0.15;
-  const sh = new THREE.Vector3(0, 0.05, 0), a1 = 0.75, a2 = -0.55;                  // 前伸取物的姿态
-  const el = sh.clone().add(new THREE.Vector3(A1 * Math.cos(a1), A1 * Math.sin(a1), 0));
-  const wr = el.clone().add(new THREE.Vector3(A2 * Math.cos(a2), A2 * Math.sin(a2), 0));
-  holoPart(new THREE.BoxGeometry(A1, 0.028, 0.03), sh.clone().lerp(el, 0.5), a1, yaw);
-  holoPart(new THREE.CylinderGeometry(0.02, 0.02, 0.036, 16).rotateX(Math.PI / 2), el, 0, yaw);
-  holoPart(new THREE.BoxGeometry(A2, 0.022, 0.024), el.clone().lerp(wr, 0.5), a2, yaw);
-  holoPart(new THREE.BoxGeometry(0.03, 0.03, 0.03), wr, a2, yaw);
-  for (const s2 of [-1, 1]) {
-    const tipPos = wr.clone().add(new THREE.Vector3(0.03 * Math.cos(a2), 0.03 * Math.sin(a2), s2 * 0.012));
-    holoPart(new THREE.BoxGeometry(0.04, 0.008, 0.006), tipPos, a2, yaw);
-  }
+  const lidarPod = new THREE.Group();
+  lidarPod.position.set(-0.165, 0.072, 0);
+  body.add(lidarPod);
+  const lidarBase = cyl(0.03, 0.012, M.dark);
+  lidarBase.position.y = 0.006;
+  lidarPod.add(lidarBase);
+  const lidar = cyl(0.025, 0.024, M.black, 32);
+  lidar.position.y = 0.024;
+  lidarPod.add(lidar);
+  const lring = cyl(0.0255, 0.004, M.cyan, 32);
+  lring.position.y = 0.03;
+  lidarPod.add(lring);
 
   // ======== 头：颈部 U 形支架 + 俯仰电机 + 屏幕脸
   const neck = new THREE.Group();
   neck.position.set(0.12, 0.072, 0);
   body.add(neck);
-  const neckBase = plate(0.13, 0.014, 0.26, 0.004, M.dark);    // 托住头和两块肩座
-  neckBase.position.set(0.02, 0.007, 0);
+  const neckBase = plate(0.07, 0.014, 0.11, 0.004, M.dark);
+  neckBase.position.y = 0.007;
   neck.add(neckBase);
+  for (const z of [-1, 1]) {
+    const yoke = profile([[-0.025, 0], [0.025, 0], [0.018, 0.055], [-0.018, 0.055]], 0.012, 0.002, M.shell);
+    yoke.position.set(0, 0.012, z * 0.114);                    // 支架在两只“耳朵”外侧
+    neck.add(yoke);
+  }
   const PIVOT_Y = 0.062;
   const head = new THREE.Group();
   const headPivot = new THREE.Group();
@@ -546,15 +455,15 @@ td:last-child { font-family: var(--font-data); font-variant-numeric: tabular-num
   neck.add(headPivot);
   headPivot.add(head);
   // 头壳：八角轮廓，前高后低
-  const skull = profile([[-0.045, -0.035], [0.052, -0.035], [0.062, -0.022], [0.062, 0.045], [0.05, 0.058], [-0.032, 0.058], [-0.05, 0.035], [-0.05, -0.022]], 0.17, 0.006, M.deck);
+  const skull = profile([[-0.045, -0.035], [0.052, -0.035], [0.062, -0.022], [0.062, 0.045], [0.05, 0.058], [-0.032, 0.058], [-0.05, 0.035], [-0.05, -0.022]], 0.18, 0.006, M.deck);
   skull.position.x = 0.02;
   head.add(skull);
-  const brow = profile([[0.045, 0.05], [0.09, 0.05], [0.085, 0.062], [0.04, 0.066]], 0.172, 0.003, M.dark);
+  const brow = profile([[0.045, 0.05], [0.09, 0.05], [0.085, 0.062], [0.04, 0.066]], 0.184, 0.003, M.dark);
   head.add(brow);
-  const faceFrame = plate(0.008, 0.078, 0.158, 0.004, M.silver);
+  const faceFrame = plate(0.008, 0.078, 0.166, 0.004, M.silver);
   faceFrame.position.set(0.084, 0.011, 0);
   head.add(faceFrame);
-  const faceGlass = plate(0.004, 0.066, 0.146, 0.0015, M.gloss);
+  const faceGlass = plate(0.004, 0.066, 0.154, 0.0015, M.gloss);
   faceGlass.position.set(0.0885, 0.011, 0);
   head.add(faceGlass);
   const eyes = (() => {
@@ -562,85 +471,33 @@ td:last-child { font-family: var(--font-data); font-variant-numeric: tabular-num
     const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
     return { c, g: c.getContext('2d'), t };
   })();
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.062), new THREE.MeshBasicMaterial({ map: eyes.t, toneMapped: false }));
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.148, 0.062), new THREE.MeshBasicMaterial({ map: eyes.t, toneMapped: false }));
   facing(screen, new THREE.Vector3(0.0906, 0.011, 0), new THREE.Vector3(1, 0, 0));
   head.add(screen);
   const faceGlow = glow(head, new THREE.Vector3(0.093, 0.011, 0), new THREE.Vector3(1, 0, 0), 0.22, 0.12, 0x00e5ff, 0.18);
-  // 相机藏在脸下沿（头顶不放东西，相机放在脸上看得最正）+ 脑后散热片
-  for (const z of [-0.055, 0.055]) {
-    const lens = cyl(0.0055, 0.004, M.black, 20); lens.rotation.z = Math.PI / 2; lens.position.set(0.0885, -0.025, z); head.add(lens);
-    const lr = new THREE.Mesh(new THREE.TorusGeometry(0.0062, 0.0012, 6, 20), M.silver); lr.rotation.y = Math.PI / 2; lr.position.set(0.0905, -0.025, z); head.add(lr);
+  // 两侧俯仰电机（耳朵）：鳍片 + 琥珀圈
+  for (const z of [-1, 1]) {
+    const ear = new THREE.Group();
+    ear.position.set(0, 0, z * 0.098);
+    head.add(ear);
+    const drum = cyl(0.026, 0.02, M.dark, 32); drum.rotation.x = Math.PI / 2; ear.add(drum);
+    for (let i = 0; i < 3; i++) {
+      const fin = cyl(0.029, 0.0025, M.steel, 32); fin.rotation.x = Math.PI / 2; fin.position.z = z * (-0.006 + i * 0.006); ear.add(fin);
+    }
+    const face = cyl(0.018, 0.006, M.silver, 32); face.rotation.x = Math.PI / 2; face.position.z = z * 0.012; ear.add(face);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.0205, 0.0018, 8, 40), M.amber); ring.position.z = z * 0.0145; ear.add(ring);
+    glow(ear, new THREE.Vector3(0, 0, z * 0.017), new THREE.Vector3(0, 0, z), 0.07, 0.07, 0xffb000, 0.3);
   }
+  // 头顶相机塔 + 天线 + 脑后散热片
+  const turret = plate(0.04, 0.022, 0.05, 0.004, M.dark);
+  turret.position.set(0.03, 0.07, -0.045);
+  head.add(turret);
+  const tlens = cyl(0.009, 0.01, M.gloss, 24); tlens.rotation.z = Math.PI / 2; tlens.position.set(0.053, 0.07, -0.045); head.add(tlens);
+  const tring = cyl(0.011, 0.004, M.silver, 24); tring.rotation.z = Math.PI / 2; tring.position.set(0.05, 0.07, -0.045); head.add(tring);
+  const ant = cyl(0.0018, 0.07, M.steel, 8); ant.position.set(-0.03, 0.09, 0.07); ant.rotation.z = 0.25; head.add(ant);
+  const antTip = new THREE.Mesh(new THREE.SphereGeometry(0.004, 12, 8), M.amber); antTip.position.set(-0.039, 0.124, 0.07); head.add(antTip);
   for (let i = 0; i < 5; i++) {
     const hf = box(0.012, 0.05, 0.003, M.steel); hf.position.set(-0.053, 0.015, -0.05 + i * 0.025); head.add(hf);
-  }
-
-  // ======== 两块肩座：把原来的细支架做宽、做大、做饱满，和中间的屏幕头连成一体
-  // 肩座固定不动，俯仰电机藏在里面；中间屏幕头在两块肩座之间抬头、低头；缝里嵌青色灯线
-  // 左肩座顶上是雷达（半埋在底座里，不加罩子）；右肩座放热成像、红外收发、4G 天线这些不该跟着头动的东西
-  const POD_IN = 0.089, POD_W = 0.04, POD_TOP = 0.122;            // 脖子坐标：原点在甲板上、俯仰轴正下方
-  // 侧面轮廓下宽上窄：底部前后拉宽像底座，上半截前后都往里斜收，顶面变窄
-  const podProfile = [[-0.05, 0.014], [0.084, 0.014], [0.09, 0.02], [0.09, 0.052], [0.054, 0.118], [0.048, POD_TOP], [-0.008, POD_TOP], [-0.014, 0.118], [-0.056, 0.045], [-0.056, 0.02]];
-  const coverProfile = [[-0.046, 0.024], [0.08, 0.024], [0.08, 0.05], [0.045, 0.111], [-0.016, 0.111], [-0.046, 0.05]];
-  const TOP_X = 0.02;                                               // 变窄以后顶面的中心
-  let lidar = null;
-  for (const zs of [1, -1]) {                                      // zs = 1 左肩座（雷达），-1 右肩座
-    const zc = zs * (POD_IN + POD_W / 2);
-    const pod = profile(podProfile, POD_W, 0.005, M.deck);
-    pod.position.z = zc;
-    neck.add(pod);
-    const cover = profile(coverProfile, 0.004, 0.001, M.dark);       // 外侧深色盖板
-    cover.position.z = zs * (POD_IN + POD_W + 0.0015);
-    neck.add(cover);
-    for (const y of [0.04, 0.09]) {
-      const sm = box(y > 0.06 ? 0.06 : 0.11, 0.0015, 0.002, M.seam); sm.position.set(y > 0.06 ? 0.016 : 0.017, y, zs * (POD_IN + POD_W + 0.0036)); neck.add(sm);
-    }
-    for (let i = 0; i < 4; i++) {                                  // 后部散热槽
-      const v = box(0.003, 0.022, 0.002, M.seam); v.position.set(-0.036 + i * 0.006, 0.062, zs * (POD_IN + POD_W + 0.0036)); neck.add(v);
-    }
-    // 俯仰电机凸台：银圈 + 深色中心 + 青色灯环
-    const boss = cyl(0.026, 0.008, M.silver, 40); boss.rotation.x = Math.PI / 2; boss.position.set(0, PIVOT_Y, zs * (POD_IN + POD_W + 0.006)); neck.add(boss);
-    const bossIn = cyl(0.018, 0.01, M.dark, 32); bossIn.rotation.x = Math.PI / 2; bossIn.position.set(0, PIVOT_Y, zs * (POD_IN + POD_W + 0.007)); neck.add(bossIn);
-    const bossRing = new THREE.Mesh(new THREE.TorusGeometry(0.021, 0.0018, 8, 40), M.cyan); bossRing.position.set(0, PIVOT_Y, zs * (POD_IN + POD_W + 0.0105)); neck.add(bossRing);
-    const bossHex = cyl(0.007, 0.012, M.steel, 6); bossHex.rotation.x = Math.PI / 2; bossHex.position.set(0, PIVOT_Y, zs * (POD_IN + POD_W + 0.008)); neck.add(bossHex);
-    glow(neck, new THREE.Vector3(0, PIVOT_Y, zs * (POD_IN + POD_W + 0.013)), new THREE.Vector3(0, 0, zs), 0.07, 0.07, 0x00e5ff, 0.3);
-    // 头和肩座之间的缝：一条竖向青色灯线
-    const seamSlope = box(0.003, 0.072, 0.002, M.cyan);              // 斜边段
-    seamSlope.position.set(0.069, 0.085, zs * (POD_IN + 0.0012));
-    seamSlope.rotation.z = Math.atan2(0.036, 0.066);
-    neck.add(seamSlope);
-    const seamLow = box(0.003, 0.028, 0.002, M.cyan);                // 底座竖直段
-    seamLow.position.set(0.086, 0.036, zs * (POD_IN + 0.0012));
-    neck.add(seamLow);
-    glow(neck, new THREE.Vector3(0.08, 0.07, zs * POD_IN), new THREE.Vector3(1, 0, 0), 0.03, 0.11, 0x00e5ff, 0.3);
-    // 肩座顶面：一块浅色顶板
-    const topPlate = plate(0.05, 0.004, POD_W - 0.008, 0.0015, M.shell);
-    topPlate.position.set(TOP_X, POD_TOP + 0.002, zc);
-    neck.add(topPlate);
-    if (zs > 0) {
-      // 左肩座：前脸一条琥珀灯；顶上雷达半埋在一圈底座里
-      const amb = box(0.003, 0.008, 0.026, M.amber); amb.position.set(0.0905, 0.036, zc); neck.add(amb);
-      glow(neck, new THREE.Vector3(0.094, 0.036, zc), new THREE.Vector3(1, 0, 0), 0.05, 0.03, 0xffb000, 0.3);
-      const collar = cyl(0.03, 0.008, M.dark, 36); collar.position.set(TOP_X, POD_TOP + 0.006, zc); neck.add(collar);
-      const collarEdge = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.0014, 6, 40), M.silver); collarEdge.rotation.x = Math.PI / 2; collarEdge.position.set(TOP_X, POD_TOP + 0.01, zc); neck.add(collarEdge);
-      lidar = cyl(0.025, 0.026, M.black, 32); lidar.position.set(TOP_X, POD_TOP + 0.02, zc); neck.add(lidar);
-      const scanWin = cyl(0.0255, 0.009, M.gloss, 32); scanWin.position.set(TOP_X, POD_TOP + 0.021, zc); neck.add(scanWin);
-      const lring = cyl(0.026, 0.003, M.cyan, 32); lring.position.set(TOP_X, POD_TOP + 0.033, zc); neck.add(lring);
-      const lcap = cyl(0.02, 0.003, M.dark, 32); lcap.position.set(TOP_X, POD_TOP + 0.0345, zc); neck.add(lcap);
-      const mark = box(0.01, 0.003, 0.004, M.silver); mark.position.set(0.017, 0.0145, 0); lidar.add(mark);   // 转起来看得见
-    } else {
-      // 右肩座：前脸热成像窗 + 两颗红外收发管；顶上一截短天线
-      const thermal = plate(0.004, 0.02, 0.02, 0.002, M.gloss); thermal.position.set(0.0915, 0.035, zc); neck.add(thermal);
-      const thRing = box(0.002, 0.024, 0.024, M.silver); thRing.position.set(0.0905, 0.035, zc); neck.add(thRing);
-      const slopeN = new THREE.Vector3(0.066, 0.036, 0).normalize();   // 斜面朝外的方向
-      for (const t of [0.35, 0.62]) {
-        const p = new THREE.Vector3(0.09 - 0.036 * t, 0.052 + 0.066 * t, zc).add(slopeN.clone().multiplyScalar(0.0015));
-        const ir = cyl(0.0042, 0.004, M.black, 16); along(ir, slopeN); ir.position.copy(p); neck.add(ir);
-      }
-      const amb = box(0.003, 0.006, 0.02, M.amber); amb.position.set(0.0905, 0.019, zc); neck.add(amb);
-      const ant = box(0.006, 0.03, 0.012, M.dark); ant.position.set(-0.025, POD_TOP + 0.017, zc); neck.add(ant);
-      const antLamp = box(0.007, 0.005, 0.013, M.amber); antLamp.position.set(-0.025, POD_TOP + 0.034, zc); neck.add(antLamp);
-    }
   }
 
   // ======== 髋部驱动单元 + 摆臂 + 麦克纳姆轮
@@ -814,7 +671,7 @@ td:last-child { font-family: var(--font-data); font-variant-numeric: tabular-num
   function updateReadout() {
     const folded = state.foldTarget === 1;
     const d = { fwd: 'DRIVE FWD', side: 'STRAFE', spin: 'ROTATE' }[state.drive] || 'HOLD';
-    readout.innerHTML = (folded ? 'FOLDED ≈ 40×41×30 CM' : 'DEPLOYED ≈ 60×41×45 CM') + '<br>HEAD ' +
+    readout.innerHTML = (folded ? 'FOLDED ≈ 40×41×28 CM' : 'DEPLOYED ≈ 60×41×42 CM') + '<br>HEAD ' +
       (HEAD_ANG[state.headKey] > 0 ? '+' : '') + HEAD_ANG[state.headKey] + '° · ' + d + '<br>' + (state.night ? 'NIGHT' : 'STUDIO');
   }
   const press = (sel, on) => document.querySelectorAll(sel).forEach(b => b.setAttribute('aria-pressed', String(on(b))));
@@ -830,14 +687,6 @@ td:last-child { font-family: var(--font-data); font-variant-numeric: tabular-num
     if (state.drive) { state.foldTarget = 0; document.getElementById('fold').setAttribute('aria-pressed', 'false'); }
     press('[data-drive]', x => x.dataset.drive === state.drive); updateReadout();
   }));
-  document.getElementById('holo').addEventListener('click', e => {   // 全息机械臂：开 / 关
-    holo.visible = !holo.visible;
-    e.currentTarget.setAttribute('aria-pressed', String(holo.visible));
-  });
-  document.getElementById('bed').addEventListener('click', e => {   // 栏板和货箱：装上 / 拆下
-    bed.visible = !bed.visible;
-    e.currentTarget.setAttribute('aria-pressed', String(bed.visible));
-  });
   document.getElementById('fold').addEventListener('click', e => {
     state.foldTarget = state.foldTarget ? 0 : 1;
     e.currentTarget.setAttribute('aria-pressed', String(!!state.foldTarget));
@@ -891,7 +740,6 @@ td:last-child { font-family: var(--font-data); font-variant-numeric: tabular-num
     const P = pose(state.fold);
     body.position.y = P.hipY + CENTER_ABOVE_HIP;
     headPivot.rotation.z = -state.head;
-    if (state.fold > 0.05) holo.visible = false;
     // 行驶：麦轮速度（前进、横移、原地转）
     const V = 0.35;
     let vx = 0, vz = 0, w = 0;

@@ -1,4 +1,4 @@
-<title>笨笨 Mini 骨架</title>
+<title>机械狗007v 骨架</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -90,8 +90,8 @@ td.v small { display: block; font: 11px var(--f-body); color: var(--dim); }
 </style>
 
 <header class="top">
-  <span class="code">BB-01</span>
-  <h1>笨笨 Mini 骨架</h1>
+  <span class="code">007v</span>
+  <h1>机械狗007v 骨架</h1>
   <p class="sub">按真实零件尺寸画的结构（外壳还没画）和 MuJoCo 仿真回放。拖动旋转，双指缩放。</p>
 </header>
 
@@ -187,7 +187,7 @@ td.v small { display: block; font: 11px var(--f-body); color: var(--dim); }
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="bb01_data.js"></script>
+<script src="007v_data.js"></script>
 <script>
 (async function () {
   const $ = (id) => document.getElementById(id);
@@ -196,12 +196,12 @@ td.v small { display: block; font: 11px var(--f-body); color: var(--dim); }
   const CN = { FL: "前左", FR: "前右", RL: "后左", RR: "后右" };
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const msg = $("msg");
-  if (!window.BB01 || !window.THREE) {
+  if (!window.DOG007V || !window.THREE) {
     msg.textContent = "模型数据没加载出来，刷新一下试试。";
     return;
   }
-  const rig = window.BB01.rig;
-  const SIM = window.BB01.sim || null;
+  const rig = window.DOG007V.rig;
+  const SIM = window.DOG007V.sim || null;
   fillPanel(rig);
 
   // ---------------------------------------------------------------- 场景
@@ -273,7 +273,7 @@ td.v small { display: block; font: 11px var(--f-body); color: var(--dim); }
   // ---------------------------------------------------------------- 模型：机身 → 腿（髋）→ 轮子；机身 → 头
   let gltf;
   try {
-    const bin = Uint8Array.from(atob(window.BB01.glb), (c) => c.charCodeAt(0));
+    const bin = Uint8Array.from(atob(window.DOG007V.glb), (c) => c.charCodeAt(0));
     gltf = await new Promise((ok, bad) => new THREE.GLTFLoader().parse(bin.buffer, "", ok, bad));
   } catch (e) {
     msg.textContent = "3D 模型解析失败，刷新一下试试。";

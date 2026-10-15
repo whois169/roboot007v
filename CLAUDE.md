@@ -3,10 +3,10 @@
 开始任何工作前，先读 `docs/00_项目核心原则.md`。核心：我们做的是"科技机械狗"（不是宠物狗），也不是"装了个音箱的机器狗"，每个改动都要通过"音箱测试"，把差距放大。
 做外观相关的零件前，先读 `docs/外观设计规范.md`（深灰壳板 + 银色件 + 黑色传感器窗 + 琥珀橙状态灯；缝线 0.8 宽 × 0.6 深；外观件不承力、能平放打印）。
 
-## 2026-10-16 起改版为笨笨 Mini（BB-01）
-外观推翻重做：轮足运输机器人（4 个髋 + 4 个麦轮，背上驮 5–10 kg，可折叠），外观定稿 `docs/概念/笨笨Mini_外观v10.html`。树莓派 5、头部 ESP32-S3、大脑程序、语音服务、传感器清单不变。
-新结构在 `bb/`：`config.py` 所有尺寸 → `model.py` 零件 → `build.py` 摆姿态 + 干涉检查 + 折叠轨迹检查 + 重心 + 导出；选型计算 `sizing.py` 和 `docs/笨笨Mini/选型计算书.md`。改完跑 `python bb/build.py`，`bb/out/report.txt` 里 4 个姿态都要 0 处、折叠全程不撞；3D 查看页 `bb/viewer.html`（用 `bb/out/bb01_data.js`，Artifact https://claude.ai/artifact/Hr9vptZPw8y4d6ifZNE8aL）。
-仿真在 `bb/sim/`：`python bb/sim/run_sim.py --export`（改了 CAD 要加 --export），`bb/out/sim_report.txt` 的结论除“演示”外都要 ✓；说明和得出的控制规矩在 `docs/笨笨Mini/仿真报告.md`（写底盘程序时照做）。
+## 2026-10-16 起改版为机械狗007v
+外观推翻重做：轮足运输机器人（4 个髋 + 4 个麦轮，背上驮 5–10 kg，可折叠），外观定稿 `docs/概念/机械狗007v_外观v10.html`。树莓派 5、头部 ESP32-S3、大脑程序、语音服务、传感器清单不变。
+新结构在 `007v/`：`config.py` 所有尺寸 → `model.py` 零件 → `build.py` 摆姿态 + 干涉检查 + 折叠轨迹检查 + 重心 + 导出；选型计算 `sizing.py` 和 `docs/机械狗007v/选型计算书.md`。改完跑 `python 007v/build.py`，`007v/out/report.txt` 里 4 个姿态都要 0 处、折叠全程不撞；3D 查看页 `007v/viewer.html`（用 `007v/out/007v_data.js`，Artifact https://claude.ai/artifact/Hr9vptZPw8y4d6ifZNE8aL）。
+仿真在 `007v/sim/`：`python 007v/sim/run_sim.py --export`（改了 CAD 要加 --export），`007v/out/sim_report.txt` 的结论除“演示”外都要 ✓；说明和得出的控制规矩在 `docs/机械狗007v/仿真报告.md`（写底盘程序时照做）。
 按步骤做，每步给用户看、点头再往下：①选型（完成）②骨架（完成）③仿真（完成）④打印件、采购表、接线、资料包。下面写的四足内容（`cad/`）是旧版存档。
 
 ## 项目是什么（旧版四足，存档）

@@ -1,4 +1,4 @@
-"""笨笨 Mini（BB-01）MuJoCo 仿真：电机扭矩够不够、会不会翻。
+"""机械狗007vMuJoCo 仿真：电机扭矩够不够、会不会翻。
 
 场景（都按背上 10 kg）：
   stand      站着不动：髋关节要撑多大力、每个轮子分多少重
@@ -9,8 +9,8 @@
   bump       0.8 m/s 压过 15 mm 高的门槛条
   lift_direct  其他腿不动、直接抬左后腿（演示为什么要先调姿势）
   lift_FL / lift_RL   先按 lift_plan 调姿势，再把腿抬离地 8 cm
-用法：python bb/sim/run_sim.py [场景名…]      不写就全跑（约 1–2 分钟）
-输出：bb/out/sim_report.txt，bb/out/sim.json（3D 页回放用），并重新打包 bb/out/bb01_data.js
+用法：python 007v/sim/run_sim.py [场景名…]      不写就全跑（约 1–2 分钟）
+输出：007v/out/sim_report.txt，007v/out/sim.json（3D 页回放用），并重新打包 007v/out/007v_data.js
 
 电机模型：
   髋 = 5840 蜗轮（自锁）× 3:1 同步带，位置环；额定按 20.7 N·m 判（仿真里放到 60 只为测出“需要多少”）
@@ -27,13 +27,13 @@ import mujoco
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-BB = os.path.dirname(HERE)
-sys.path.insert(0, BB)
+ROOT = os.path.dirname(HERE)
+sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
 from config import *  # noqa: E402,F401,F403
 from lift_plan import LEGS, Geo  # noqa: E402
 
-OUT = os.path.join(BB, "out")
+OUT = os.path.join(ROOT, "out")
 MJ = os.path.join(OUT, "mujoco")
 DT = 0.0005
 FPS = 25
@@ -71,7 +71,7 @@ C_LOAD, C_VX, C_VY, C_WZ, C_ROLL, C_PITCH, C_YAW, C_X, C_Y, C_Z, C_VZ = slice(2,
 def load_model(payload, obstacles):
     global XML
     if XML is None:
-        with open(os.path.join(MJ, "bb01.xml"), encoding="utf-8") as fo:
+        with open(os.path.join(MJ, "007v.xml"), encoding="utf-8") as fo:
             XML = fo.read()
     pm = max(payload, 1e-4)
     obs = "".join(f'<geom name="obs{i}" type="box" pos="{f(o["pos"])}" size="{f(o["size"])}" rgba="0.9 0.65 0.25 1" '
@@ -617,11 +617,11 @@ def lift_table():
 
 def main(names):
     t0 = time.time()
-    if not os.path.exists(os.path.join(MJ, "bb01.xml")) or "--export" in sys.argv:
+    if not os.path.exists(os.path.join(MJ, "007v.xml")) or "--export" in sys.argv:
         import export_mujoco
         export_mujoco.main()
         global XML
-        with open(os.path.join(MJ, "bb01.xml"), encoding="utf-8") as fo:
+        with open(os.path.join(MJ, "007v.xml"), encoding="utf-8") as fo:
             XML = fo.read()
     names = names or list(SCENARIOS)
     old = {}
@@ -638,8 +638,8 @@ def main(names):
         print(f"{res['title']}：{len(res['frames'])} 帧，{time.time() - t1:.0f} 秒" + (f"  ✗ {'、'.join(bad)}" if bad else "  ✓"))
     order = [s for s in ("stand", "standup", "drive", "slope", "strafe", "bump", "lift_RL_direct", "lift_FL", "lift_RL") if s in results]
 
-    report = [f"笨笨 Mini（BB-01）仿真报告  {time.strftime('%Y-%m-%d %H:%M')}",
-              "重新跑：python bb/sim/run_sim.py（改了 CAD 先跑 python bb/build.py，再加 --export）", "",
+    report = [f"机械狗007v仿真报告  {time.strftime('%Y-%m-%d %H:%M')}",
+              "重新跑：python 007v/sim/run_sim.py（改了 CAD 先跑 python 007v/build.py，再加 --export）", "",
               "电机模型：髋 = 5840 蜗轮 × 3:1 同步带（额定按 20.7 N·m 判）；轮 = GIM4310-10（峰值 5.6、额定 2.05 N·m，转速越高能出的越少）；",
               "麦轮按 12 个 45° 滚子真实建模（每个滚子能自由转）；地面摩擦系数 0.9；货物 10 kg 在货斗中间、重心高出甲板 10 cm。", ""]
     summary = []

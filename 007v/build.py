@@ -1,10 +1,10 @@
-"""笨笨 Mini（BB-01）骨架：摆姿态、碰撞检查、折叠轨迹检查、尺寸和重心、导出 3D 模型。
+"""机械狗007v骨架：摆姿态、碰撞检查、折叠轨迹检查、尺寸和重心、导出 3D 模型。
 
-用法：python bb/build.py        （约 1–3 分钟）
-输出：bb/out/report.txt   检查报告（改了尺寸就重新跑，看这里）
-      bb/out/bb01.glb     3D 模型（按刚体组分节点，给 3D 查看页用）
-      bb/out/rig.json     关节位置和姿态参数（给 3D 查看页用）
-      bb/out/bb01_data.js 上面两个打包成一个文件，bb/viewer.html 用它
+用法：python 007v/build.py        （约 1–3 分钟）
+输出：007v/out/report.txt   检查报告（改了尺寸就重新跑，看这里）
+      007v/out/007v.glb     3D 模型（按刚体组分节点，给 3D 查看页用）
+      007v/out/rig.json     关节位置和姿态参数（给 3D 查看页用）
+      007v/out/007v_data.js 上面两个打包成一个文件，007v/viewer.html 用它
 
 坐标：X 向前、Y 向左、Z 向上，mm；地面 z = 0。
 """
@@ -289,7 +289,7 @@ def sweep():
 
 if __name__ == "__main__":
     # ---------------------------------------------------------------- 开始
-    report = [f"笨笨 Mini（BB-01）骨架检查报告  {time.strftime('%Y-%m-%d %H:%M')}", "改尺寸：bb/config.py；重新生成：python bb/build.py", ""]
+    report = [f"机械狗007v骨架检查报告  {time.strftime('%Y-%m-%d %H:%M')}", "改尺寸：007v/config.py；重新生成：python 007v/build.py", ""]
     rep = report.append
 
     rep("【姿态】")
@@ -427,7 +427,7 @@ if __name__ == "__main__":
                 roughnessFactor=0.35 if c in METAL else (0.1 if c == "glass" else 0.7),
                 emissiveFactor=list(EMISSIVE.get(c, (0, 0, 0)))))
             scene.add_geometry(mesh, node_name=f"{g}|{c}", geom_name=f"{g}|{c}")
-    scene.export(os.path.join(OUT, "bb01.glb"))
+    scene.export(os.path.join(OUT, "007v.glb"))
 
     rig = dict(
         pivots={g: gl((LEGS[g][0] * HIP_X, 0, HIP_Z)) for g in LEGS} | {"head": gl((NECK_X, 0, PIVOT_Z)), "body": [0, 0, 0]},
@@ -447,4 +447,4 @@ if __name__ == "__main__":
     with open(os.path.join(OUT, "rig.json"), "w", encoding="utf-8") as f:
         json.dump(rig, f, ensure_ascii=False, indent=1)
     pack_viewer()
-    print(f"导出 bb/out/bb01.glb、rig.json、bb01_data.js，共 {time.time() - t0:.0f} 秒")
+    print(f"导出 007v/out/007v.glb、rig.json、007v_data.js，共 {time.time() - t0:.0f} 秒")

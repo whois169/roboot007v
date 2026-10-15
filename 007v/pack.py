@@ -1,6 +1,6 @@
-"""把 3D 模型、关节参数、仿真回放打包成 bb/out/bb01_data.js，给 bb/viewer.html 用（Artifact 不能直接放 .glb）。
+"""把 3D 模型、关节参数、仿真回放打包成 007v/out/007v_data.js，给 007v/viewer.html 用（Artifact 不能直接放 .glb）。
 
-build.py 和 sim/run_sim.py 跑完都会调用；也可以单独跑：python bb/pack.py
+build.py 和 sim/run_sim.py 跑完都会调用；也可以单独跑：python 007v/pack.py
 """
 import base64
 import json
@@ -16,10 +16,10 @@ def pack_viewer():
     if os.path.exists(sim):
         with open(sim, encoding="utf-8") as f:
             data["sim"] = json.load(f)
-    with open(os.path.join(OUT, "bb01.glb"), "rb") as f:
+    with open(os.path.join(OUT, "007v.glb"), "rb") as f:
         data["glb"] = base64.b64encode(f.read()).decode("ascii")
-    with open(os.path.join(OUT, "bb01_data.js"), "w", encoding="utf-8") as f:
-        f.write("window.BB01 = " + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n")
+    with open(os.path.join(OUT, "007v_data.js"), "w", encoding="utf-8") as f:
+        f.write("window.DOG007V = " + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n")
 
 
 if __name__ == "__main__":
