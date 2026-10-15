@@ -22,5 +22,18 @@ def pack_viewer():
         f.write("window.DOG007V = " + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n")
 
 
+def pack_drawings():
+    """图纸网页（007v/drawings.html）用的数据：零件图、清单、接线图 → 007v/out/mfg/dwg_data.js"""
+    mfg = os.path.join(OUT, "mfg")
+    data = {}
+    for key, fn in (("mfg", "parts.json"), ("bom", "bom.json"), ("wiring", "wiring.json")):
+        with open(os.path.join(mfg, fn), encoding="utf-8") as f:
+            data[key] = json.load(f)
+    with open(os.path.join(mfg, "dwg_data.js"), "w", encoding="utf-8") as f:
+        f.write("window.DOG007V_DWG = " + json.dumps(data, ensure_ascii=False, separators=(",", ":")) + ";\n")
+
+
 if __name__ == "__main__":
     pack_viewer()
+    if os.path.exists(os.path.join(OUT, "mfg", "parts.json")):
+        pack_drawings()

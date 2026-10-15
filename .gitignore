@@ -20,3 +20,7 @@ renders/
 007v/preview/
 007v/out/mujoco/
 007v/out/sim.json
+# 机械狗007v：加工图纸输出（python 007v/mfg.py 重新生成；DXF / STEP / STL 发给加工厂用）
+007v/out/mfg/
+007v/preview/
+007v/out/sim_run.log

@@ -116,12 +116,8 @@ def body_parts():
     add("电池保护板", box(-BMS[0] / 2, BMS[0] / 2, -BMS[1] / 2, BMS[1] / 2, PLATE + bz, PLATE + bz + BMS[2]), "pcb")
     add("电子托板", box(-140, 140, -66, 66, TRAY_Z, TRAY_Z + 2), "printed")
     t = TRAY_Z + 2
-    add("树莓派5", box(-100, -100 + PI5[0], -PI5[1] / 2, PI5[1] / 2, t, t + PI5[2]), "pcb")
-    add("底盘ESP32-S3", box(10, 10 + ESP_CHASSIS[0], 30, 30 + ESP_CHASSIS[1], t, t + ESP_CHASSIS[2]), "pcb")
-    add("髋电机驱动1", box(10, 10 + DRIVER[0], -60, -60 + DRIVER[1], t, t + DRIVER[2]), "pcb")
-    add("髋电机驱动2", box(80, 80 + DRIVER[0], -60, -60 + DRIVER[1], t, t + DRIVER[2]), "pcb")
-    add("DC-DC 5V5A", box(-150, -150 + DCDC_5V5A[0], 10, 10 + DCDC_5V5A[1], t, t + DCDC_5V5A[2]), "pcb")
-    add("DC-DC 5V3A", box(-150, -150 + DCDC_5V3A[0], -40, -40 + DCDC_5V3A[1], t, t + DCDC_5V3A[2]), "pcb")
+    for name, (x0, y0), (sx, sy, sz) in ELECTRONICS:
+        add(name, box(x0, x0 + sx, y0, y0 + sy, t, t + sz), "pcb")
     dx, dy, dz = DEPTH_CAM
     add("深度相机", box(L2 - PLATE - dx, L2 - PLATE, -dy / 2, dy / 2, 25, 25 + dz), "black")
 
@@ -155,10 +151,10 @@ def hip_drive_FL():
     W2 = BODY_W / 2
     yin = W2 - PLATE_SIDE                          # 侧板内表面
     bl, bt, bh = WORM_BOX
-    gy1 = yin - PULLEY_W - 1                       # 减速箱外侧（带轮贴着侧板，减速箱在带轮里面）
+    gy1 = yin - PULLEY_W - 2                       # 减速箱外侧（带轮离侧板 1 mm，减速箱在带轮里面，中间 16 长的六角柱）
     P.append(("蜗轮减速箱", box(wx - bl / 2, wx + bl / 2, gy1 - bt, gy1, wz - bh / 2, wz + bh / 2), "motor"))
     P.append(("蜗轮电机", cyl_x(gy1 - bt / 2, wz, WORM_MOTOR_D, wx - bl / 2 - WORM_MOTOR_L, wx - bl / 2), "motor"))
-    py0, py1 = yin - PULLEY_W, yin
+    py0, py1 = yin - PULLEY_W - 1, yin - 1          # 带轮离侧板内面 1 mm（中间隔圈穿过侧板顶住轴承内圈）
     P.append(("小带轮15T", cyl_y(wx, wz, PULLEY_SMALL_PD + 6, py0, py1), "steel"))
     P.append(("大带轮45T", cyl_y(hx, hz, PULLEY_BIG_PD + 5, py0, py1), "steel"))
     outer = hull_pts([(wx, wz, PULLEY_SMALL_PD / 2 + 1.6), (hx, hz, PULLEY_BIG_PD / 2 + 1.6)])
@@ -170,6 +166,29 @@ def hip_drive_FL():
     P.append(("磁编码器AS5600", box(hx - AS5600[0] / 2, hx + AS5600[0] / 2, py0 - 12, py0 - 8, hz - AS5600[2] / 2, hz + AS5600[2] / 2), "pcb"))
     P.append(("轴承座", cyl_y(hx, hz, BEARING_HOUSING_D, W2, W2 + BEARING_HOUSING_W), "trim"))
     return P
+
+
+# 电子托板上的布置：(名字, 左下角 (x, y), 尺寸)；托板 x ±140、y ±66
+ELECTRONICS = [
+    ("髋电机驱动1 前左", (32.0, 4.0), DRIVER), ("髋电机驱动2 前右", (32.0, -4.0 - DRIVER[1]), DRIVER),
+    ("髋电机驱动3 后左", (87.0, 4.0), DRIVER), ("髋电机驱动4 后右", (87.0, -4.0 - DRIVER[1]), DRIVER),
+    ("树莓派5", (-135.0, -PI5[1] / 2), PI5),
+    ("底盘ESP32-S3", (-40.0, 20.0), ESP_CHASSIS),
+    ("CAN收发 SN65HVD230", (-40.0, -42.0), CAN_MODULE),
+    ("DC-DC 5V5A", (-8.0, -46.0), DCDC_5V5A),
+    ("DC-DC 5V3A", (-40.0, -16.0), DCDC_5V3A),
+]
+
+
+def ld19():
+    """乐动 LD19：原点在底面中心，安装脚 54 沿 X、46.29 沿 Y。"""
+    L = LD19
+    ears = box(-L["ear_w"] / 2, L["ear_w"] / 2, -L["ear_d"] / 2, L["ear_d"] / 2, 0, 2.5)
+    for u, v in L["holes"]:
+        ears = ears.cut(cyl_z(u, v, L["hole_d"], -1, 4))
+    b = L["base"] / 2
+    body = box(-b, b, -b, b, 0, L["h"] - L["head_h"]).fuse(cyl_z(0, 0, L["head_d"], L["h"] - L["head_h"], L["h"]))
+    return ears.fuse(body)
 
 
 def neck_parts():
@@ -187,8 +206,8 @@ def neck_parts():
     P.append(("俯仰舵机", box(-sx / 2, sx / 2, yc - sw / 2, yc + sw / 2, PIVOT_UP - sh / 2, PIVOT_UP + sh / 2), "motor"))
     top = max(z for _, z in POD_HEX)
     top_x = sum(x for x, z in POD_HEX if z == top) / 2
-    P.append(("雷达", cyl_z(top_x, yc, LIDAR_D, top + 3, top + 3 + LIDAR_H), "black"))
-    P.append(("雷达底座", box(top_x - 24, top_x + 24, POD_IN, POD_IN + POD_W, top, top + 3), "trim"))   # 和肩座顶一样宽，不往外伸
+    P.append(("雷达LD19", ld19().translate(V(top_x, yc, top + 3)), "black"))
+    P.append(("雷达底座", box(top_x - 29, top_x + 29, POD_IN, POD_IN + POD_W, top, top + 3), "trim"))   # 和肩座顶一样宽，不往外伸
     return P
 
 
@@ -212,9 +231,14 @@ def leg_parts_FL():
     my1 = wy1 + WHEEL_MOTOR_W                  # 轮子电机外侧 = 外板内侧
     oy1 = my1 + OUTER_PLATE_T
     hub0 = W2 + BEARING_HOUSING_W + 1
+    root0 = hub0 + HUB["boss_l"] + HUB["flange_t"]          # 臂根内板内侧
+    root1 = root0 + ARM_ROOT_PLATE_T
     P = [
-        ("臂座轴毂", cyl_y(0, 0, 40, hub0, hub0 + 16), "alu"),
-        ("箱形臂座", stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R, hub0 + 2, my1), "armor"),
+        ("臂座轴毂", cyl_y(0, 0, HUB["boss_d"], hub0, hub0 + HUB["boss_l"]).fuse(
+            cyl_y(0, 0, HUB["flange_d"], hub0 + HUB["boss_l"], hub0 + HUB["boss_l"] + HUB["flange_t"])), "alu"),
+        ("臂根内板", stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R, root0, root1), "alu"),
+        ("箱形臂座外壳", stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R, root1, my1).cut(
+            stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R - 3, root1 - 1, my1 + 1)), "armor"),
         ("摆臂外板", stadium_xz(0, ARM, ARM_END_R, my1, oy1), "alu"),
         ("轮子电机GIM4310", cyl_y(ARM, 0, WHEEL_MOTOR_D, wy1, my1), "motor"),
         ("麦轮外包络", cyl_y(ARM, 0, WHEEL_D, wy0, wy1), "envelope"),      # 只用来查碰撞，不显示
@@ -222,6 +246,8 @@ def leg_parts_FL():
         ("麦轮侧板内", cyl_y(ARM, 0, WHEEL_PLATE_D, wy0, wy0 + WHEEL_PLATE_T), "steel"),
         ("麦轮侧板外", cyl_y(ARM, 0, WHEEL_PLATE_D, wy1 - WHEEL_PLATE_T, wy1), "steel"),
     ]
+    for i, (u, v) in enumerate(ARM_STANDOFFS):
+        P.append((f"臂根支柱{i + 1}", cyl_y(u, v, STANDOFF_HEX, root1, my1), "alu"))
     yc = (wy0 + wy1) / 2
     barrel = roller_solid()
     for k in range(ROLLERS):

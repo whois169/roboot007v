@@ -1,0 +1,232 @@
+<title>机械狗007v 图纸</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* 布局：顶部标题 + 三页（零件清单 / 加工图纸 / 接线图）；图纸画在白色“图纸”上，页面整体深色工程风，和 3D 查看页一致 */
+:root {
+  --bg: #0b0e11;
+  --panel: #12171b;
+  --line: #22303a;
+  --fg: #d9e3e7;
+  --dim: #82939b;
+  --accent: #3fd0e0;
+  --ok: #62d49c;
+  --warn: #e6a740;
+  --bad: #ef6a5b;
+  --paper: #f6f7f4;
+  --ink: #1d2329;
+  --f-display: "Chakra Petch", "Microsoft YaHei", "PingFang SC", sans-serif;
+  --f-body: system-ui, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --f-data: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.6 var(--f-body); padding-inline: 16px; padding-block: 14px 40px; margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.code { font: 600 13px var(--f-display); letter-spacing: .18em; color: var(--accent); border: 1px solid var(--accent); padding: 1px 7px; }
+h1 { font: 600 22px/1.2 var(--f-display); margin: 0; letter-spacing: .02em; }
+h2 { font: 600 16px/1.3 var(--f-display); margin: 0; letter-spacing: .03em; }
+.sub { margin: 0; color: var(--dim); flex-basis: 100%; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); }
+.tabs button { border: 0; padding: 10px 6px; font: 600 14px var(--f-display); letter-spacing: .05em; background: var(--panel); color: var(--dim); cursor: pointer; }
+.tabs button.on { background: rgba(63,208,224,.14); color: var(--accent); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.page { display: grid; gap: 14px; min-width: 0; }
+.box { background: var(--panel); border: 1px solid var(--line); padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.label { font: 600 11px var(--f-display); letter-spacing: .16em; color: var(--dim); text-transform: uppercase; }
+.stats { display: flex; flex-wrap: wrap; gap: 10px 22px; }
+.stat b { display: block; font: 600 22px var(--f-data); font-variant-numeric: tabular-nums; }
+.stat span { color: var(--dim); font-size: 12px; }
+.chip { display: inline-block; font: 500 11px var(--f-body); padding: 1px 7px; border: 1px solid currentColor; white-space: nowrap; }
+.c-样品 { color: var(--accent); } .c-第二批 { color: #9fb4ff; } .c-已有 { color: var(--ok); } .c-以后 { color: var(--dim); }
+.s-star { color: var(--warn); } .s-ok { color: var(--ok); } .s-meas { color: #c3a6f0; } .s-other { color: var(--dim); }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.filters button { font: 13px var(--f-body); color: var(--fg); background: #1a2228; border: 1px solid var(--line); padding: 6px 12px; cursor: pointer; }
+.filters button.on { border-color: var(--accent); color: var(--accent); background: rgba(63,208,224,.12); }
+.cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+.item { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; display: grid; gap: 6px; min-width: 0; }
+.item .hd { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.item .nm { font-weight: 600; font-size: 15px; margin-right: auto; }
+.item .spec { color: var(--fg); }
+.item dl { display: grid; grid-template-columns: 4.5em minmax(0, 1fr); gap: 2px 8px; margin: 0; font-size: 13px; }
+.item dt { color: var(--dim); }
+.item dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.price { font: 13px var(--f-data); color: var(--dim); font-variant-numeric: tabular-nums; }
+.ask li { margin-bottom: 4px; }
+.ask b { color: var(--warn); }
+.idx { display: flex; flex-wrap: wrap; gap: 6px; }
+.idx a { font: 12px var(--f-data); color: var(--fg); text-decoration: none; border: 1px solid var(--line); padding: 3px 8px; background: #161d22; }
+.idx a:hover { border-color: var(--accent); }
+.part { background: var(--panel); border: 1px solid var(--line); padding: 14px; display: grid; gap: 10px; min-width: 0; scroll-margin-top: 54px; }
+.part .hd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.part .pc { font: 600 14px var(--f-data); color: var(--accent); }
+.part .meta { color: var(--dim); font-size: 13px; }
+.paper { background: var(--paper); border: 1px solid #c9cfd3; overflow-x: auto; padding: 6px; }
+.paper svg { display: block; max-width: 100%; height: auto; min-width: 320px; }
+.dwg .ol { fill: none; stroke: var(--ink); stroke-width: 1.4; }
+.dwg .ho { fill: none; stroke: var(--ink); stroke-width: 1; }
+.dwg .hs { fill: rgba(217,119,6,.12); stroke: #c46a05; stroke-width: 1.3; }
+.dwg .cl { fill: none; stroke: #8a96a0; stroke-width: .6; stroke-dasharray: 8 2 1 2; }
+.dwg .hid { fill: none; stroke: #8a96a0; stroke-width: .8; stroke-dasharray: 4 2; }
+.dwg .sec { fill: #cfd6dc; stroke: none; }
+.dwg .bore { fill: var(--paper); stroke: var(--ink); stroke-width: .8; }
+.dwg .hl { font: 9px var(--f-data); fill: #4b5864; }
+.dwg .vl { font: 11px var(--f-body); fill: #4b5864; }
+.dwg .dim path { stroke: #2463a6; stroke-width: .8; fill: none; }
+.dwg .dim .ar { fill: #2463a6; stroke: none; }
+.dwg .dim text { font: 12px var(--f-data); fill: #2463a6; }
+.dwg .org circle, .dwg .org path { fill: none; stroke: #c2410c; stroke-width: 1.2; }
+.tblw { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 4px 8px 4px 0; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { color: var(--dim); font-weight: 400; white-space: nowrap; }
+td.n { font: 12px var(--f-data); font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.star td { color: var(--warn); }
+ul.notes { margin: 0; padding-left: 1.2em; }
+.files { font: 12px var(--f-data); color: var(--dim); overflow-wrap: anywhere; }
+.wiringw { overflow-x: auto; background: #0e1317; border: 1px solid var(--line); }
+.wiring { display: block; min-width: 980px; width: 100%; height: auto; }
+.wiring .bx rect { fill: #151c21; stroke: #3a4a55; stroke-width: 1.2; }
+.wiring .bx.pwr rect { stroke: #8a4a3e; }
+.wiring .bx.ctl rect { stroke: var(--accent); fill: #10222a; }
+.wiring .bt { font: 600 13px var(--f-body); fill: var(--fg); }
+.wiring .bs { font: 11.5px var(--f-body); fill: var(--dim); }
+.wiring .wl { font: 11px var(--f-body); paint-order: stroke; stroke: #0e1317; stroke-width: 3px; }
+.wiring .lg { font: 11.5px var(--f-body); fill: var(--fg); }
+p.note { margin: 0; }
+.dimtext { color: var(--dim); font-size: 12px; margin: 0; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="code">007V</span>
+    <h1>机械狗007v 图纸</h1>
+    <p class="sub">零件清单、加工图纸、接线图。尺寸和 3D 模型、碰撞检查、仿真用的是同一套数。标 ★ 的孔位要等卖家的安装图或到货实测。</p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" id="t-bom" class="on">零件清单</button>
+    <button type="button" id="t-parts">加工图纸</button>
+    <button type="button" id="t-wiring">接线图</button>
+  </nav>
+
+  <section class="page" id="p-bom">
+    <div class="box">
+      <div class="stats" id="stats"></div>
+      <p class="dimtext">先买样品：每样一个，按选型计算书第五节测过再补齐（第二批）。价格是国内零售大概价，以下单时为准。</p>
+    </div>
+    <div class="box">
+      <h2>下单时要问卖家要图的 ★</h2>
+      <p class="dimtext">这几样的安装孔位网上查不到，图纸里先按常见规格画了。请卖家发“安装尺寸图（PDF 或 STEP）”，拿到后发给我改图。</p>
+      <ul class="ask" id="ask"></ul>
+    </div>
+    <div class="filters" id="filters"></div>
+    <div class="cards" id="bom"></div>
+  </section>
+
+  <section class="page" id="p-parts" hidden>
+    <div class="box">
+      <h2>要加工的零件</h2>
+      <p class="dimtext">A 铝板（激光切割，发 DXF）· B 车削件（发 STEP + 这里的图）· C 亚克力 · D 3D 打印（STL）。文件都在电脑的 <code>007v/out/mfg/</code> 文件夹里。孔位表里的 X / Y 都相对图上的 ⊕ 原点，单位 mm；橙色的孔 = ★ 待确认。</p>
+      <div class="idx" id="idx"></div>
+    </div>
+    <div class="box">
+      <h2>2020 型材切割清单</h2>
+      <div class="tblw"><table id="prof"></table></div>
+    </div>
+    <div id="parts" class="page"></div>
+  </section>
+
+  <section class="page" id="p-wiring" hidden>
+    <div class="box">
+      <h2>接线图</h2>
+      <p class="dimtext">手机上左右滑动看全图。急停只断 8 个电机的电（髋是蜗轮自锁，不会塌），大脑和 ESP32 照常工作。总开关和急停都只控制继电器线圈，大电流不走按钮。</p>
+      <div class="wiringw" id="wiring"></div>
+    </div>
+    <div class="box">
+      <h2>底盘 ESP32-S3 建议引脚</h2>
+      <div class="tblw"><table id="pins"></table></div>
+      <p class="dimtext">不用的脚：0、3、45、46（启动用）、19 / 20（USB）、26–37（N16R8 的闪存和内存）。写固件时再最终定。</p>
+    </div>
+  </section>
+</div>
+
+<script src="dwg_data.js"></script>
+<script>
+(function () {
+  const D = window.DOG007V_DWG;
+  const $ = (id) => document.getElementById(id);
+  if (!D) { $("bom").textContent = "数据没加载出来，刷新一下试试。"; return; }
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  // ---------------- 页面切换
+  const pages = { bom: "p-bom", parts: "p-parts", wiring: "p-wiring" };
+  function show(k) {
+    Object.entries(pages).forEach(([key, id]) => { $(id).hidden = key !== k; $("t-" + key).classList.toggle("on", key === k); });
+  }
+  Object.keys(pages).forEach((k) => $("t-" + k).addEventListener("click", () => { show(k); history.replaceState(null, "", "#" + k); window.scrollTo(0, 0); }));
+  const h = location.hash.slice(1);
+  if (pages[h]) show(h);
+
+  // ---------------- 零件清单
+  const t = D.bom.totals;
+  $("stats").innerHTML = [["样品这一批", t["样品"]], ["样品合格后第二批", t["第二批"]], ["以后（深度相机）", t["以后"]]]
+    .map(([k, v]) => `<div class="stat"><b>¥${Math.round(v).toLocaleString("zh-CN")}</b><span>${k}</span></div>`).join("");
+  $("ask").innerHTML = D.bom.rows.filter((r) => r["尺寸状态"] === "★要图")
+    .map((r) => `<li><b>${esc(r["名称"])}</b>：${esc(r["备注"])}</li>`).join("");
+  const stCls = (s) => s === "★要图" ? "s-star" : s === "已确认" ? "s-ok" : s === "到货实测" ? "s-meas" : "s-other";
+  const batches = ["全部", "样品", "第二批", "已有", "以后"];
+  let filter = "全部";
+  function renderBom() {
+    const rows = D.bom.rows.filter((r) => filter === "全部" || r["批次"] === filter);
+    $("bom").innerHTML = rows.map((r) => {
+      const f = (k, lab) => r[k] ? `<dt>${lab}</dt><dd>${esc(r[k])}</dd>` : "";
+      const qty = r["批次"] === "样品" && r["样品数"] !== r["总数"] ? `样品 ${r["样品数"]} / 共 ${r["总数"]}` : `共 ${r["总数"]}`;
+      const price = r["单价"] ? `¥${r["单价"]}` : "";
+      return `<article class="item"><div class="hd"><span class="nm">${esc(r["名称"])}</span>
+        <span class="chip c-${esc(r["批次"])}">${esc(r["批次"])}</span><span class="chip ${stCls(r["尺寸状态"])}">${esc(r["尺寸状态"])}</span></div>
+        <div class="spec">${esc(r["规格 / 型号"])}</div>
+        <div class="price">${qty}${price ? " · 单价 " + price : ""} · ${esc(r["类别"])}</div>
+        <dl>${f("硬指标", "硬指标")}${f("搜索关键词", "搜索")}${f("尺寸与孔位", "尺寸")}${f("备注", "备注")}</dl></article>`;
+    }).join("");
+  }
+  $("filters").innerHTML = batches.map((b) => `<button type="button" data-b="${b}" class="${b === filter ? "on" : ""}">${b}</button>`).join("");
+  $("filters").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    filter = b.dataset.b;
+    [...$("filters").children].forEach((x) => x.classList.toggle("on", x === b));
+    renderBom();
+  });
+  renderBom();
+
+  // ---------------- 加工图纸
+  const parts = D.mfg.parts;
+  $("idx").innerHTML = parts.map((p) => `<a href="#${p.code}" data-code="${p.code}">${p.code} ${esc(p.name)} ×${p.qty}</a>`).join("");
+  $("idx").addEventListener("click", (e) => {
+    const a = e.target.closest("a"); if (!a) return;
+    e.preventDefault();
+    document.getElementById(a.dataset.code).scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  $("prof").innerHTML = `<tr><th>型材</th><th>数量</th><th>长度 mm</th><th>说明</th></tr>` +
+    D.mfg.profiles.map((p) => `<tr><td>${esc(p.name)}</td><td class="n">${p.qty}</td><td class="n">${p.length}</td><td>${esc(p.note)}</td></tr>`).join("");
+  $("parts").innerHTML = parts.map((p) => {
+    const holes = p.holes && p.holes.length ? `<div class="tblw"><table><tr><th>#</th><th>X</th><th>Y</th><th>尺寸</th><th>类型</th><th>用途</th></tr>` +
+      p.holes.map((h) => `<tr class="${h.star ? "star" : ""}"><td class="n">${esc(h.no)}${h.star ? " ★" : ""}</td><td class="n">${esc(h.x)}</td><td class="n">${esc(h.y)}</td>
+        <td class="n">${esc(h.size)}</td><td>${esc(h.kind)}</td><td>${esc(h.note)}</td></tr>`).join("") + `</table></div>` : "";
+    const notes = (p.notes || []).length ? `<ul class="notes">${p.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : "";
+    return `<article class="part" id="${p.code}"><div class="hd"><span class="pc">${p.code}</span><h2>${esc(p.name)}</h2>
+      <span class="meta">×${p.qty} · ${esc(p.material)} · ${esc(p.process)} · ${esc(p.size)}</span></div>
+      ${p.origin ? `<p class="dimtext">${esc(p.origin)}</p>` : ""}
+      <div class="paper">${p.svg}</div>${notes}${holes}
+      <div class="files">文件：${p.files.map(esc).join("　")}</div></article>`;
+  }).join("");
+
+  // ---------------- 接线图
+  $("wiring").innerHTML = D.wiring.svg;
+  $("pins").innerHTML = `<tr><th>功能</th><th>引脚</th><th>说明</th></tr>` +
+    D.wiring.pins.map(([a, b, c]) => `<tr><td>${esc(a)}</td><td class="n">${esc(b)}</td><td>${esc(c)}</td></tr>`).join("");
+})();
+</script>
