@@ -1,0 +1,961 @@
+<meta charset="utf-8">
+<title>笨笨 Mini 外观方案</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 布局：左边 3D 展台占满一屏（固定不随页面滚动），右边是设计说明；窄屏上下排列。单一深色：展厅灯光 */
+:root {
+  --bay: #0b0e11;
+  --panel: #12171b;
+  --line: #242c32;
+  --ink: #dce2e6;
+  --mute: #8b969e;
+  --amber: #ffb000;
+  --cyan: #00e5ff;
+  --good: #6fcf8e;
+  --font-display: "Barlow Condensed", "Arial Narrow", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-body: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bay); color: var(--ink); font-family: var(--font-body); }
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr) 380px; align-items: start; min-height: 100%; }
+.bay { position: sticky; top: env(safe-area-inset-top, 0px); height: 100vh; min-height: 520px; overflow: hidden; border-right: 1px solid var(--line); }
+#scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hud { position: absolute; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between; gap: 12px; pointer-events: none; }
+.tag { font: 500 11px/1.7 var(--font-data); letter-spacing: .12em; color: var(--mute); text-transform: uppercase; }
+.tag b { color: var(--amber); font-weight: 500; }
+.readout { font: 500 12px/1.7 var(--font-data); color: var(--cyan); text-align: right; }
+.controls { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); background: rgba(18,23,27,.9); }
+.seg em { font: 500 11px/1 var(--font-data); color: var(--mute); padding: 12px 8px 0 10px; font-style: normal; letter-spacing: .08em; }
+.seg button { font: 500 13px/1 var(--font-body); color: var(--mute); background: transparent; border: 0; border-left: 1px solid var(--line); padding: 10px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { color: #0b0e11; background: var(--amber); }
+.seg button:focus-visible { outline: 2px solid var(--cyan); outline-offset: -2px; }
+.panel { background: var(--panel); padding: 28px 24px 32px; display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+h1 { font: 800 46px/0.95 var(--font-display); margin: 0; letter-spacing: .02em; text-wrap: balance; }
+h1 small { display: block; font: 500 12px/1.4 var(--font-data); letter-spacing: .14em; color: var(--amber); margin-bottom: 10px; }
+.lede { margin: 0; line-height: 1.7; font-size: 14px; }
+h2 { font: 600 12.5px/1 var(--font-data); letter-spacing: .14em; text-transform: uppercase; color: var(--mute); margin: 0 0 10px; }
+ul.points { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+ul.points li { border-left: 3px solid var(--amber); padding: 1px 0 1px 12px; font-size: 13.5px; line-height: 1.6; }
+ul.points li b { display: block; font-weight: 600; font-size: 14px; }
+ul.warn li { border-left-color: var(--line); color: var(--ink); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+td { padding: 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+td:first-child { color: var(--mute); width: 38%; padding-right: 10px; }
+td:last-child { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 12.5px; }
+.note { margin: 0; font-size: 12.5px; line-height: 1.65; color: var(--mute); }
+@media (max-width: 900px) {
+  .wrap { grid-template-columns: 1fr; }
+  .bay { position: relative; top: 0; height: 68vh; min-height: 460px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .panel { padding-inline: 16px; }
+  h1 { font-size: 38px; }
+}
+</style>
+
+<div class="wrap">
+  <section class="bay" aria-label="3D 效果图，可以拖动旋转、滚轮缩放">
+    <canvas id="scene"></canvas>
+    <div class="hud">
+      <div class="tag">BB-01 · BENBEN MINI · <b>LOOK v6</b><br>拖动旋转 · 滚轮缩放</div>
+      <div class="readout" id="readout"></div>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="头部俯仰"><em>头</em>
+        <button data-head="up" aria-pressed="false">抬头看人</button>
+        <button data-head="level" aria-pressed="true">平视</button>
+        <button data-head="down" aria-pressed="false">低头看路</button>
+      </div>
+      <div class="seg" role="group" aria-label="表情"><em>脸</em>
+        <button data-face="calm" aria-pressed="true">平静</button>
+        <button data-face="happy" aria-pressed="false">开心</button>
+        <button data-face="alert" aria-pressed="false">警觉</button>
+      </div>
+      <div class="seg" role="group" aria-label="形态和行驶"><em>车</em>
+        <button id="fold" aria-pressed="false">折叠</button>
+        <button data-drive="fwd" aria-pressed="false">前进</button>
+        <button data-drive="side" aria-pressed="false">横移</button>
+        <button data-drive="spin" aria-pressed="false">原地转</button>
+        <button id="bed" aria-pressed="true">栏板</button>
+        <button id="holo" aria-pressed="false">机械臂预留</button>
+      </div>
+      <div class="seg" role="group" aria-label="灯光和视角"><em>看</em>
+        <button id="night" aria-pressed="false">夜间</button>
+        <button id="eye" aria-pressed="false">人眼视角</button>
+        <button id="turn" aria-pressed="true">转台</button>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <h1><small>笨笨 MINI · 外观 v6</small>BB-01 运输单元</h1>
+    <p class="lede">方盒装甲机身，四条单段摆臂，末端是麦克纳姆轮；前面一颗能抬头、低头的屏幕脸；头的左支架直接长成一根方正的传感塔，雷达和天线都在塔上；货斗右前角预留了机械臂接口；背上是能插拔栏板的货斗。左下角能切换头的角度、表情、折叠、行驶方式，以及装上、拆下栏板。</p>
+
+    <div>
+      <h2>这一版定下来的</h2>
+      <ul class="points">
+        <li><b>头能上下转</b>抬头 35° 看站着的人，平视看路，低头 20° 看脚下。它不高，人站着是往下看，抬头以后屏幕正对着你的脸。相机在脸的下沿。</li>
+        <li><b>传感塔和头架长在一起</b>头左边的支架直接长成一根方正的立柱，分上下两节：直边小倒角、两侧凹进去的面板、横向分缝、前脸竖槽里嵌青色灯、竖棱银色压边。头的左俯仰电机装在塔上，塔外侧露出电机端盖和青色灯圈。雷达直接坐在塔顶方形平台上，不加罩子；扫描面比头抬到最高时还高一点，360° 不被挡。天线是塔背面一条细长板。折叠时上节往后放倒。</li>
+        <li><b>机械臂接口（预留）</b>货斗右前角，和传感塔一左一右。现在只留一块和车架连在一起的加强安装板（4 个螺纹孔）和一个航空插座（供电 + 通信），臂本身等以后定了要干什么再设计。左下角“机械臂预留”能看到一只半透明的示意臂，表示大概的尺寸和能伸到哪里。用臂时四条摆臂把车身放低，会更稳。</li>
+        <li><b>货斗 + 卡槽栏板</b>取消了背上两根罐子。四边是带插槽的铝型材导轨，3D 打印的栏板往下一插就卡住，能随时拆。栏板六边形镂空减重，以后可以换高栏、网兜或者整只箱子。</li>
+        <li><b>单段摆臂 + 麦克纳姆轮</b>每条腿一个髋关节，摆臂在外侧挡住轮子；四个麦轮能前进、横移、原地转。</li>
+      </ul>
+    </div>
+
+    <div>
+      <h2>尺寸（估算）</h2>
+      <table>
+        <tr><td>机身</td><td>40 × 24 × 15 cm</td></tr>
+        <tr><td>展开</td><td>约 60 × 41 × 48 cm（雷达顶）</td></tr>
+        <tr><td>货斗</td><td>内部约 25 × 20 cm，栏板高 7 cm</td></tr>
+        <tr><td>折叠</td><td>约 40 × 41 × 28 cm</td></tr>
+        <tr><td>摆臂</td><td>17 cm，1 个髋关节</td></tr>
+        <tr><td>轮子</td><td>4 × Φ110 mm 麦克纳姆轮</td></tr>
+        <tr><td>电机</td><td>4 髋 + 4 轮 + 1 头部俯仰 = 9 个</td></tr>
+      </table>
+    </div>
+
+    <div>
+      <h2>要注意的</h2>
+      <ul class="points warn">
+        <li><b>麦克纳姆轮怕烂路</b>超市、商场、平整人行道很好用；草地、碎石、坑洼路会打滑、颠簸，小滚子也容易卡进缝里。常走烂路就换普通橡胶轮，样子可以保留类似的轮毂造型。</li>
+        <li><b>折叠时轮子翘在四角</b>同一侧的前后摆臂是对着收的，要往上翻到 60° 左右轮子才不会撞在一起，轮子会翘到约 26 cm 高，传感塔上半截放倒以后，折叠高度约 28 cm。</li>
+        <li><b>上台阶能力变小</b>没有膝关节，抬腿只能沿着圆弧转，估计能上 8–10 cm 的小坎，15 cm 的路沿比较勉强，要仿真确认。</li>
+        <li><b>雷达看不到低处</b>雷达在约 46 cm 高扫一圈，比这矮的东西（台阶、宠物、地上的箱子）它扫不到，要靠前脸下沿的深度相机看近处和低处。货物别堆得比雷达高。</li>
+      </ul>
+    </div>
+
+    <p class="note">这是效果示意，用来定外观，不是工程图。尺寸是估算；定了外观以后再画正式骨架、扫折叠轨迹、算关节扭矩。</p>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+  const canvas = document.getElementById('scene');
+  const bay = canvas.parentElement;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 40);
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.minDistance = 0.5;
+  controls.maxDistance = 4;
+  controls.maxPolarAngle = Math.PI * 0.49;
+
+  // ---------------- 展厅环境（给金属件反光）
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envScene = new THREE.Scene();
+  envScene.add(new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10), new THREE.MeshBasicMaterial({ color: 0x14181b, side: THREE.BackSide })));
+  const softbox = (w, h, x, y, z, c) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: c, side: THREE.DoubleSide }));
+    m.position.set(x, y, z); m.lookAt(0, 0, 0); envScene.add(m);
+  };
+  softbox(6, 1.6, 0, 4.8, 0, 0xffffff);
+  softbox(3, 3, 4.8, 1.2, 2, 0xe2eaef);
+  softbox(2, 4, -4.8, 1, -2, 0x9fd8ff);
+  softbox(4, 0.6, 0, 1, -4.8, 0xffffff);
+  scene.environment = pmrem.fromScene(envScene, 0.03).texture;
+
+  const hemi = new THREE.HemisphereLight(0xcfd8de, 0x15181b, 0.45);
+  scene.add(hemi);
+  const key = new THREE.DirectionalLight(0xffffff, 1.6);
+  key.position.set(1.3, 2.4, 1.1);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.bias = -0.0004;
+  Object.assign(key.shadow.camera, { left: -0.7, right: 0.7, top: 0.7, bottom: -0.7, near: 0.5, far: 6 });
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0x8fdcff, 0.9);
+  rim.position.set(-2, 1.3, -1.6);
+  scene.add(rim);
+
+  const srgb = hex => new THREE.Color(hex).convertSRGBToLinear();
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(3, 64), new THREE.MeshStandardMaterial({ color: srgb(0x15181b), roughness: 0.62, metalness: 0.1, envMapIntensity: 0.25 }));
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  scene.add(floor);
+  const grid = new THREE.GridHelper(6, 48, 0x283036, 0x1c2226);
+  grid.position.y = 0.001;
+  scene.add(grid);
+
+  // ---------------- 材质（深灰装甲 + 银色件 + 黑色传感器窗 + 琥珀橙状态灯 + 青色 HUD）
+  const M = {
+    deck: new THREE.MeshPhysicalMaterial({ color: srgb(0x4a5258), roughness: 0.38, metalness: 0.4, clearcoat: 0.4, clearcoatRoughness: 0.35 }),
+    shell: new THREE.MeshPhysicalMaterial({ color: srgb(0x353b40), roughness: 0.45, metalness: 0.35, clearcoat: 0.3, clearcoatRoughness: 0.4 }),
+    dark: new THREE.MeshPhysicalMaterial({ color: srgb(0x1f2327), roughness: 0.55, metalness: 0.3, clearcoat: 0.15 }),
+    silver: new THREE.MeshStandardMaterial({ color: srgb(0xcdd2d6), roughness: 0.2, metalness: 1.0 }),
+    steel: new THREE.MeshStandardMaterial({ color: srgb(0x8e959b), roughness: 0.35, metalness: 1.0 }),
+    gloss: new THREE.MeshPhysicalMaterial({ color: srgb(0x06080a), roughness: 0.06, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.04 }),
+    black: new THREE.MeshStandardMaterial({ color: srgb(0x0c0e10), roughness: 0.5, metalness: 0.3 }),
+    rubber: new THREE.MeshStandardMaterial({ color: srgb(0x17191b), roughness: 0.85, metalness: 0.05 }),
+    seam: new THREE.MeshBasicMaterial({ color: 0x050607 }),
+    amber: new THREE.MeshStandardMaterial({ color: srgb(0xffb000), emissive: srgb(0xffa000), emissiveIntensity: 2.2 }),
+    cyan: new THREE.MeshStandardMaterial({ color: srgb(0x00e5ff), emissive: srgb(0x00d8ff), emissiveIntensity: 1.8 }),
+  };
+
+  // 贴花：警示条纹、喷码
+  function decalTex(w, h, draw) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d'); draw(g, w, h);
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+    t.userData = { draw: () => { g.clearRect(0, 0, w, h); draw(g, w, h); t.needsUpdate = true; } };
+    return t;
+  }
+  const hazardTex = decalTex(256, 32, (g, w, h) => {
+    g.fillStyle = '#ffb000'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#111316';
+    for (let x = -h; x < w + h; x += 32) { g.beginPath(); g.moveTo(x, h); g.lineTo(x + 16, h); g.lineTo(x + 16 + h, 0); g.lineTo(x + h, 0); g.fill(); }
+  });
+  const stencilTex = decalTex(512, 128, (g, w, h) => {
+    g.fillStyle = 'rgba(214,220,224,0.85)';
+    g.font = '800 92px "Barlow Condensed", "Arial Narrow", sans-serif';
+    g.fillText('BB-01', 8, 92);
+    g.font = '500 22px "IBM Plex Mono", monospace';
+    g.fillText('CARGO 5KG · UEG-LOG', 250, 52);
+    g.fillText('MAX STEP 0.10M', 250, 84);
+  });
+  const warnTex = decalTex(256, 64, (g, w, h) => {
+    g.fillStyle = 'rgba(255,176,0,0.9)';
+    g.font = '600 26px "IBM Plex Mono", monospace';
+    g.fillText('▲ PINCH POINT', 6, 40);
+  });
+  const decalMat = t => new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: 0.6, metalness: 0.2, polygonOffset: true, polygonOffsetFactor: -2 });
+
+  // 发光贴片（叠加混合，不用后期特效）
+  const glowTex = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d');
+    const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.35, 'rgba(255,255,255,0.35)'); r.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = r; g.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  })();
+  const glows = [];
+  function glow(parent, pos, normal, w, h, color, op = 0.4) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({
+      map: glowTex, color, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false }));
+    m.position.copy(pos); m.lookAt(pos.clone().add(normal)); m.userData.base = op;
+    parent.add(m); glows.push(m);
+    return m;
+  }
+
+  function cyl(r, len, mat, seg = 32, r2) {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r2 === undefined ? r : r2, len, seg), mat);
+    m.castShadow = true; m.receiveShadow = true;
+    return m;
+  }
+  function box(w, h, d, mat) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.castShadow = true; m.receiveShadow = true;
+    return m;
+  }
+  function plate(w, h, d, c, mat) {                          // 斜切角的块
+    const s = new THREE.Shape();
+    const hw = w / 2 - c, hh = h / 2 - c;
+    s.moveTo(-hw, -hh); s.lineTo(hw, -hh); s.lineTo(hw, hh); s.lineTo(-hw, hh); s.lineTo(-hw, -hh);
+    const dd = Math.max(0.0005, d - 2 * c);
+    const g = new THREE.ExtrudeGeometry(s, { depth: dd, bevelEnabled: true, bevelThickness: c, bevelSize: c, bevelSegments: 1 });
+    g.translate(0, 0, -dd / 2);
+    const m = new THREE.Mesh(g, mat);
+    m.castShadow = true; m.receiveShadow = true;
+    return m;
+  }
+  function profile(points, depth, bevel, mat) {                // 侧面轮廓挤出（八角、切角的装甲块）
+    const s = new THREE.Shape(points.map(p => new THREE.Vector2(p[0], p[1])));
+    const g = new THREE.ExtrudeGeometry(s, { depth: depth - 2 * bevel, bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 1 });
+    g.translate(0, 0, -(depth - 2 * bevel) / 2);
+    const m = new THREE.Mesh(g, mat);
+    m.castShadow = true; m.receiveShadow = true;
+    return m;
+  }
+  function stadium(len, r, t, mat, bevel = 0.002) {           // 两头圆的摆臂板
+    const s = new THREE.Shape();
+    s.absarc(0, 0, r, Math.PI / 2, Math.PI * 1.5, false);
+    s.absarc(len, 0, r, -Math.PI / 2, Math.PI / 2, false);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: t - 2 * bevel, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2, curveSegments: 20 });
+    g.translate(0, 0, -(t - 2 * bevel) / 2);
+    const m = new THREE.Mesh(g, mat);
+    m.castShadow = true; m.receiveShadow = true;
+    return m;
+  }
+  const along = (m, axis) => { m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis.clone().normalize()); return m; };
+  function facing(mesh, pos, normal) { mesh.position.copy(pos); mesh.lookAt(pos.clone().add(normal)); return mesh; }
+
+  // ---------------- 尺寸（米）
+  const BL = 0.40, BW = 0.24;
+  const HX = 0.15;                     // 髋关节前后位置
+  const ARM = 0.17, WR = 0.055, WW = 0.045;
+  const Z_HIP = BW / 2 + 0.018, Z_WHEEL = BW / 2 + 0.046, Z_ARM = BW / 2 + 0.078;
+  const HIP_UP = WR + ARM * Math.sin(55 * Math.PI / 180);   // 展开：摆臂向下 55°
+  const HIP_LOW = 0.062;               // 折叠：机身落地
+  const CENTER_ABOVE_HIP = 0.02;
+
+  const root = new THREE.Group();
+  scene.add(root);
+  const body = new THREE.Group();
+  root.add(body);
+
+  // ======== 机身：下层底盘 + 中腰凹槽灯带 + 上层甲板（都在 body 原点附近搭好，最后整体抬高）
+  const tub = profile([[-0.19, -0.075], [0.19, -0.075], [0.2, -0.06], [0.2, -0.008], [-0.2, -0.008], [-0.2, -0.06]], 0.23, 0.006, M.shell);
+  body.add(tub);
+  const waist = box(0.392, 0.016, 0.222, M.black);             // 中腰凹槽
+  waist.position.y = 0.0;
+  body.add(waist);
+  const deck = profile([[-0.205, 0.008], [0.18, 0.008], [0.21, 0.03], [0.21, 0.05], [0.19, 0.072], [-0.19, 0.072], [-0.21, 0.05], [-0.21, 0.025]], 0.25, 0.007, M.deck);
+  body.add(deck);
+  // 甲板上沿的银色倒角边线
+  for (const z of [-1, 1]) {
+    const edge = box(0.38, 0.0035, 0.004, M.silver);
+    edge.position.set(0, 0.0705, z * 0.1255);
+    body.add(edge);
+    const edge2 = box(0.36, 0.003, 0.003, M.silver);
+    edge2.position.set(-0.01, 0.009, z * 0.1255);
+    body.add(edge2);
+  }
+  // 中腰灯带：两侧琥珀段 + 前后青色段
+  for (const z of [-1, 1]) {
+    for (const x of [-0.13, 0.13]) {
+      const seg = box(0.07, 0.006, 0.003, M.amber);
+      seg.position.set(x, 0, z * 0.1125);
+      body.add(seg);
+      glow(body, new THREE.Vector3(x, 0, z * 0.116), new THREE.Vector3(0, 0, z), 0.13, 0.04, 0xffb000, 0.3);
+    }
+  }
+  // 侧面装甲模块：外框 + 内凹面板 + 警示条 + 螺栓 + 散热槽
+  for (const z of [-1, 1]) {
+    const zf = z * (BW / 2 - 0.003);
+    const frame = plate(0.2, 0.05, 0.012, 0.005, M.dark);
+    frame.position.set(0, -0.04, zf + z * 0.004);
+    body.add(frame);
+    const inner = plate(0.18, 0.034, 0.008, 0.003, M.shell);
+    inner.position.set(0, -0.04, zf + z * 0.009);
+    body.add(inner);
+    for (let i = 0; i < 7; i++) {
+      const v = box(0.003, 0.022, 0.002, M.seam);
+      v.position.set(0.03 + i * 0.008, -0.04, zf + z * 0.0135);
+      body.add(v);
+    }
+    const hz = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.008), decalMat(hazardTex));
+    facing(hz, new THREE.Vector3(-0.045, -0.032, zf + z * 0.0136), new THREE.Vector3(0, 0, z));
+    body.add(hz);
+    const warn = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.015), decalMat(warnTex));
+    facing(warn, new THREE.Vector3(-0.045, -0.047, zf + z * 0.0136), new THREE.Vector3(0, 0, z));
+    body.add(warn);
+    for (const [x, y] of [[-0.092, -0.025], [0.092, -0.025], [-0.092, -0.055], [0.092, -0.055]]) {
+      const bolt = cyl(0.0035, 0.004, M.silver, 6);
+      bolt.rotation.x = Math.PI / 2;
+      bolt.position.set(x, y, zf + z * 0.0115);
+      body.add(bolt);
+    }
+    // 甲板侧面喷码
+    const st = new THREE.Mesh(new THREE.PlaneGeometry(0.17, 0.0425), decalMat(stencilTex));
+    facing(st, new THREE.Vector3(0.0, 0.04, z * 0.1256), new THREE.Vector3(0, 0, z));
+    body.add(st);
+  }
+  // 底盘下的青色底光（夜里照在地上）
+  const under = glow(body, new THREE.Vector3(0, -0.078, 0), new THREE.Vector3(0, -1, 0), 0.5, 0.35, 0x00e5ff, 0.18);
+
+  // 前保险杠 + 深度相机窗 + 两个琥珀雾灯
+  const bumper = profile([[0, -0.07], [0.014, -0.064], [0.014, -0.02], [0, -0.012]], 0.2, 0.003, M.dark);
+  bumper.position.x = 0.198;
+  body.add(bumper);
+  const depthWin = plate(0.006, 0.014, 0.1, 0.002, M.gloss);
+  depthWin.position.set(0.213, -0.042, 0);
+  body.add(depthWin);
+  for (const z of [-0.03, 0, 0.03]) {
+    const lens = cyl(z === 0 ? 0.0055 : 0.004, 0.003, M.black, 16);
+    lens.rotation.z = Math.PI / 2;
+    lens.position.set(0.2165, -0.042, z);
+    body.add(lens);
+  }
+  for (const z of [-1, 1]) {
+    const fog = box(0.004, 0.01, 0.022, M.amber);
+    fog.position.set(0.214, -0.042, z * 0.075);
+    body.add(fog);
+    glow(body, new THREE.Vector3(0.218, -0.042, z * 0.075), new THREE.Vector3(1, 0, 0), 0.07, 0.05, 0xffb000);
+  }
+  // 尾部：散热格栅、尾灯、充电口
+  const grille = plate(0.008, 0.04, 0.16, 0.002, M.black);
+  grille.position.set(-0.203, -0.04, 0);
+  body.add(grille);
+  for (let i = 0; i < 6; i++) {
+    const fin = box(0.004, 0.034, 0.002, M.steel);
+    fin.position.set(-0.207, -0.04, -0.06 + i * 0.024);
+    body.add(fin);
+  }
+  for (const z of [-1, 1]) {
+    const tl = box(0.004, 0.008, 0.06, M.amber);
+    tl.position.set(-0.212, 0.04, z * 0.07);
+    body.add(tl);
+    glow(body, new THREE.Vector3(-0.216, 0.04, z * 0.07), new THREE.Vector3(-1, 0, 0), 0.12, 0.05, 0xffb000);
+  }
+
+  // 顶部货斗：四边卡槽导轨（铝型材样式，栏板往下一插就卡住）+ 防滑底板 + 绑带横杆
+  const bedFloor = plate(0.25, 0.006, 0.2, 0.002, M.dark);
+  bedFloor.position.set(-0.065, 0.075, 0);
+  body.add(bedFloor);
+  for (const x of [-0.16, -0.1, -0.04, 0.02]) {
+    const tie = box(0.004, 0.005, 0.19, M.steel);
+    tie.position.set(x, 0.0805, 0);
+    body.add(tie);
+  }
+  function rail(len, alongX) {                                 // 一根带卡槽的导轨
+    const g = new THREE.Group();
+    g.add(box(alongX ? len : 0.018, 0.018, alongX ? 0.018 : len, M.steel));
+    const slot = box(alongX ? len : 0.006, 0.003, alongX ? 0.006 : len, M.seam);   // 顶面的插槽
+    slot.position.y = 0.0091;
+    g.add(slot);
+    for (const s of [-1, 1]) {                                 // 两侧的 T 形槽
+      const tg = box(alongX ? len : 0.002, 0.004, alongX ? 0.002 : len, M.seam);
+      if (alongX) tg.position.z = s * 0.0091; else tg.position.x = s * 0.0091;
+      g.add(tg);
+    }
+    return g;
+  }
+  const RAIL_Y = 0.081;
+  for (const z of [-1, 1]) { const r = rail(0.272, true); r.position.set(-0.064, RAIL_Y, z * 0.112); body.add(r); }
+  for (const x of [-0.195, 0.062]) { const r = rail(0.242, false); r.position.set(x, RAIL_Y, 0); body.add(r); }
+  for (const [x, z] of [[-0.195, 1], [-0.195, -1], [0.062, 1], [0.062, -1]]) {   // 四角的琥珀色定位块
+    const c = box(0.02, 0.02, 0.02, M.amber);
+    c.position.set(x, RAIL_Y, z * 0.112);
+    body.add(c);
+  }
+
+  // 可拆的打印栏板：六边形镂空减重，插在卡槽里；中间放一个示例货箱
+  M.printed = new THREE.MeshStandardMaterial({ color: srgb(0x30363a), roughness: 0.72, metalness: 0.1 });
+  function hexPanel(len, h, t) {
+    const s = new THREE.Shape();
+    const c = 0.008;
+    s.moveTo(-len / 2, -h / 2); s.lineTo(len / 2, -h / 2); s.lineTo(len / 2, h / 2 - c); s.lineTo(len / 2 - c, h / 2);
+    s.lineTo(-len / 2 + c, h / 2); s.lineTo(-len / 2, h / 2 - c); s.lineTo(-len / 2, -h / 2);
+    const r = 0.0072, dx = 0.0165, dy = 0.0145;
+    let row = 0;
+    for (let y = -h / 2 + 0.017; y <= h / 2 - 0.016; y += dy, row++) {
+      for (let x = -len / 2 + 0.017 + (row % 2 ? dx / 2 : 0); x <= len / 2 - 0.016; x += dx) {
+        const p = new THREE.Path();
+        for (let k = 0; k < 6; k++) {
+          const a = Math.PI / 6 + k * Math.PI / 3;
+          k ? p.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)) : p.moveTo(x + r * Math.cos(a), y + r * Math.sin(a));
+        }
+        p.closePath();
+        s.holes.push(p);
+      }
+    }
+    const g = new THREE.ExtrudeGeometry(s, { depth: t, bevelEnabled: false });
+    g.translate(0, 0, -t / 2);
+    const m = new THREE.Mesh(g, M.printed);
+    m.castShadow = true; m.receiveShadow = true;
+    const grp = new THREE.Group();
+    grp.add(m);
+    const cap = box(len - 0.02, 0.005, t + 0.002, M.amber);    // 顶边一条琥珀色反光条
+    cap.position.y = h / 2 - 0.006;
+    grp.add(cap);
+    return grp;
+  }
+  const bed = new THREE.Group();
+  body.add(bed);
+  for (const z of [-1, 1]) { const p = hexPanel(0.185, 0.07, 0.006); p.position.set(-0.0975, 0.119, z * 0.112); bed.add(p); }   // 前端空 6 cm：传感塔折叠后雷达躺在这里
+  const rearPanel = hexPanel(0.206, 0.07, 0.006); rearPanel.rotation.y = Math.PI / 2; rearPanel.position.set(-0.195, 0.119, 0); bed.add(rearPanel);
+  const frontPanel = hexPanel(0.206, 0.05, 0.006); frontPanel.rotation.y = Math.PI / 2; frontPanel.position.set(0.062, 0.109, 0); bed.add(frontPanel);
+  const crate = plate(0.13, 0.062, 0.15, 0.006, M.dark);
+  crate.position.set(-0.09, 0.109, 0);
+  bed.add(crate);
+  const crateLid = plate(0.126, 0.008, 0.146, 0.003, M.shell);
+  crateLid.position.set(-0.09, 0.143, 0);
+  bed.add(crateLid);
+  for (const x of [-0.12, -0.06]) {
+    const strap = box(0.012, 0.072, 0.152, M.amber);
+    strap.position.set(x, 0.11, 0);
+    bed.add(strap);
+  }
+
+  // ======== 机械臂接口（预留）：货斗右前角，和左边的传感塔一左一右
+  // 现在只做：和车架连在一起的加强安装板（4 个螺纹孔）+ 航空插座（供电 + CAN）；臂本身以后再设计
+  const ARM_X = 0.022, ARM_Z = -0.07, ARM_Y = 0.081;
+  const armPlate = plate(0.07, 0.008, 0.07, 0.004, M.steel);
+  armPlate.position.set(ARM_X, ARM_Y, ARM_Z);
+  body.add(armPlate);
+  const armRing = new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.0016, 8, 40), M.amber);
+  armRing.rotation.x = Math.PI / 2; armRing.position.set(ARM_X, ARM_Y + 0.0045, ARM_Z);
+  body.add(armRing);
+  for (const [dx, dz] of [[-0.024, -0.024], [0.024, -0.024], [-0.024, 0.024], [0.024, 0.024]]) {
+    const hole = cyl(0.0035, 0.002, M.black, 12); hole.position.set(ARM_X + dx, ARM_Y + 0.0045, ARM_Z + dz); body.add(hole);
+  }
+  const gx = cyl(0.008, 0.012, M.silver, 20); gx.position.set(ARM_X - 0.045, ARM_Y + 0.002, ARM_Z + 0.02); body.add(gx);   // 航空插座
+  const gxCap = cyl(0.006, 0.003, M.amber, 16); gxCap.position.set(ARM_X - 0.045, ARM_Y + 0.0095, ARM_Z + 0.02); body.add(gxCap);
+  const armTagTex = decalTex(256, 48, (g, w, h) => {
+    g.fillStyle = 'rgba(255,176,0,0.9)'; g.font = '600 28px "IBM Plex Mono", monospace'; g.fillText('ARM PORT', 8, 34);
+  });
+  const armTag = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.0094), decalMat(armTagTex));
+  armTag.rotation.x = -Math.PI / 2; armTag.position.set(ARM_X - 0.002, ARM_Y + 0.0043, ARM_Z - 0.03);
+  body.add(armTag);
+  // 全息示意：半透明青色 + 轮廓线，表示以后的机械臂大概多大、伸到哪里
+  const holo = new THREE.Group();
+  holo.position.set(ARM_X, ARM_Y + 0.004, ARM_Z);
+  holo.visible = false;
+  body.add(holo);
+  const holoMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.14, depthWrite: false });
+  const holoLine = new THREE.LineBasicMaterial({ color: 0x5ff3ff, transparent: true, opacity: 0.75 });
+  function holoPart(geo, pos, rotZ = 0, parent = holo) {
+    const m = new THREE.Mesh(geo, holoMat);
+    m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), holoLine));
+    m.position.copy(pos); m.rotation.z = rotZ;
+    parent.add(m);
+    return m;
+  }
+  const yaw = new THREE.Group(); yaw.rotation.y = 0.35; holo.add(yaw);          // 转台略朝右前
+  holoPart(new THREE.CylinderGeometry(0.03, 0.034, 0.024, 20), new THREE.Vector3(0, 0.012, 0), 0, yaw);
+  holoPart(new THREE.BoxGeometry(0.04, 0.04, 0.05), new THREE.Vector3(0, 0.044, 0), 0, yaw);
+  const A1 = 0.17, A2 = 0.15;
+  const sh = new THREE.Vector3(0, 0.05, 0), a1 = 0.75, a2 = -0.55;                  // 前伸取物的姿态
+  const el = sh.clone().add(new THREE.Vector3(A1 * Math.cos(a1), A1 * Math.sin(a1), 0));
+  const wr = el.clone().add(new THREE.Vector3(A2 * Math.cos(a2), A2 * Math.sin(a2), 0));
+  holoPart(new THREE.BoxGeometry(A1, 0.028, 0.03), sh.clone().lerp(el, 0.5), a1, yaw);
+  holoPart(new THREE.CylinderGeometry(0.02, 0.02, 0.036, 16).rotateX(Math.PI / 2), el, 0, yaw);
+  holoPart(new THREE.BoxGeometry(A2, 0.022, 0.024), el.clone().lerp(wr, 0.5), a2, yaw);
+  holoPart(new THREE.BoxGeometry(0.03, 0.03, 0.03), wr, a2, yaw);
+  for (const s2 of [-1, 1]) {
+    const tipPos = wr.clone().add(new THREE.Vector3(0.03 * Math.cos(a2), 0.03 * Math.sin(a2), s2 * 0.012));
+    holoPart(new THREE.BoxGeometry(0.04, 0.008, 0.006), tipPos, a2, yaw);
+  }
+
+  // ======== 头：颈部 U 形支架 + 俯仰电机 + 屏幕脸
+  const neck = new THREE.Group();
+  neck.position.set(0.12, 0.072, 0);
+  body.add(neck);
+  const neckBase = plate(0.07, 0.014, 0.11, 0.004, M.dark);
+  neckBase.position.y = 0.007;
+  neck.add(neckBase);
+  for (const z of [-1]) {                                       // 左边的支架长成了传感塔（见下面），这里只做右边
+    const yoke = profile([[-0.025, 0], [0.025, 0], [0.018, 0.055], [-0.018, 0.055]], 0.012, 0.002, M.shell);
+    yoke.position.set(0, 0.012, z * 0.12);                     // 支架在两只“耳朵”外侧
+    neck.add(yoke);
+  }
+  const PIVOT_Y = 0.062;
+  const head = new THREE.Group();
+  const headPivot = new THREE.Group();
+  headPivot.position.set(0, PIVOT_Y, 0);
+  neck.add(headPivot);
+  headPivot.add(head);
+  // 头壳：八角轮廓，前高后低
+  const skull = profile([[-0.045, -0.035], [0.052, -0.035], [0.062, -0.022], [0.062, 0.045], [0.05, 0.058], [-0.032, 0.058], [-0.05, 0.035], [-0.05, -0.022]], 0.18, 0.006, M.deck);
+  skull.position.x = 0.02;
+  head.add(skull);
+  const brow = profile([[0.045, 0.05], [0.09, 0.05], [0.085, 0.062], [0.04, 0.066]], 0.184, 0.003, M.dark);
+  head.add(brow);
+  const faceFrame = plate(0.008, 0.078, 0.166, 0.004, M.silver);
+  faceFrame.position.set(0.084, 0.011, 0);
+  head.add(faceFrame);
+  const faceGlass = plate(0.004, 0.066, 0.154, 0.0015, M.gloss);
+  faceGlass.position.set(0.0885, 0.011, 0);
+  head.add(faceGlass);
+  const eyes = (() => {
+    const c = document.createElement('canvas'); c.width = 512; c.height = 220;
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
+    return { c, g: c.getContext('2d'), t };
+  })();
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.148, 0.062), new THREE.MeshBasicMaterial({ map: eyes.t, toneMapped: false }));
+  facing(screen, new THREE.Vector3(0.0906, 0.011, 0), new THREE.Vector3(1, 0, 0));
+  head.add(screen);
+  const faceGlow = glow(head, new THREE.Vector3(0.093, 0.011, 0), new THREE.Vector3(1, 0, 0), 0.22, 0.12, 0x00e5ff, 0.18);
+  // 两侧俯仰电机（耳朵）：鳍片 + 琥珀圈
+  for (const z of [-1, 1]) {
+    const ear = new THREE.Group();
+    ear.position.set(0, 0, z * 0.098);
+    head.add(ear);
+    const drum = cyl(0.026, 0.02, M.dark, 32); drum.rotation.x = Math.PI / 2; ear.add(drum);
+    for (let i = 0; i < 3; i++) {
+      const fin = cyl(0.029, 0.0025, M.steel, 32); fin.rotation.x = Math.PI / 2; fin.position.z = z * (-0.006 + i * 0.006); ear.add(fin);
+    }
+    const face = cyl(0.018, 0.006, M.silver, 32); face.rotation.x = Math.PI / 2; face.position.z = z * 0.012; ear.add(face);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.0205, 0.0018, 8, 40), M.amber); ring.position.z = z * 0.0145; ear.add(ring);
+    glow(ear, new THREE.Vector3(0, 0, z * 0.017), new THREE.Vector3(0, 0, z), 0.07, 0.07, 0xffb000, 0.3);
+  }
+  // 相机藏在脸下沿（头顶不放东西，相机放在脸上看得最正）+ 脑后散热片
+  for (const z of [-0.055, 0.055]) {
+    const lens = cyl(0.0055, 0.004, M.black, 20); lens.rotation.z = Math.PI / 2; lens.position.set(0.0885, -0.025, z); head.add(lens);
+    const lr = new THREE.Mesh(new THREE.TorusGeometry(0.0062, 0.0012, 6, 20), M.silver); lr.rotation.y = Math.PI / 2; lr.position.set(0.0905, -0.025, z); head.add(lr);
+  }
+  for (let i = 0; i < 5; i++) {
+    const hf = box(0.012, 0.05, 0.003, M.steel); hf.position.set(-0.053, 0.015, -0.05 + i * 0.025); head.add(hf);
+  }
+
+  // ======== 传感塔：和头架长在一起——头左边的支架直接长成一根方正的立柱，头的左俯仰电机装在塔上
+  // 塔是固定的，不跟着头点头；雷达直接坐在塔顶方形平台上，扫描面比头抬到最高时还高一点，360° 不被挡
+  // 天线是塔背面一条细长板；塔分上下两节，上节有铰链，折叠时往后放倒
+  const TZ = 0.13, TX = -0.012, T_HINGE = 0.098;                  // 脖子坐标：原点在甲板上、俯仰轴正下方
+  const TD = 0.028;                                                // 塔的厚度（左右方向）
+  const towerFoot = plate(0.09, 0.012, 0.038, 0.003, M.dark);     // 塔脚：和脖子底座连成一体
+  towerFoot.position.set(-0.008, 0.006, TZ - 0.004);
+  neck.add(towerFoot);
+  for (const [dx, dz] of [[-0.04, -0.013], [0.025, -0.013], [-0.04, 0.011], [0.025, 0.011]]) {
+    const bt = cyl(0.0028, 0.004, M.silver, 6); bt.position.set(dx, 0.0135, TZ + dz); neck.add(bt);
+  }
+  const bridge = box(0.03, 0.01, TZ - 0.04, M.dark);               // 塔脚到另一侧支架的底梁
+  bridge.position.set(0, 0.009, TZ / 2 - 0.02);
+  neck.add(bridge);
+  const LOW_H = T_HINGE - 0.016, LOW_Y = 0.012 + LOW_H / 2;
+  const lowCol = plate(0.06, LOW_H, TD, 0.004, M.deck);           // 下节：方正立柱
+  lowCol.position.set(-0.01, LOW_Y, TZ);
+  neck.add(lowCol);
+  for (const zz of [-1, 1]) {
+    const inset = plate(0.044, LOW_H - 0.02, 0.004, 0.0015, M.dark);   // 两侧凹进去的面板
+    inset.position.set(-0.012, LOW_Y, TZ + zz * (TD / 2 + 0.0005));
+    neck.add(inset);
+    for (const y of [0.032, 0.078]) {
+      const sm = box(0.044, 0.0015, 0.002, M.seam); sm.position.set(-0.012, y, TZ + zz * (TD / 2 + 0.0028)); neck.add(sm);
+    }
+    const edgeF = box(0.0028, LOW_H - 0.004, 0.0028, M.silver);        // 前面两条竖棱的银色压边
+    edgeF.position.set(0.019, LOW_Y, TZ + zz * (TD / 2 - 0.0005));
+    neck.add(edgeF);
+    const tag = box(0.012, 0.005, 0.002, M.amber); tag.position.set(-0.03, 0.088, TZ + zz * (TD / 2 + 0.0028)); neck.add(tag);
+  }
+  const slot = box(0.003, LOW_H - 0.016, 0.01, M.black);           // 前脸竖槽 + 嵌在里面的青色灯
+  slot.position.set(0.0195, LOW_Y, TZ);
+  neck.add(slot);
+  const slotLight = box(0.002, LOW_H - 0.02, 0.005, M.cyan);
+  slotLight.position.set(0.0205, LOW_Y, TZ);
+  neck.add(slotLight);
+  glow(neck, new THREE.Vector3(0.026, LOW_Y, TZ), new THREE.Vector3(1, 0, 0), 0.035, 0.1, 0x00e5ff, 0.3);
+  // 头的左俯仰轴穿进塔里：塔外侧露出电机端盖 + 青色灯圈
+  const bearing = cyl(0.019, 0.008, M.silver, 32); bearing.rotation.x = Math.PI / 2; bearing.position.set(0, PIVOT_Y, TZ + TD / 2 + 0.004); neck.add(bearing);
+  const bearingRing = new THREE.Mesh(new THREE.TorusGeometry(0.015, 0.0017, 8, 36), M.cyan); bearingRing.position.set(0, PIVOT_Y, TZ + TD / 2 + 0.0085); neck.add(bearingRing);
+  const bearingHex = cyl(0.0065, 0.011, M.dark, 6); bearingHex.rotation.x = Math.PI / 2; bearingHex.position.set(0, PIVOT_Y, TZ + TD / 2 + 0.005); neck.add(bearingHex);
+  glow(neck, new THREE.Vector3(0, PIVOT_Y, TZ + TD / 2 + 0.011), new THREE.Vector3(0, 0, 1), 0.055, 0.055, 0x00e5ff, 0.3);
+  const collar = plate(0.064, 0.008, TD + 0.004, 0.002, M.dark);  // 上下两节之间的分层环
+  collar.position.set(-0.01, T_HINGE - 0.004, TZ);
+  neck.add(collar);
+  const hingePin = cyl(0.0055, TD + 0.012, M.silver, 20); hingePin.rotation.x = Math.PI / 2; hingePin.position.set(TX - 0.022, T_HINGE, TZ); neck.add(hingePin);
+
+  const stackTop = new THREE.Group();                             // 上节：铰链在后下角，会往后放倒
+  stackTop.position.set(TX, T_HINGE, TZ);
+  neck.add(stackTop);
+  const UH = 0.05;
+  const upCol = plate(0.052, UH, TD - 0.002, 0.004, M.deck);
+  upCol.position.set(0.002, UH / 2, 0);
+  stackTop.add(upCol);
+  for (const zz of [-1, 1]) {
+    const inset = plate(0.036, UH - 0.016, 0.004, 0.0015, M.dark);
+    inset.position.set(0.0, UH / 2, zz * ((TD - 0.002) / 2 + 0.0005));
+    stackTop.add(inset);
+    const sm = box(0.036, 0.0015, 0.002, M.seam); sm.position.set(0.0, UH * 0.62, zz * ((TD - 0.002) / 2 + 0.0028)); stackTop.add(sm);
+    const edgeF = box(0.0028, UH - 0.004, 0.0028, M.silver); edgeF.position.set(0.0265, UH / 2, zz * ((TD - 0.002) / 2 - 0.0005)); stackTop.add(edgeF);
+  }
+  const upSlot = box(0.003, UH - 0.012, 0.01, M.black); upSlot.position.set(0.0275, UH / 2, 0); stackTop.add(upSlot);
+  const upLight = box(0.002, UH - 0.016, 0.005, M.cyan); upLight.position.set(0.0285, UH / 2, 0); stackTop.add(upLight);
+  glow(stackTop, new THREE.Vector3(0.034, UH / 2, 0), new THREE.Vector3(1, 0, 0), 0.035, 0.07, 0x00e5ff, 0.3);
+  const antPlate = box(0.004, UH + 0.006, 0.012, M.dark);          // 天线：塔背面一条细长板，顶端琥珀灯，不超过雷达扫描面
+  antPlate.position.set(-0.0265, UH / 2 + 0.003, 0);
+  stackTop.add(antPlate);
+  const antLamp = box(0.005, 0.005, 0.012, M.amber); antLamp.position.set(-0.0265, UH + 0.008, 0); stackTop.add(antLamp);
+  const deckPlate = plate(0.058, 0.007, 0.058, 0.003, M.dark);    // 塔顶方形平台
+  deckPlate.position.set(0.002, UH + 0.0035, 0);
+  stackTop.add(deckPlate);
+  const deckEdge = plate(0.06, 0.002, 0.06, 0.0008, M.silver);
+  deckEdge.position.set(0.002, UH + 0.0075, 0);
+  stackTop.add(deckEdge);
+  const lidar = cyl(0.025, 0.026, M.black, 32); lidar.position.set(0.002, UH + 0.0215, 0); stackTop.add(lidar);
+  const scanWin = cyl(0.0255, 0.009, M.gloss, 32); scanWin.position.set(0.002, UH + 0.02, 0); stackTop.add(scanWin);
+  const lring = cyl(0.026, 0.003, M.cyan, 32); lring.position.set(0.002, UH + 0.034, 0); stackTop.add(lring);
+  const lcap = cyl(0.02, 0.003, M.dark, 32); lcap.position.set(0.002, UH + 0.036, 0); stackTop.add(lcap);
+  const mark = box(0.01, 0.003, 0.004, M.silver); mark.position.set(0.017, 0.0145, 0); lidar.add(mark);   // 转起来看得见
+
+  // ======== 髋部驱动单元 + 摆臂 + 麦克纳姆轮
+  function barrelGeom() {
+    const pts = [];
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10 - 0.5;
+      pts.push(new THREE.Vector2(0.0075 - 0.0035 * (2 * t) ** 2 + 0.0005, t * 0.03));
+    }
+    return new THREE.LatheGeometry(pts, 14);
+  }
+  const rollerGeom = barrelGeom();
+  function mecanum(hand) {
+    const w = new THREE.Group();
+    const n = 9, R = 0.0455;
+    for (let i = 0; i < n; i++) {
+      const a = i / n * Math.PI * 2;
+      const roller = new THREE.Mesh(rollerGeom, M.rubber);
+      roller.castShadow = true;
+      const t = new THREE.Vector3(-Math.sin(a), Math.cos(a), 0);
+      along(roller, t.clone().multiplyScalar(Math.cos(Math.PI / 4)).add(new THREE.Vector3(0, 0, hand * Math.sin(Math.PI / 4))));
+      roller.position.set(R * Math.cos(a), R * Math.sin(a), 0);
+      w.add(roller);
+      const axle = cyl(0.0022, 0.03, M.steel, 6);           // 滚子轴的支架头
+      axle.position.copy(roller.position);
+      axle.quaternion.copy(roller.quaternion);
+      w.add(axle);
+    }
+    for (const z of [-1, 1]) {
+      const side = cyl(0.04, 0.005, M.dark, 9 * 2); side.rotation.x = Math.PI / 2; side.position.z = z * 0.019; w.add(side);
+      for (let i = 0; i < 9; i++) {
+        const a = (i + 0.5) / 9 * Math.PI * 2;
+        const lug = box(0.012, 0.008, 0.005, M.steel);
+        lug.position.set(0.042 * Math.cos(a), 0.042 * Math.sin(a), z * 0.019);
+        lug.rotation.z = a;
+        w.add(lug);
+      }
+    }
+    const motor = cyl(0.026, WW - 0.006, M.silver, 32); motor.rotation.x = Math.PI / 2; w.add(motor);
+    const motorRing = cyl(0.0265, 0.006, M.dark, 32); motorRing.rotation.x = Math.PI / 2; w.add(motorRing);
+    return w;
+  }
+
+  function makeLeg(f, side) {
+    const g = new THREE.Group();                               // 髋关节中心
+    g.position.set(f * HX, 0, 0);
+    root.add(g);
+    // 髋驱动单元（固定在机身上，不随摆臂转）：电机鼓 + 散热鳍片 + 端盖 + 琥珀圈
+    const drive = new THREE.Group();
+    drive.position.z = side * Z_HIP;
+    g.add(drive);
+    const drum = cyl(0.04, 0.034, M.dark, 40); drum.rotation.x = Math.PI / 2; drive.add(drum);
+    for (let i = 0; i < 5; i++) {
+      const fin = cyl(0.045, 0.0028, M.steel, 40); fin.rotation.x = Math.PI / 2; fin.position.z = side * (-0.013 + i * 0.0065); drive.add(fin);
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2;
+      const b = cyl(0.003, 0.038, M.silver, 6); b.rotation.x = Math.PI / 2; b.position.set(0.034 * Math.cos(a), 0.034 * Math.sin(a), 0); drive.add(b);
+    }
+    // 摆臂（随髋关节转）
+    const arm = new THREE.Group();
+    g.add(arm);
+    const outer = stadium(ARM, 0.034, 0.016, M.shell);
+    outer.position.z = side * Z_ARM;
+    arm.add(outer);
+    const inset = stadium(ARM - 0.02, 0.024, 0.006, M.deck);
+    inset.position.set(0.01, 0, side * (Z_ARM + 0.0075));
+    arm.add(inset);
+    const slot = stadium(0.06, 0.008, 0.004, M.black, 0.001);
+    slot.position.set(0.055, 0, side * (Z_ARM + 0.0105));
+    arm.add(slot);
+    const stripe = box(0.05, 0.005, 0.002, M.amber);
+    stripe.position.set(0.09, 0.016, side * (Z_ARM + 0.0105));
+    arm.add(stripe);
+    const inner = stadium(ARM * 0.4, 0.028, 0.008, M.dark);    // 内侧加强板（只在髋这一段，轮子挂在外侧摆臂上）
+    inner.position.z = side * (Z_HIP + 0.021);
+    arm.add(inner);
+    const web = box(0.02, 0.03, Z_ARM - Z_HIP - 0.02, M.dark);  // 内外两块板之间的连接筋
+    web.position.set(0.045, 0, side * (Z_HIP + Z_ARM) / 2);
+    arm.add(web);
+    const hipCap = cyl(0.03, 0.02, M.silver, 40); hipCap.rotation.x = Math.PI / 2; hipCap.position.z = side * (Z_ARM + 0.01); arm.add(hipCap);
+    const hipRing = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.002, 8, 48), M.amber); hipRing.position.z = side * (Z_ARM + 0.0205); arm.add(hipRing);
+    const hipHex = cyl(0.01, 0.024, M.dark, 6); hipHex.rotation.x = Math.PI / 2; hipHex.position.z = side * (Z_ARM + 0.012); arm.add(hipHex);
+    // 减震器：外筒 + 活塞杆，沿着摆臂外侧
+    const damperBody = cyl(0.007, 0.06, M.dark, 16); damperBody.rotation.z = Math.PI / 2; damperBody.position.set(0.05, 0.026, side * (Z_ARM + 0.013)); arm.add(damperBody);
+    const damperRod = cyl(0.0035, 0.05, M.silver, 12); damperRod.rotation.z = Math.PI / 2; damperRod.position.set(0.1, 0.026, side * (Z_ARM + 0.013)); arm.add(damperRod);
+    const spring = new THREE.Mesh(new THREE.TorusGeometry(0.009, 0.0016, 6, 20), M.amber);
+    for (let i = 0; i < 4; i++) { const s2 = spring.clone(); s2.rotation.y = Math.PI / 2; s2.position.set(0.035 + i * 0.012, 0.026, side * (Z_ARM + 0.013)); arm.add(s2); }
+    // 轮子
+    const wheelMount = new THREE.Group();
+    wheelMount.position.set(ARM, 0, side * Z_WHEEL);
+    arm.add(wheelMount);
+    const hand = (f * side > 0) ? 1 : -1;                     // 麦轮 X 形布置：对角的两个轮子滚子方向一样
+    const wheel = mecanum(hand);
+    wheelMount.add(wheel);
+    const axleCap = cyl(0.016, 0.012, M.silver, 32); axleCap.rotation.x = Math.PI / 2; axleCap.position.set(ARM, 0, side * (Z_ARM + 0.01)); arm.add(axleCap);
+    const axleRing = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.0016, 8, 32), M.cyan); axleRing.position.set(ARM, 0, side * (Z_ARM + 0.0165)); arm.add(axleRing);
+    return { g, arm, wheel, f, side, hand, spin: 0 };
+  }
+  const legs = [];
+  for (const f of [1, -1]) for (const side of [1, -1]) legs.push(makeLeg(f, side));
+
+  // ---------------- 运动：在“朝外”的坐标里算角度（0 = 水平朝外，正 = 往上）
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const ease = t => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+  const FOLD_ANG = (180 - 60) * Math.PI / 180;               // 折叠：往上往里翻到 60°
+  function pose(p) {
+    const p1 = ease(Math.min(1, p / 0.5)), p2 = ease(Math.max(0, (p - 0.5) / 0.5));
+    const hipY = lerp(HIP_UP, HIP_LOW, p1);                   // 前半段：车身落地，轮子不离地
+    let ang = Math.asin(Math.max(-1, Math.min(1, (WR - hipY) / ARM)));
+    const groundAng = Math.asin((WR - HIP_LOW) / ARM);
+    if (p2 > 0) ang = lerp(groundAng, FOLD_ANG, p2);          // 后半段：摆臂往上翻
+    return { hipY, ang, onGround: p2 <= 0 };
+  }
+
+  // ---------------- 屏幕表情
+  const FACES = {
+    calm: { lid: 0, tilt: 0, shape: 'rect' },
+    happy: { lid: 0, tilt: 0, shape: 'arc' },
+    alert: { lid: 0.35, tilt: 0.32, shape: 'rect' },
+  };
+  let face = 'calm', blinkUntil = 0, nextBlink = 1800;
+  function drawEyes(now) {
+    const { g, c, t } = eyes;
+    g.fillStyle = '#01070a'; g.fillRect(0, 0, c.width, c.height);
+    const F = FACES[face];
+    const color = face === 'alert' ? '#ffb000' : '#3ff0ff';
+    if (now > nextBlink) { blinkUntil = now + 130; nextBlink = now + 2400 + Math.random() * 2800; }
+    const blink = now < blinkUntil;
+    const gx = Math.sin(now / 1700) * 16, gy = Math.sin(now / 2300) * 5;
+    g.fillStyle = color; g.strokeStyle = color;
+    for (const s of [-1, 1]) {
+      const cx = 256 + s * 105 + gx, cy = 108 + gy;
+      g.save(); g.translate(cx, cy);
+      if (F.shape === 'arc' && !blink) {
+        g.lineWidth = 16; g.lineCap = 'round';
+        g.beginPath(); g.arc(0, 22, 46, Math.PI * 1.15, Math.PI * 1.85); g.stroke();
+      } else {
+        const h = blink ? 8 : 84, w = 78, r = Math.min(18, h / 2);
+        g.beginPath();
+        g.moveTo(-w / 2 + r, -h / 2); g.lineTo(w / 2 - r, -h / 2); g.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
+        g.lineTo(w / 2, h / 2 - r); g.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
+        g.lineTo(-w / 2 + r, h / 2); g.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
+        g.lineTo(-w / 2, -h / 2 + r); g.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
+        g.fill();
+        if (F.lid && !blink) {                                // 警觉：斜着的“眉毛”压住一角
+          g.fillStyle = '#01070a';
+          g.beginPath(); g.moveTo(-w, -h / 2 - 4); g.lineTo(w, -h / 2 - 4);
+          g.lineTo(w, -h / 2 + (s > 0 ? h * F.lid * 0.2 : h * F.lid * 1.4));
+          g.lineTo(-w, -h / 2 + (s > 0 ? h * F.lid * 1.4 : h * F.lid * 0.2)); g.fill();
+          g.fillStyle = color;
+        }
+        g.fillStyle = 'rgba(255,255,255,0.55)';
+        g.fillRect(-w / 2 + 12, -h / 2 + 10, 14, Math.max(0, Math.min(20, h - 20)));
+        g.fillStyle = color;
+      }
+      g.restore();
+    }
+    g.fillStyle = 'rgba(0,0,0,0.32)';
+    for (let y = 0; y < c.height; y += 4) g.fillRect(0, y, c.width, 1);
+    g.fillStyle = face === 'alert' ? 'rgba(255,176,0,0.8)' : 'rgba(0,229,255,0.6)';
+    g.font = '500 16px "IBM Plex Mono", monospace';
+    g.fillText(face === 'alert' ? '! UNKNOWN PERSON  2.4M' : face === 'happy' ? 'ID MATCH  OWNER  97%' : 'FOLLOW  1.8M   BAT 82%', 16, 206);
+    t.needsUpdate = true;
+  }
+
+  // ---------------- 状态与交互
+  const HEAD_ANG = { up: -35, level: 0, down: 20 };
+  const state = { fold: 0, foldTarget: 0, head: 0, headTarget: 0, headKey: 'level', drive: null, night: false, eye: false, turn: !reduce, gx: 0, gz: 0, yaw: 0 };
+  const readout = document.getElementById('readout');
+  function updateReadout() {
+    const folded = state.foldTarget === 1;
+    const d = { fwd: 'DRIVE FWD', side: 'STRAFE', spin: 'ROTATE' }[state.drive] || 'HOLD';
+    readout.innerHTML = (folded ? 'FOLDED ≈ 40×41×28 CM' : 'DEPLOYED ≈ 60×41×48 CM') + '<br>HEAD ' +
+      (HEAD_ANG[state.headKey] > 0 ? '+' : '') + HEAD_ANG[state.headKey] + '° · ' + d + '<br>' + (state.night ? 'NIGHT' : 'STUDIO');
+  }
+  const press = (sel, on) => document.querySelectorAll(sel).forEach(b => b.setAttribute('aria-pressed', String(on(b))));
+  document.querySelectorAll('[data-head]').forEach(b => b.addEventListener('click', () => {
+    state.headKey = b.dataset.head; state.headTarget = HEAD_ANG[state.headKey] * Math.PI / 180;
+    press('[data-head]', x => x === b); updateReadout();
+  }));
+  document.querySelectorAll('[data-face]').forEach(b => b.addEventListener('click', () => {
+    face = b.dataset.face; press('[data-face]', x => x === b); faceGlow.material.color.set(face === 'alert' ? 0xffb000 : 0x00e5ff);
+  }));
+  document.querySelectorAll('[data-drive]').forEach(b => b.addEventListener('click', () => {
+    state.drive = state.drive === b.dataset.drive ? null : b.dataset.drive;
+    if (state.drive) { state.foldTarget = 0; document.getElementById('fold').setAttribute('aria-pressed', 'false'); }
+    press('[data-drive]', x => x.dataset.drive === state.drive); updateReadout();
+  }));
+  document.getElementById('holo').addEventListener('click', e => {   // 全息机械臂：开 / 关
+    holo.visible = !holo.visible;
+    e.currentTarget.setAttribute('aria-pressed', String(holo.visible));
+  });
+  document.getElementById('bed').addEventListener('click', e => {   // 栏板和货箱：装上 / 拆下
+    bed.visible = !bed.visible;
+    e.currentTarget.setAttribute('aria-pressed', String(bed.visible));
+  });
+  document.getElementById('fold').addEventListener('click', e => {
+    state.foldTarget = state.foldTarget ? 0 : 1;
+    e.currentTarget.setAttribute('aria-pressed', String(!!state.foldTarget));
+    if (state.foldTarget) { state.drive = null; press('[data-drive]', () => false); }
+    if (reduce) state.fold = state.foldTarget;
+    updateReadout();
+  });
+  function applyLighting() {
+    const n = state.night;
+    scene.background = new THREE.Color(n ? 0x05070a : 0x101417);
+    scene.fog = new THREE.Fog(scene.background, 3.5, 9);
+    hemi.intensity = n ? 0.1 : 0.45;
+    key.intensity = n ? 0.3 : 1.6;
+    rim.intensity = n ? 0.45 : 0.9;
+    for (const m of Object.values(M)) if (m.envMapIntensity !== undefined && !m.emissive) m.envMapIntensity = n ? 0.25 : 1;
+    for (const gl of glows) gl.material.opacity = gl.userData.base * (n ? 2.4 : 1);
+    document.getElementById('night').setAttribute('aria-pressed', String(n));
+    updateReadout();
+  }
+  document.getElementById('night').addEventListener('click', () => { state.night = !state.night; applyLighting(); });
+  function setCamera() {
+    const k = Math.min(1.9, Math.max(1, 1.2 / Math.max(camera.aspect, 0.45)));
+    if (state.eye) { camera.position.set(1.05, 1.6, 0.2); controls.target.set(0.08, 0.25, 0); }
+    else { camera.position.set(0.95 * k, 0.5 + 0.22 * (k - 1), 0.9 * k); controls.target.set(0, 0.2, 0); }
+    controls.update();
+  }
+  document.getElementById('eye').addEventListener('click', e => {
+    state.eye = !state.eye; e.currentTarget.setAttribute('aria-pressed', String(state.eye));
+    if (state.eye) { state.turn = false; root.rotation.y = 0; state.yaw = 0; document.getElementById('turn').setAttribute('aria-pressed', 'false'); }
+    setCamera();
+  });
+  document.getElementById('turn').addEventListener('click', e => { state.turn = !state.turn; e.currentTarget.setAttribute('aria-pressed', String(state.turn)); });
+  document.getElementById('turn').setAttribute('aria-pressed', String(state.turn));
+
+  function resize() {
+    const w = bay.clientWidth, h = bay.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', () => { resize(); setCamera(); });
+  resize(); applyLighting(); setCamera();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { stencilTex.userData.draw(); warnTex.userData.draw(); });
+
+  let last = performance.now(), lastTex = 0;
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    state.fold += Math.sign(state.foldTarget - state.fold) * Math.min(dt / 2.6, Math.abs(state.foldTarget - state.fold));
+    const headGoal = state.fold > 0.02 ? 25 * Math.PI / 180 : state.headTarget;   // 折叠时头低下来收好
+    state.head += (headGoal - state.head) * Math.min(1, dt * 4);
+    const P = pose(state.fold);
+    body.position.y = P.hipY + CENTER_ABOVE_HIP;
+    headPivot.rotation.z = -state.head;
+    const lay = ease(Math.max(0, (state.fold - 0.45) / 0.55)) * Math.PI / 2;   // 传感器塔上半截和天线：折叠时往后放倒
+    stackTop.rotation.z = lay;
+    if (state.fold > 0.05) holo.visible = false;
+    // 行驶：麦轮速度（前进、横移、原地转）
+    const V = 0.35;
+    let vx = 0, vz = 0, w = 0;
+    if (state.drive === 'fwd') vx = V;
+    if (state.drive === 'side') vz = V;
+    if (state.drive === 'spin') w = 0.9;
+    for (const L of legs) {
+      L.g.position.y = P.hipY;
+      const a = P.ang;                                         // 朝外坐标的角度 -> 世界里绕 z 的转角
+      L.arm.rotation.z = L.f > 0 ? a : Math.PI - a;
+      L.arm.scale.y = L.f > 0 ? 1 : -1;                        // 后腿镜像，保证细节朝外
+      // 麦轮逆运动学：轮子转速 = 前进 ± 横移 ± 自转（X 形布置）
+      const wheelSpeed = (vx + L.hand * vz - L.side * w * 0.3) / WR;
+      if (P.onGround && state.drive) L.spin += wheelSpeed * dt * (L.f > 0 ? -1 : 1);   // 后腿是镜像的，转向反过来
+      L.wheel.rotation.z = L.spin;
+    }
+    if (state.drive && P.onGround) {
+      state.gx = (state.gx - vx * dt) % 0.125;
+      state.gz = (state.gz - vz * dt) % 0.125;
+      state.yaw += w * dt * 0.25;
+    }
+    grid.position.set(state.gx, 0.001, state.gz);
+    grid.rotation.y = -state.yaw;
+    if (state.turn) root.rotation.y += dt * 0.22;
+    if (!reduce) lidar.rotation.y += dt * 5;
+    if (now - lastTex > 40) { lastTex = now; drawEyes(now); }
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  drawEyes(0);
+  updateReadout();
+  requestAnimationFrame(frame);
+})();
+</script>
