@@ -1,0 +1,346 @@
+<title>笨笨 Mini 骨架</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* 布局：上面（宽屏在左）是 3D 台子，旁边是控制 + 检查数据面板；整页固定深色工程风，和效果图的青色灯一致 */
+:root {
+  --bg: #0b0e11;
+  --panel: #12171b;
+  --line: #22303a;
+  --fg: #d9e3e7;
+  --dim: #82939b;
+  --accent: #3fd0e0;
+  --ok: #62d49c;
+  --warn: #e6a740;
+  --f-display: "Chakra Petch", "Microsoft YaHei", "PingFang SC", sans-serif;
+  --f-body: system-ui, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --f-data: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.55 var(--f-body); padding-inline: 16px; padding-block: 14px 28px; }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 12px; }
+.code { font: 600 13px var(--f-display); letter-spacing: .18em; color: var(--accent); border: 1px solid var(--accent); padding: 1px 7px; }
+h1 { font: 600 22px/1.2 var(--f-display); margin: 0; letter-spacing: .02em; text-wrap: balance; }
+.sub { margin: 0; color: var(--dim); flex-basis: 100%; }
+.grid { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 920px) { .grid { grid-template-columns: minmax(0, 1fr) 360px; } }
+.stage { position: relative; height: clamp(320px, 60vh, 560px); background: radial-gradient(ellipse at 50% 40%, #16202a, var(--bg) 75%); border: 1px solid var(--line); overflow: hidden; }
+@media (min-width: 920px) { .stage { height: min(80vh, 760px); } }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hud { position: absolute; left: 10px; top: 8px; font: 12px/1.6 var(--f-data); color: var(--accent); pointer-events: none; text-shadow: 0 0 6px rgba(0,0,0,.8); font-variant-numeric: tabular-nums; }
+.hud .phase { color: var(--warn); min-height: 1.6em; }
+.dims { position: absolute; left: 10px; bottom: 8px; font: 500 15px var(--f-data); color: var(--fg); pointer-events: none; font-variant-numeric: tabular-nums; text-shadow: 0 0 6px rgba(0,0,0,.8); }
+.dims small { display: block; font: 11px var(--f-body); color: var(--dim); }
+.views { position: absolute; right: 8px; top: 8px; display: flex; gap: 4px; }
+.views button { font: 12px var(--f-body); padding: 4px 9px; }
+#msg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--dim); font: 13px var(--f-data); text-align: center; padding: 16px; }
+.panel { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.box { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; display: grid; gap: 10px; min-width: 0; }
+.label { font: 600 11px var(--f-display); letter-spacing: .16em; color: var(--dim); text-transform: uppercase; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+button { font: 14px var(--f-body); color: var(--fg); background: #1a2228; border: 1px solid var(--line); padding: 7px 12px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.on { background: rgba(63,208,224,.14); border-color: var(--accent); color: var(--accent); }
+.slider { display: grid; grid-template-columns: auto minmax(0, 1fr) 3.5em; gap: 8px; align-items: center; font-size: 13px; color: var(--dim); }
+.slider output { font: 12px var(--f-data); color: var(--fg); text-align: right; font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+label.tog { display: flex; gap: 6px; align-items: center; font-size: 13px; cursor: pointer; }
+input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+td, th { padding: 4px 0; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { font-weight: 400; color: var(--dim); }
+td.n { font: 12px var(--f-data); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chip { display: inline-block; font: 500 11px var(--f-data); padding: 1px 6px; border: 1px solid currentColor; }
+.chip.ok { color: var(--ok); }
+.chip.warn { color: var(--warn); }
+.note { font-size: 13px; color: var(--fg); margin: 0; }
+.note b { color: var(--warn); font-weight: 600; }
+.dimtext { color: var(--dim); font-size: 12px; margin: 0; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="top">
+  <span class="code">BB-01</span>
+  <h1>笨笨 Mini 骨架</h1>
+  <p class="sub">第 2 步：按真实零件尺寸画的结构（外壳还没画）。拖动旋转，双指缩放。</p>
+</header>
+
+<main class="grid">
+  <section class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="hud"><div id="hud1">—</div><div id="hud2">—</div><div class="phase" id="phase"></div></div>
+    <div class="dims" id="dims"><small>当前外形（长 × 宽 × 高）</small><span id="dimv">—</span></div>
+    <div class="views">
+      <button id="v-side" type="button">侧面</button>
+      <button id="v-front" type="button">正面</button>
+      <button id="v-iso" type="button">斜看</button>
+    </div>
+    <div id="msg">正在加载模型…</div>
+  </section>
+
+  <aside class="panel">
+    <div class="box">
+      <div class="label">姿态</div>
+      <div class="row">
+        <button id="b-deploy" type="button" class="on">展开行驶</button>
+        <button id="b-fold" type="button">折叠</button>
+      </div>
+      <div class="slider"><span>折叠</span><input id="s-fold" type="range" min="0" max="1000" value="0" aria-label="折叠进度"><output id="o-fold">0%</output></div>
+      <div class="label">头</div>
+      <div class="row">
+        <button id="h-up" type="button">抬头 −35°</button>
+        <button id="h-level" type="button" class="on">平视</button>
+        <button id="h-down" type="button">低头 +20°</button>
+      </div>
+      <div class="row">
+        <label class="tog"><input id="t-xray" type="checkbox"> 透视机身（看里面）</label>
+        <label class="tog"><input id="t-cargo" type="checkbox"> 背上 10 kg 货</label>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="label">检查结果</div>
+      <table id="t-poses"><tr><th>姿态</th><th style="text-align:right">长 × 宽 × 高 mm</th><th style="text-align:right">相撞</th></tr></table>
+      <p class="note" id="sweep"></p>
+      <table id="t-near"></table>
+      <p class="dimtext">实体求交 + 折叠全程每 2° 算一次最近距离（含抬头到低头）。髋部轴承座和臂座之间固定的转动缝不算。</p>
+    </div>
+
+    <div class="box">
+      <div class="label">重量和重心</div>
+      <table id="t-mass"></table>
+    </div>
+
+    <div class="box">
+      <div class="label">要你知道的</div>
+      <p class="note" id="n-width"></p>
+      <p class="note" id="n-lift"></p>
+    </div>
+  </aside>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="bb01_data.js"></script>
+<script>
+(async function () {
+  const $ = (id) => document.getElementById(id);
+  const D = Math.PI / 180;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const msg = $("msg");
+
+  if (!window.BB01 || !window.THREE) {
+    msg.textContent = "模型数据没加载出来，刷新一下试试。";
+    return;
+  }
+  const rig = window.BB01.rig;
+  fillPanel(rig);
+
+  // ---------------------------------------------------------------- 场景
+  const cv = $("cv"), stage = $("stage");
+  const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x0b0e11, 2.2, 5);
+
+  // 简单的“房间”环境光照，金属件才有反光
+  const env = new THREE.Scene();
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10), new THREE.MeshBasicMaterial({ color: 0x151c22, side: THREE.BackSide })));
+  const panelLight = (w, h, rgb, pos) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+    m.material.color.setRGB(...rgb);
+    m.position.set(...pos); m.lookAt(0, 0, 0); env.add(m);
+  };
+  panelLight(6, 3, [3, 3, 3.2], [0, 4.6, 0]);
+  panelLight(3, 2, [1.6, 1.6, 1.7], [4.6, 1.5, 2]);
+  panelLight(3, 1.2, [0.25, 1.4, 1.6], [-4.6, 0.8, -1.5]);
+  const pm = new THREE.PMREMGenerator(renderer);
+  scene.environment = pm.fromScene(env, 0.03).texture;
+
+  scene.add(new THREE.HemisphereLight(0xbfd6e0, 0x0b0e11, 0.35));
+  const key = new THREE.DirectionalLight(0xffffff, 1.6);
+  key.position.set(1.2, 2.2, 1.6);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  Object.assign(key.shadow.camera, { left: -0.7, right: 0.7, top: 0.7, bottom: -0.7, near: 0.5, far: 6 });
+  key.shadow.bias = -0.0004;
+  scene.add(key);
+
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(3, 64), new THREE.MeshStandardMaterial({ color: 0x0a0e11, roughness: 1, metalness: 0, envMapIntensity: 0.08 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  const grid = new THREE.GridHelper(4, 40, 0x1f5d66, 0x18252c);
+  grid.position.y = 0.0005; grid.material.transparent = true; grid.material.opacity = 0.55; scene.add(grid);
+
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 20);
+  const controls = new THREE.OrbitControls(camera, cv);
+  controls.enableDamping = true;
+  controls.target.set(0, 0.2, 0);
+  controls.maxPolarAngle = Math.PI * 0.495;
+  controls.minDistance = 0.4; controls.maxDistance = 4;
+  const VIEWS = { iso: [1.05, 0.62, 1.2], side: [1.65, 0.3, 0.0], front: [0.0, 0.32, 1.6] };
+  const setView = (k) => { camera.position.set(...VIEWS[k]); controls.target.set(0, 0.2, 0); controls.update(); };
+  setView("iso");
+  ["side", "front", "iso"].forEach((k) => $("v-" + k).addEventListener("click", () => setView(k)));
+
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(stage);
+  resize();
+
+  // ---------------------------------------------------------------- 模型
+  let gltf;
+  try {
+    const bin = Uint8Array.from(atob(window.BB01.glb), (c) => c.charCodeAt(0));
+    gltf = await new Promise((ok, bad) => new THREE.GLTFLoader().parse(bin.buffer, "", ok, bad));
+  } catch (e) {
+    msg.textContent = "3D 模型解析失败，刷新一下试试。";
+    return;
+  }
+  msg.hidden = true;
+  const groups = { body: [], head: [], FL: [], FR: [], RL: [], RR: [] };
+  const xrayMats = [];
+  const meshes = [];
+  gltf.scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const [g, col] = o.name.split("|");
+    if (!groups[g]) return;
+    o.material = o.material.clone();
+    o.material.envMapIntensity = 0.75;
+    o.castShadow = true; o.receiveShadow = true;
+    if (col === "glass") { o.material.emissive.setRGB(0.05, 0.45, 0.55); o.material.emissiveIntensity = 1; }
+    if (g === "body" && ["alu", "armor", "printed", "profile"].includes(col)) xrayMats.push(o.material);
+    groups[g].push(o);
+    meshes.push(o);
+  });
+  scene.add(gltf.scene);
+
+  // 货物：放在货斗里（导轨内侧），随机身走
+  const [bx0, bx1] = rig.bed, bw = rig.bed_half_w * 2 - 0.01, bh = 0.2;
+  const cargo = new THREE.Group();
+  const cbox = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bx1 - bx0 - 0.01),
+    new THREE.MeshStandardMaterial({ color: 0xe6a740, transparent: true, opacity: 0.28, roughness: 0.6, depthWrite: false }));
+  cargo.add(cbox);
+  cargo.add(new THREE.LineSegments(new THREE.EdgesGeometry(cbox.geometry), new THREE.LineBasicMaterial({ color: 0xe6a740 })));
+  cargo.visible = false;
+  scene.add(cargo);
+
+  // ---------------------------------------------------------------- 姿态
+  const T = rig.theta;
+  const SPAN = T.stance - T.fold;
+  const SG = (T.stance - T.ground) / SPAN;      // 进度到这里，机身刚好坐到滑撬上
+  const state = { s: 0, pitch: rig.pitch.level };
+  function legAt(s) {
+    const th = T.stance - SPAN * s;
+    const bz = th >= T.ground ? rig.R - rig.HIP_Z + rig.ARM * Math.sin(th * D) : rig.SKID_H;
+    return { th, bz };
+  }
+  const v3 = new THREE.Vector3();
+  function apply() {
+    const { th, bz } = legAt(state.s);
+    groups.body.forEach((m) => m.position.set(0, bz, 0));
+    ["FL", "FR", "RL", "RR"].forEach((g) => {
+      const p = rig.pivots[g];
+      groups[g].forEach((m) => { m.position.set(p[0], p[1] + bz, p[2]); m.rotation.set(rig.sign[g] * th * D, 0, 0); });
+    });
+    const hp = rig.pivots.head;
+    groups.head.forEach((m) => { m.position.set(hp[0], hp[1] + bz, hp[2]); m.rotation.set(state.pitch * D, 0, 0); });
+    cargo.position.set(0, bz + rig.deck + bh / 2, (bx0 + bx1) / 2);
+
+    $("hud1").textContent = `摆臂 ${fmt(th)}°   头 ${fmt(state.pitch)}°`;
+    $("hud2").textContent = `机身底离地 ${Math.round(bz * 1000)} mm`;
+    $("phase").textContent = state.s <= 0.001 ? "" : state.s < SG ? "① 轮子着地，机身降到滑撬上" : state.s < 0.999 ? "② 轮子离地，摆臂往上往里翻" : "已折叠：机身坐在滑撬上";
+    $("o-fold").textContent = Math.round(state.s * 100) + "%";
+    $("s-fold").value = Math.round(state.s * 1000);
+
+    // 外形尺寸：按顶点精确算
+    let lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+    for (const m of meshes) {
+      m.updateMatrixWorld(true);
+      const pos = m.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i += 1) {
+        v3.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+        if (v3.x < lo[0]) lo[0] = v3.x; if (v3.x > hi[0]) hi[0] = v3.x;
+        if (v3.y < lo[1]) lo[1] = v3.y; if (v3.y > hi[1]) hi[1] = v3.y;
+        if (v3.z < lo[2]) lo[2] = v3.z; if (v3.z > hi[2]) hi[2] = v3.z;
+      }
+    }
+    const mm = (a, b) => Math.round((b - a) * 1000);
+    $("dimv").textContent = `${mm(lo[2], hi[2])} × ${mm(lo[0], hi[0])} × ${Math.round(hi[1] * 1000)} mm`;
+  }
+  const fmt = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1);
+
+  // 动画：髋约 80°/秒，头约 120°/秒
+  let anim = null;
+  function go(target) {
+    const from = { ...state };
+    const dS = Math.abs((target.s ?? state.s) - state.s) * SPAN / 80;
+    const dP = Math.abs((target.pitch ?? state.pitch) - state.pitch) / 120;
+    const dur = reduce ? 0 : Math.max(dS, dP) * 1000;
+    anim = { from, to: { ...state, ...target }, t0: performance.now(), dur };
+  }
+  function step(now) {
+    if (anim) {
+      const k = anim.dur ? Math.min(1, (now - anim.t0) / anim.dur) : 1;
+      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      state.s = anim.from.s + (anim.to.s - anim.from.s) * e;
+      state.pitch = anim.from.pitch + (anim.to.pitch - anim.from.pitch) * e;
+      apply();
+      if (k >= 1) anim = null;
+    }
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(step);
+  }
+
+  const mark = (ids, on) => ids.forEach((id) => $(id).classList.toggle("on", id === on));
+  $("b-deploy").addEventListener("click", () => { go({ s: 0, pitch: rig.pitch.level }); mark(["b-deploy", "b-fold"], "b-deploy"); mark(["h-up", "h-level", "h-down"], "h-level"); });
+  $("b-fold").addEventListener("click", () => { go({ s: 1, pitch: rig.pitch.fold }); mark(["b-deploy", "b-fold"], "b-fold"); mark(["h-up", "h-level", "h-down"], ""); });
+  [["h-up", "up"], ["h-level", "level"], ["h-down", "down"]].forEach(([id, k]) =>
+    $(id).addEventListener("click", () => { go({ pitch: rig.pitch[k] }); mark(["h-up", "h-level", "h-down"], id); }));
+  $("s-fold").addEventListener("input", (e) => { anim = null; state.s = e.target.value / 1000; apply(); mark(["b-deploy", "b-fold"], ""); });
+  $("t-xray").addEventListener("change", (e) => xrayMats.forEach((m) => { m.transparent = e.target.checked; m.opacity = e.target.checked ? 0.16 : 1; m.depthWrite = !e.target.checked; m.needsUpdate = true; }));
+  $("t-cargo").addEventListener("change", (e) => { cargo.visible = e.target.checked; });
+
+  apply();
+  requestAnimationFrame(step);
+
+  // ---------------------------------------------------------------- 面板
+  function fillPanel(r) {
+    const tp = $("t-poses");
+    for (const [name, d] of Object.entries(r.dims)) {
+      const n = r.hits[name];
+      tp.insertAdjacentHTML("beforeend", `<tr><td>${name}</td><td class="n">${d[0]} × ${d[1]} × ${d[2]}</td><td class="n"><span class="chip ${n ? "warn" : "ok"}">${n} 处</span></td></tr>`);
+    }
+    $("sweep").innerHTML = r.sweep_hits
+      ? `<span class="chip warn">折叠过程有 ${r.sweep_hits} 次相撞</span>`
+      : `<span class="chip ok">折叠全程不撞</span>　抬头到低头也不撞，没有零件进地面。`;
+    const tn = $("t-near");
+    tn.insertAdjacentHTML("beforeend", `<tr><th>最近的地方</th><th style="text-align:right">间隙</th></tr>`);
+    Object.entries(r.near).sort((a, b) => a[1] - b[1]).forEach(([k, v]) =>
+      tn.insertAdjacentHTML("beforeend", `<tr><td>${k}</td><td class="n">${v.toFixed(1)} mm</td></tr>`));
+    const tm = $("t-mass");
+    tm.insertAdjacentHTML("beforeend", `<tr><th></th><th style="text-align:right">重量</th><th style="text-align:right">重心离地</th><th style="text-align:right">侧翻临界</th></tr>`);
+    for (const [name, m] of Object.entries(r.mass))
+      tm.insertAdjacentHTML("beforeend", `<tr><td>${name}</td><td class="n">${m.mass} kg</td><td class="n">${m.com[2]} mm</td><td class="n">${m.tip_side}°</td></tr>`);
+    const dep = Object.values(r.dims)[0], fold = r.dims["折叠"];
+    $("n-width").innerHTML = `整机宽 <b>${dep[1]} mm</b>，比效果图的 41 cm 宽约 3 cm：轮子换成 152 mm 重载麦轮（宽 50）、轮边加了扁平电机。展开高 ${dep[2]} mm，折叠后 ${fold[0]} × ${fold[1]} × ${fold[2]} mm（最高点是雷达）。`;
+    const full = Object.values(r.mass)[1];
+    $("n-lift").innerHTML = full.lift_margin > 0
+      ? `满载抬一条腿：重心在三个轮子围成的三角形里 ${full.lift_margin} mm。`
+      : `满载抬一条腿：重心落在三个轮子围成的三角形<b>外面 ${-full.lift_margin} mm</b>，直接抬会往那边倒。第 3 步仿真时解决（比如先用轮子把车身挪一下、或者调对角腿）。平地行驶不受影响。`;
+  }
+})();
+</script>
