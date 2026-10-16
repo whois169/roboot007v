@@ -568,7 +568,7 @@ def skid():
 
 
 def from_model(code, name, qty, material, key, notes, group="neck"):
-    parts = {"neck": M.neck_parts, "head": M.head_parts, "body": M.body_parts}[group]()
+    parts = {"neck": M.neck_parts, "head": M.head_parts, "body": M.body_parts, "leg": M.leg_parts_FL}[group]()
     s = [p for n, p, c in parts if n == key][0]
     return Printed(code, name, qty, material, s, notes)
 
@@ -592,7 +592,12 @@ def all_parts():
          from_model("D15", "前保险杠", 1, "ASA（深灰）", "前保险杠", ["中间开深度相机窗，两边雾灯槽"], "body"),
          from_model("D16", "后格栅", 1, "PETG（黑）", "后格栅", ["6 片银色鳍可以用铝条或打印后喷银"], "body"),
          from_model("D17", "侧装甲框", 2, "ASA（深灰）", "外壳·左侧装甲框", ["机身下半截两侧；左右镜像；只能凸出 8 mm（上半截离折叠的轮子只有 5 mm）"], "body"),
-         from_model("D18", "侧装甲面板", 2, "ASA（中灰）", "外壳·左侧装甲面板", ["嵌在侧装甲框里，散热槽和警示条贴在上面"], "body")]
+         from_model("D18", "侧装甲面板", 2, "ASA（中灰）", "外壳·左侧装甲面板", ["嵌在侧装甲框里，散热槽和警示条贴在上面"], "body"),
+         from_model("D19", "下层底盘护板", 2, "ASA（深灰）", "外壳·左下层底盘", ["机身下半截两侧，髋部开 Φ62 让开轴承座；左右镜像"], "body"),
+         from_model("D20", "前鼻子", 1, "ASA（深灰）", "前鼻子", ["机身前面上半截的斜切头"], "body"),
+         from_model("D21", "后鼻子", 1, "ASA（深灰）", "后鼻子", ["机身后面上半截，尾灯条贴在上面"], "body"),
+         from_model("D22", "摆臂外盖板", 4, "ASA（深灰）", "摆臂外盖板", ["盖在摆臂外板外面，中间长槽；黄条用反光贴纸或打印后喷漆"], "leg"),
+         from_model("D23", "髋部大圆盖", 4, "ASA（深灰）", "髋部大圆盖", ["Φ50，盖住髋轴端头螺丝；外圈贴黄色反光圈"], "leg")]
     return P
 
 

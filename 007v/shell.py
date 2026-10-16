@@ -71,14 +71,14 @@ def body_shell():
     for sy, tag in ((1, "左"), (-1, "右")):
         out = []
         # 侧装甲模块：外框（深色）+ 往里凹 2 mm 的面板 + 散热槽 + 警示条 + 4 颗银螺栓
-        frame = prism_xz(chamfer_rect(-100, 100, 18, 68, 6), W2, W2 + 8).cut(prism_xz(chamfer_rect(-90, 90, 26, 60, 4), W2 - 1, W2 + 9))
+        frame = prism_xz(chamfer_rect(-100, 100, 18, 68, 6), W2 + 4, W2 + 10).cut(prism_xz(chamfer_rect(-90, 90, 26, 60, 4), W2 + 3, W2 + 11))
         out.append((f"外壳·{tag}侧装甲框", frame, "dark"))
-        out.append((f"外壳·{tag}侧装甲面板", prism_xz(chamfer_rect(-90, 90, 26, 60, 4), W2, W2 + 6), "shell"))
+        out.append((f"外壳·{tag}侧装甲面板", prism_xz(chamfer_rect(-90, 90, 26, 60, 4), W2 + 4, W2 + 7), "dark"))
         for i in range(7):
-            out.append((f"外壳·{tag}散热槽{i + 1}", box(30 + i * 8, 33 + i * 8, W2 + 6, W2 + 6.6, 32, 54), "seam"))
-        out.append((f"外壳·{tag}警示条", box(-75, -15, W2 + 6, W2 + 6.6, 50, 56), "amber"))
+            out.append((f"外壳·{tag}散热槽{i + 1}", box(30 + i * 8, 33 + i * 8, W2 + 7, W2 + 7.6, 32, 54), "seam"))
+        out.append((f"外壳·{tag}警示条", box(-75, -15, W2 + 7, W2 + 7.6, 50, 56), "amber"))
         for x, z in ((-94, 24), (94, 24), (-94, 62), (94, 62)):
-            out.append((f"外壳·{tag}螺栓 x{x}z{z}", cyl_y(x, z, 6, W2 + 8, W2 + 9.5), "silver"))
+            out.append((f"外壳·{tag}螺栓 x{x}z{z}", cyl_y(x, z, 6, W2 + 10, W2 + 11.5), "silver"))
         # 腰线：深色细槽 + 两段琥珀灯（只凸 2 mm）
         out.append((f"外壳·{tag}腰线", box(-185, 185, W2, W2 + 2, 92, 100), "dark"))
         for x in (-130, 130):
@@ -87,6 +87,28 @@ def body_shell():
         out.append((f"外壳·{tag}甲板边线", box(-185, 185, W2, W2 + 1, deck - 2.5, deck - 0.5), "silver"))
         for n, s, c in out:
             P.append((n, s if sy > 0 else mirror_y(s), c))
+    for sy, tag in ((1, "左"), (-1, "右")):
+        out = []
+        tub = prism_xz([(-196, 14), (-186, 4), (186, 4), (196, 14), (196, 90), (-196, 90)], W2, W2 + 4)
+        for hx in (-HIP_X, HIP_X):
+            tub = tub.cut(cyl_y(hx, HIP_Z, 62, W2 - 1, W2 + 5))                 # 髋部轴承座、臂座让开
+        out.append((f"外壳·{tag}下层底盘", tub, "shell"))
+        txt = cq.Workplane("XZ").text("007V", 34, 0.8, halign="center", valign="center").val()
+        txt = txt.translate(V(-40, 0, 0)).rotate(V(0, 0, 0), V(0, 0, 1), 180).translate(V(0, W2, 122)) if sy > 0 else             txt.translate(V(-40, -W2, 122))
+        out.append((f"外壳·{tag}字样007V", txt, "silver"))
+        small = cq.Workplane("XZ").text("CARGO 10KG  ·  MAX STEP 0.10M", 6, 0.6, halign="left", valign="center").val()
+        small = small.rotate(V(0, 0, 0), V(0, 0, 1), 180).translate(V(5, W2, 126)) if sy > 0 else small.translate(V(-5, -W2, 126))
+        out.append((f"外壳·{tag}小字", small, "silver"))
+        for i in range(6):                                                     # 警示斜纹：黑黄相间
+            x0 = -75 + i * 10
+            out.append((f"外壳·{tag}斜纹{i + 1}", prism_xz([(x0, 50), (x0 + 5, 50), (x0 + 9, 56), (x0 + 4, 56)], W2 + 6, W2 + 6.8), "black"))
+        for n, s_, c in out:
+            P.append((n, s_ if (sy > 0 or "字" in n) else mirror_y(s_), c))
+    for sx in (1, -1):                                                         # 前后鼻子：上半截斜切的头
+        nose = prism_xz([(0, 100), (10, 106), (10, 144), (0, 150)], -W2 + 10, W2 - 10)
+        if sx < 0:
+            nose = nose.mirror("YZ")
+        P.append((f"{'前' if sx > 0 else '后'}鼻子", nose.translate(V(sx * BODY_L / 2, 0, 0)), "deck"))
     # 前保险杠：上下斜切，中间给深度相机开窗；两边琥珀雾灯
     L2 = BODY_L / 2
     bump = prism_xz([(L2, 15), (L2 + 12, 21), (L2 + 12, 59), (L2, 65)], -100, 100)
@@ -102,7 +124,7 @@ def body_shell():
         y = -60 + i * 24
         P.append((f"外壳·格栅鳍{i + 1}", box(-L2 - 10, -L2 - 8, y - 1, y + 1, 20, 50), "silver"))
     for sy in (1, -1):
-        P.append((f"外壳·尾灯{'左' if sy > 0 else '右'}", box(-L2 - 2, -L2, *sorted((sy * 40, sy * 100)), 128, 136), "amber"))
+        P.append((f"外壳·尾灯{'左' if sy > 0 else '右'}", box(-L2 - 11.5, -L2 - 10, *sorted((sy * 40, sy * 100)), 122, 130), "amber"))
     # 底光（青色，夜里照地面）
     for sy in (1, -1):
         P.append((f"外壳·底光{'左' if sy > 0 else '右'}", box(-140, 140, *sorted((sy * 30, sy * 36)), -1.5, 0), "cyan"))
@@ -230,5 +252,35 @@ def pods():
 
 
 # ================================================================ 摆臂外板上的琥珀反光条（左前腿坐标）
-def arm_marks(oy1):
-    return [("外壳·摆臂反光条", box(70, 130, oy1, oy1 + 0.6, -3, 3), "amber")]
+def stadium_pts(x0, x1, r0, r1, n=24):
+    """两头圆（半径 r0 在 x0、r1 在 x1）的外公切线轮廓（x, z）。"""
+    L = x1 - x0
+    a = math.asin((r0 - r1) / L)
+    pts = []
+    for i in range(n + 1):
+        t = -math.pi / 2 + a + (math.pi - 2 * a) * i / n
+        pts.append((x1 + r1 * math.cos(t), r1 * math.sin(t)))
+    for i in range(n + 1):
+        t = math.pi / 2 - a + (math.pi + 2 * a) * i / n
+        pts.append((x0 + r0 * math.cos(t), r0 * math.sin(t)))
+    return pts
+
+
+def arm_marks(oy1, root1, my1):
+    """摆臂外面（左前腿坐标，髋轴在原点，轮轴在 (ARM, 0)）：外盖板 + 长槽 + 黄条、髋部大圆盖、轮端青光圈、臂座上的黄色箍。"""
+    P = []
+    cover = prism_xz(stadium_pts(0, ARM, ARM_ROOT_R - 1, ARM_END_R - 1), oy1, oy1 + 3)
+    cover = cover.cut(prism_xz(stadium_pts(48, 128, 6, 6), oy1 - 1, oy1 + 4))
+    P.append(("摆臂外盖板", cover, "dark"))
+    P.append(("外壳·长槽底", prism_xz(stadium_pts(48, 128, 6, 6), oy1, oy1 + 1), "black"))
+    for i, u in enumerate((34, 41, 48)):                                   # 髋边上三道斜黄条
+        P.append((f"外壳·摆臂黄条{i + 1}", strip((u, -14), (u + 10, 14), 2.4, oy1 + 3, oy1 + 3.6), "amber"))
+    P.append(("外壳·摆臂边黄线", strip((60, 16), (135, 19), 1.6, oy1 + 3, oy1 + 3.6), "amber"))
+    P.append(("髋部大圆盖", cyl_y(0, 0, 50, oy1 + 3, oy1 + 6), "dark"))
+    P.append(("外壳·髋盖黄圈", ring_y(0, 0, 50, 40, oy1 + 6, oy1 + 6.6), "amber"))
+    P.append(("外壳·髋盖六角", prism_xz([(9 * math.cos(math.pi / 6 + k * math.pi / 3), 9 * math.sin(math.pi / 6 + k * math.pi / 3)) for k in range(6)], oy1 + 6, oy1 + 8), "silver"))
+    P.append(("外壳·轮端青光圈", ring_y(ARM, 0, 26, 20, oy1 + 3, oy1 + 3.6), "cyan"))
+    for i, y in enumerate((root1 + 8, root1 + 16, root1 + 24, root1 + 32)):    # 臂座上的黄色箍（像减震弹簧）
+        P.append((f"外壳·臂座黄箍{i + 1}", prism_xz(stadium_pts(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R + 1.2, ARM_ROOT_R + 1.2), y, y + 2.5)
+                  .cut(prism_xz(stadium_pts(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R - 0.5, ARM_ROOT_R - 0.5), y - 1, y + 4)), "amber"))
+    return P

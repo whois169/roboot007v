@@ -137,7 +137,7 @@ def interference(pose):
         for j in range(i + 1, len(PARTS)):
             if known(PARTS[i].name, PARTS[j].name) or is_visual(PARTS[i].name) or is_visual(PARTS[j].name):
                 continue
-            if PARTS[i].g == PARTS[j].g and (PARTS[i].name.startswith("外壳·") or PARTS[j].name.startswith("外壳·")):
+            if PARTS[i].g == PARTS[j].g and ("外壳·" in PARTS[i].name or "外壳·" in PARTS[j].name):
                 continue                                   # 装饰件贴在同一部件的零件上，本来就挨着
             a, b = bbs[i], bbs[j]
             if a.xmax < b.xmin or b.xmax < a.xmin or a.ymax < b.ymin or b.ymax < a.ymin or a.zmax < b.zmin or b.zmax < a.zmin:

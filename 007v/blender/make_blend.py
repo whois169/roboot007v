@@ -143,8 +143,8 @@ gm.use_nodes = True
 nt = gm.node_tree
 chk = nt.nodes.new("ShaderNodeTexChecker")
 chk.inputs["Scale"].default_value = 300
-chk.inputs["Color1"].default_value = (0.035, 0.045, 0.05, 1)
-chk.inputs["Color2"].default_value = (0.05, 0.065, 0.072, 1)
+chk.inputs["Color1"].default_value = (0.012, 0.015, 0.017, 1)
+chk.inputs["Color2"].default_value = (0.02, 0.025, 0.028, 1)
 nt.links.new(chk.outputs["Color"], nt.nodes["Principled BSDF"].inputs["Base Color"])
 gm.diffuse_color = (0.04, 0.05, 0.06, 1)
 ground.data.materials.append(gm)
@@ -180,11 +180,11 @@ for i, ob in enumerate(D["obstacles"]):
     bumps.append(b)
 
 sun = bpy.data.objects.new("太阳光", bpy.data.lights.new("太阳光", "SUN"))
-sun.data.energy = 3.0
+sun.data.energy = 1.2
 sun.rotation_euler = (math.radians(50), math.radians(10), math.radians(30))
 C_ENV.objects.link(sun)
 fill = bpy.data.objects.new("补光", bpy.data.lights.new("补光", "AREA"))
-fill.data.energy = 300
+fill.data.energy = 120
 fill.data.size = 2
 fill.location = (-1.5, -1.5, 1.6)
 fill.rotation_euler = (math.radians(55), 0, math.radians(-45))
@@ -271,16 +271,95 @@ scene.frame_set(0)
 print(f"零件 {len(D['parts']) - missing} 个挂好（缺 {missing}），{D['frames']} 帧，标记 {len(D['markers'])} 个")
 
 # ---------------------------------------------------------------- 预览图（Workbench，快）
+# ---------------------------------------------------------------- 好看一点：屏幕 HUD 眼睛、灯带发光、影棚灯
+def hud_image():
+    import numpy as np
+    W, H = 640, 384
+    a = np.zeros((H, W, 4), np.float32)
+    a[..., 0], a[..., 1], a[..., 2], a[..., 3] = 0.004, 0.02, 0.03, 1.0
+    a[::4, :, 1] += 0.012                                    # 扫描线
+    yy, xx = np.mgrid[0:H, 0:W]
+    for cx in (W * 0.33, W * 0.67):                          # 两只方眼睛（圆角）
+        dx = np.maximum(np.abs(xx - cx) - 46, 0)
+        dy = np.maximum(np.abs(yy - H * 0.52) - 46, 0)
+        d = np.sqrt(dx * dx + dy * dy)
+        m = d < 16
+        a[m, 0], a[m, 1], a[m, 2] = 0.05, 0.85, 1.0
+        g = (d >= 16) & (d < 40)
+        k = (1 - (d[g] - 16) / 24) * 0.25
+        a[g, 1] += k * 0.85
+        a[g, 2] += k
+    a[int(H * 0.88):int(H * 0.9), int(W * 0.1):int(W * 0.5), :3] = (0.05, 0.6, 0.7)   # 底部状态条
+    img = bpy.data.images.new("HUD 眼睛", W, H, alpha=False)
+    img.pixels.foreach_set(np.flipud(a).ravel())
+    img.pack()
+    return img
+
+
+def screen_material():
+    img = hud_image()
+    m = bpy.data.materials.new("屏幕 HUD")
+    nt = m.node_tree if m.node_tree else None
+    if nt is None:
+        m.use_nodes = True
+        nt = m.node_tree
+    for n in list(nt.nodes):
+        nt.nodes.remove(n)
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs["Strength"].default_value = 2.5
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = img
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    com = nt.nodes.new("ShaderNodeCombineXYZ")
+    nt.links.new(tc.outputs["Generated"], sep.inputs[0])
+    nt.links.new(sep.outputs["X"], com.inputs["X"])           # 屏幕左右 = Blender X，上下 = Z
+    nt.links.new(sep.outputs["Z"], com.inputs["Y"])
+    nt.links.new(com.outputs[0], tex.inputs["Vector"])
+    nt.links.new(tex.outputs["Color"], em.inputs["Color"])
+    nt.links.new(em.outputs[0], out.inputs["Surface"])
+    return m
+
+
+glass = bpy.data.objects.get("屏幕玻璃")
+if glass is not None:
+    hud = screen_material()
+    glass.data.materials.clear()
+    glass.data.materials.append(hud)
+for m in bpy.data.materials:                                  # 琥珀、青色灯带亮一点
+    if m.name.split(".")[0] in ("amber", "cyan") and m.node_tree:
+        b = m.node_tree.nodes.get("Principled BSDF")
+        if b:
+            b.inputs["Emission Strength"].default_value = 2.2
+for nm, e, loc, rot, size in (("顶光", 90, (0, 0, 2.2), (0, 0, 0), 1.8), ("左前柔光", 70, (1.6, -1.4, 1.0), (55, 0, 50), 1.2),
+                              ("右后轮廓光", 90, (-1.4, 1.6, 0.9), (60, 0, -140), 1.0)):
+    L = bpy.data.objects.new(nm, bpy.data.lights.new(nm, "AREA"))
+    L.data.energy, L.data.size = e, size
+    L.location = loc
+    L.rotation_euler = tuple(math.radians(v) for v in rot)
+    C_ENV.objects.link(L)
+L = bpy.data.objects.get("右后轮廓光")
+if L:
+    L.data.color = (0.6, 0.9, 1.0)
+
 if PREVIEW:
     os.makedirs(PREVIEW, exist_ok=True)
     eng = scene.render.engine
-    scene.render.engine = "BLENDER_WORKBENCH"
-    sh = scene.display.shading
-    sh.light = "STUDIO"
-    sh.color_type = "MATERIAL"
-    sh.show_cavity = True
-    sh.show_shadows = True
+    try:
+        scene.render.engine = "BLENDER_EEVEE"
+        scene.eevee.taa_render_samples = 32
+    except Exception:
+        scene.render.engine = "BLENDER_WORKBENCH"
     scene.render.resolution_x, scene.render.resolution_y = 1000, 640
+    # 和效果图一样的三个角度
+    keep = (cam.location.copy(), aim.location.copy())
+    for nm, loc in (("00a_前斜", (0.78, -0.92, 0.36)), ("00b_侧面", (1.22, -0.08, 0.32)), ("00c_后斜", (-0.78, 0.9, 0.42))):
+        cam.location = loc
+        scene.frame_set(5)
+        scene.render.filepath = os.path.join(PREVIEW, nm + ".png")
+        bpy.ops.render.render(write_still=True)
+    cam.location, aim.location = keep
     marks = {name: f for f, name in D["markers"]}
     shots = [("01_展开", 5), ("02_折叠", marks["折叠好了"] + 10), ("03_拆散", marks["拆散（停住看）"] + 30)]
     for f, name in D["markers"]:

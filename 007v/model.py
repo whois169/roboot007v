@@ -134,12 +134,12 @@ def body_parts():
         y0 = sy * RAIL_Y - PROFILE / 2
         add(f"{'左' if sy > 0 else '右'}导轨2020", box(BED_X0, BED_X1, y0, y0 + PROFILE, DECK, rail_top), "profile")
         f0 = sy * RAIL_Y - FENCE_T / 2
-        add(f"{'左' if sy > 0 else '右'}栏板", box(BED_X0 + 5, BED_X1 - 5, f0, f0 + FENCE_T, rail_top - FENCE_INSERT, rail_top - FENCE_INSERT + FENCE_H), "printed")
+        add(f"{'左' if sy > 0 else '右'}栏板", box(BED_X0 + 5, BED_X1 - 5, f0, f0 + FENCE_T, rail_top - FENCE_INSERT, rail_top - FENCE_INSERT + FENCE_H), "shell")
     inner = RAIL_Y - PROFILE / 2
     add("后导轨2020", box(BED_X0, BED_X0 + PROFILE, -inner, inner, DECK, rail_top), "profile")
     add("前导轨2020", box(BED_X1 - PROFILE, BED_X1, -inner, inner, DECK, rail_top), "profile")
-    add("后栏板", box(BED_X0 + 10 - FENCE_T / 2, BED_X0 + 10 + FENCE_T / 2, -inner + 2, inner - 2, rail_top - FENCE_INSERT, rail_top - FENCE_INSERT + FENCE_H), "printed")
-    add("前栏板", box(BED_X1 - 10 - FENCE_T / 2, BED_X1 - 10 + FENCE_T / 2, -inner + 2, inner - 2, rail_top - FENCE_INSERT, rail_top - FENCE_INSERT + 50), "printed")
+    add("后栏板", box(BED_X0 + 10 - FENCE_T / 2, BED_X0 + 10 + FENCE_T / 2, -inner + 2, inner - 2, rail_top - FENCE_INSERT, rail_top - FENCE_INSERT + FENCE_H), "shell")
+    add("前栏板", box(BED_X1 - 10 - FENCE_T / 2, BED_X1 - 10 + FENCE_T / 2, -inner + 2, inner - 2, rail_top - FENCE_INSERT, rail_top - FENCE_INSERT + 50), "shell")
     ax, at, ay = ARM_PORT
     cx, cy = ARM_PORT_XY
     add("机械臂接口板", box(cx - ax / 2, cx + ax / 2, cy - ay / 2, cy + ay / 2, DECK, DECK + at), "alu")
@@ -202,7 +202,7 @@ def neck_parts():
     u = box(-nx / 2, nx / 2, -ny / 2, ny / 2, 0, nh).cut(box(-nx / 2 + 30, nx / 2 + 1, -POD_IN, POD_IN, -1, nh + 1))
     for sy in (1, -1):
         u = u.cut(cyl_z(CABLE_X, sy * yc, 12, -1, nh + 1))       # 肩座走线孔往下穿过底座
-    P.append(("脖子底座", u, "printed"))                       # U 形：后面一根横梁 + 两条垫在肩座下面，屏幕头下面挖空
+    P.append(("脖子底座", u, "dark"))                       # U 形：后面一根横梁 + 两条垫在肩座下面，屏幕头下面挖空
     P += shell.pods()
     top = max(z for _, z in POD_HEX)
     top_x = sum(x for x, z in POD_HEX if z == top) / 2
@@ -239,7 +239,7 @@ def leg_parts_FL():
         ("麦轮侧板内", cyl_y(ARM, 0, WHEEL_PLATE_D, wy0, wy0 + WHEEL_PLATE_T), "steel"),
         ("麦轮侧板外", cyl_y(ARM, 0, WHEEL_PLATE_D, wy1 - WHEEL_PLATE_T, wy1), "steel"),
     ]
-    P += shell.arm_marks(oy1)
+    P += shell.arm_marks(oy1, root1, my1)
     for i, (u, v) in enumerate(ARM_STANDOFFS):
         P.append((f"臂根支柱{i + 1}", cyl_y(u, v, STANDOFF_HEX, root1, my1), "alu"))
     yc = (wy0 + wy1) / 2
