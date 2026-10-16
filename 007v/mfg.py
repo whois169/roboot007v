@@ -355,7 +355,7 @@ def deck():
     for y in (-40.0, 0.0, 40.0):
         H.append(hole(NECK_X - 50.0, y, 4.5, "脖子底座后横梁 M4"))
     for sy in (1, -1):
-        H.append(hole(120.0, sy * 96.0, 16.0, "过线孔：头部 USB + 供电、雷达线（左）／备用（右）"))
+        H.append(hole(NECK_X + CABLE_X, sy * (POD_IN + POD_W / 2), 16.0, "过线孔：对着肩座走线孔（左：头部 USB + 供电、雷达；右：热成像、红外）"))
     ax, ay = ARM_PORT_XY
     H += ring(ax, ay, 4, 50.0 * math.sqrt(2), 5.5, note="机械臂接口板 M5")
     H.append(hole(ax, ay, 16.0, "机械臂接口过线孔（航空插座）"))
@@ -568,7 +568,7 @@ def skid():
 
 
 def from_model(code, name, qty, material, key, notes, group="neck"):
-    parts = M.neck_parts() if group == "neck" else M.head_parts()
+    parts = {"neck": M.neck_parts, "head": M.head_parts, "body": M.body_parts}[group]()
     s = [p for n, p, c in parts if n == key][0]
     return Printed(code, name, qty, material, s, notes)
 
@@ -579,9 +579,20 @@ def all_parts():
          spacer("B05", "隔圈A", 5.0, "带轮和轴承内圈之间，穿过侧板 Φ22 孔"),
          spacer("B06", "隔圈B", 3.0, "轴承内圈和轴毂之间"),
          arm_shell(), lidar_mount(), *fences(), skid(),
-         from_model("D07", "屏幕头外壳（外形初版）", 1, "ASA（深灰）", "屏幕头", ["只是外形，里面的屏板卡槽、螺丝柱、传感器开孔下一版加"], "head"),
-         from_model("D08", "肩座（外形初版）", 2, "ASA（深灰）", "左肩座", ["左右镜像各一个；舵机仓、雷达线槽下一版加"]),
-         from_model("D09", "脖子底座（外形初版）", 1, "PETG", "脖子底座", ["U 形；螺丝孔位和甲板 A02 对齐，下一版加热熔螺母孔"])]
+         from_model("D07", "屏幕头外壳", 1, "ASA（深灰）", "屏幕头",
+                    ["空心壳，壁厚 2.5；前脸开 102 × 62 玻璃窗，下巴开相机、测距、隐私灯孔；左边 Φ10 过舵盘、右边 Φ8.2 过轴销",
+                     "打印时从中间竖着切成前后两半（切缝在屏板后面），装好屏板再合上"], "head"),
+         from_model("D08", "屏板卡槽（左）", 1, "PETG", "屏板卡槽左", ["屏板侧边插进槽里；右边那个镜像打印"], "head"),
+         from_model("D09", "屏板压条", 1, "PETG", "屏板压条", ["从后面压住屏板，两头用 M2.5 拧在卡槽上"], "head"),
+         from_model("D10", "左肩座骨架", 1, "ASA（深灰）", "左肩座骨架", ["里面是舵机仓、舵盘过孔、往下的走线孔"]),
+         from_model("D11", "右肩座骨架", 1, "ASA（深灰）", "右肩座骨架", ["里面是轴销铜套孔、热成像 / 红外小板仓"]),
+         from_model("D12", "肩座封板", 2, "ASA（浅灰）", "左肩座封板", ["朝着头的那面；左右镜像各一块"]),
+         from_model("D13", "肩座外装甲", 2, "ASA（深灰）", "左肩座外装甲", ["中间 Φ38 圆孔露出电机端盖；3 根 Φ6 银色支柱撑出一道缝"]),
+         from_model("D14", "脖子底座", 1, "PETG", "脖子底座", ["U 形；两个 Φ12 走线孔接肩座；螺丝孔位和甲板 A02 对齐"]),
+         from_model("D15", "前保险杠", 1, "ASA（深灰）", "前保险杠", ["中间开深度相机窗，两边雾灯槽"], "body"),
+         from_model("D16", "后格栅", 1, "PETG（黑）", "后格栅", ["6 片银色鳍可以用铝条或打印后喷银"], "body"),
+         from_model("D17", "侧装甲框", 2, "ASA（深灰）", "外壳·左侧装甲框", ["机身下半截两侧；左右镜像；只能凸出 8 mm（上半截离折叠的轮子只有 5 mm）"], "body"),
+         from_model("D18", "侧装甲面板", 2, "ASA（中灰）", "外壳·左侧装甲面板", ["嵌在侧装甲框里，散热槽和警示条贴在上面"], "body")]
     return P
 
 

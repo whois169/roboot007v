@@ -27,3 +27,4 @@ renders/
 # SolidWorks / Blender 导出（python 007v/export_sw.py、007v/blender/export_parts.py + make_blend.py 重新生成）
 007v/out/solidworks/
 007v/out/blender/
+007v/out/build.log

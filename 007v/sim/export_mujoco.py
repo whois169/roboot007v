@@ -98,9 +98,9 @@ def export_meshes(name, parts, origin_mm):
     return out
 
 
-RGBA = {c: [int(B_COL[i:i + 2], 16) / 255 for i in (1, 3, 5)] + [1] for c, B_COL in dict(
-    armor="#4b5159", alu="#b9bfc7", profile="#9ea5ad", black="#1b1d20", motor="#2c3035", steel="#d3d7db", trim="#c8cdd3",
-    pcb="#1f6b48", battery="#2f5c9e", printed="#6e747b", glass="#0c1a22", wheel="#26292d").items()}
+from look import COL  # noqa: E402
+
+RGBA = {c: [int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)] + [1] for c, h in COL.items()}
 
 
 def main():

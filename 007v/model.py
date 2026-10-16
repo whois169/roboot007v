@@ -12,6 +12,7 @@ import math
 import cadquery as cq
 
 from config import *  # noqa: F401,F403  所有尺寸
+import shell  # noqa: E402  外壳、头部内部结构
 
 V = cq.Vector
 DECK = BODY_H + PLATE                 # 甲板上表面（机身坐标）
@@ -88,11 +89,11 @@ def body_parts():
     # 铝板盒子
     for sgn, tag in ((1, "左"), (-1, "右")):
         y0, y1 = (W2 - PLATE_SIDE, W2) if sgn > 0 else (-W2, -W2 + PLATE_SIDE)
-        add(f"{tag}侧板", box(-L2, L2, y0, y1, 0, BODY_H), "alu")
+        add(f"{tag}侧板", box(-L2, L2, y0, y1, 0, BODY_H), "anod")
     add("底板", box(-L2 + PLATE, L2 - PLATE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, 0, PLATE), "alu")
-    add("前板", box(L2 - PLATE, L2, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H), "alu")
-    add("后板", box(-L2, -L2 + PLATE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H), "alu")
-    add("甲板", box(-L2, L2, -W2, W2, BODY_H, DECK), "alu")
+    add("前板", box(L2 - PLATE, L2, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H), "anod")
+    add("后板", box(-L2, -L2 + PLATE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H), "anod")
+    add("甲板", box(-L2, L2, -W2, W2, BODY_H, DECK), "anod")
     for x0 in (L2 - PLATE - PROFILE - 2, -L2 + PLATE + 2):            # 前后上下四根 2020 横梁
         for z0 in (PLATE, BODY_H - PROFILE):
             add(f"2020横梁 x{x0:+.0f} z{z0:.0f}", box(x0, x0 + PROFILE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, z0, z0 + PROFILE), "profile")
@@ -121,6 +122,8 @@ def body_parts():
     dx, dy, dz = DEPTH_CAM
     add("深度相机", box(L2 - PLATE - dx, L2 - PLATE, -dy / 2, dy / 2, 25, 25 + dz), "black")
 
+    for n, s, c in shell.body_shell():
+        add(n, s, c)
     # 脖子底座 + 两块肩座 + 舵机 + 雷达（都在脖子坐标里画，再挪到机身上）
     for n, s, c in neck_parts():
         add(n, s.translate(V(NECK_X, 0, NECK_Z)), c)
@@ -195,15 +198,12 @@ def neck_parts():
     """脖子坐标：原点在甲板上表面、俯仰轴正下方。"""
     P = []
     nx, nh, ny = NECK_BASE
-    u = box(-nx / 2, nx / 2, -ny / 2, ny / 2, 0, nh).cut(box(-nx / 2 + 30, nx / 2 + 1, -POD_IN, POD_IN, -1, nh + 1))
-    P.append(("脖子底座", u, "printed"))                       # U 形：后面一根横梁 + 两条垫在肩座下面，屏幕头下面挖空
-    pts = [(x, z) for x, z in POD_HEX]
-    for sy in (1, -1):
-        y0, y1 = (POD_IN, POD_IN + POD_W) if sy > 0 else (-POD_IN - POD_W, -POD_IN)
-        P.append((f"{'左' if sy > 0 else '右'}肩座", prism_xz(pts, y0, y1), "armor"))
-    sx, sw, sh = SERVO
     yc = POD_IN + POD_W / 2
-    P.append(("俯仰舵机", box(-sx / 2, sx / 2, yc - sw / 2, yc + sw / 2, PIVOT_UP - sh / 2, PIVOT_UP + sh / 2), "motor"))
+    u = box(-nx / 2, nx / 2, -ny / 2, ny / 2, 0, nh).cut(box(-nx / 2 + 30, nx / 2 + 1, -POD_IN, POD_IN, -1, nh + 1))
+    for sy in (1, -1):
+        u = u.cut(cyl_z(CABLE_X, sy * yc, 12, -1, nh + 1))       # 肩座走线孔往下穿过底座
+    P.append(("脖子底座", u, "printed"))                       # U 形：后面一根横梁 + 两条垫在肩座下面，屏幕头下面挖空
+    P += shell.pods()
     top = max(z for _, z in POD_HEX)
     top_x = sum(x for x, z in POD_HEX if z == top) / 2
     P.append(("雷达LD19", ld19().translate(V(top_x, yc, top + 3)), "black"))
@@ -213,14 +213,7 @@ def neck_parts():
 
 def head_parts():
     """中间屏幕头，画在“俯仰轴坐标”里：原点在俯仰轴上。build.py 绕 Y 轴转，再挪到 PIVOT。"""
-    hw = HEAD_W / 2
-    P = [("屏幕头", prism_xz(HEAD_PROFILE, -hw, hw), "armor")]
-    t, w, h = SCREEN_BOARD
-    P.append(("4.3寸屏板", box(SCREEN_X - t, SCREEN_X, -w / 2, w / 2, SCREEN_Z - h / 2, SCREEN_Z + h / 2), "pcb"))
-    gw, gh = SCREEN_GLASS
-    front = max(x for x, _ in HEAD_PROFILE)
-    P.append(("屏幕玻璃", box(front - 1.5, front + 0.5, -gw / 2, gw / 2, SCREEN_Z - gh / 2, SCREEN_Z + gh / 2), "glass"))
-    return P
+    return shell.head()                                        # 空心头壳 + 屏板卡槽 + 舵盘 / 轴销 + 外面的装饰
 
 
 # ---------------------------------------------------------------- 摆臂 + 轮子（左前腿，摆臂水平朝前；原点在髋轴上）
@@ -239,13 +232,14 @@ def leg_parts_FL():
         ("臂根内板", stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R, root0, root1), "alu"),
         ("箱形臂座外壳", stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R, root1, my1).cut(
             stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R - 3, root1 - 1, my1 + 1)), "armor"),
-        ("摆臂外板", stadium_xz(0, ARM, ARM_END_R, my1, oy1), "alu"),
+        ("摆臂外板", stadium_xz(0, ARM, ARM_END_R, my1, oy1), "anod"),
         ("轮子电机GIM4310", cyl_y(ARM, 0, WHEEL_MOTOR_D, wy1, my1), "motor"),
         ("麦轮外包络", cyl_y(ARM, 0, WHEEL_D, wy0, wy1), "envelope"),      # 只用来查碰撞，不显示
         ("麦轮轮毂", cyl_y(ARM, 0, 60, wy0 - 1, wy1 + 1), "trim"),
         ("麦轮侧板内", cyl_y(ARM, 0, WHEEL_PLATE_D, wy0, wy0 + WHEEL_PLATE_T), "steel"),
         ("麦轮侧板外", cyl_y(ARM, 0, WHEEL_PLATE_D, wy1 - WHEEL_PLATE_T, wy1), "steel"),
     ]
+    P += shell.arm_marks(oy1)
     for i, (u, v) in enumerate(ARM_STANDOFFS):
         P.append((f"臂根支柱{i + 1}", cyl_y(u, v, STANDOFF_HEX, root1, my1), "alu"))
     yc = (wy0 + wy1) / 2

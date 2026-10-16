@@ -292,6 +292,13 @@ if PREVIEW:
         scene.frame_set(int(f))
         scene.render.filepath = os.path.join(PREVIEW, nm + ".png")
         bpy.ops.render.render(write_still=True)
+    # 头部特写
+    keep = (cam.location.copy(), aim.location.copy())
+    cam.location, aim.location = (0.32, -0.5, 0.3), (0, -0.11, 0.2)
+    scene.frame_set(5)
+    scene.render.filepath = os.path.join(PREVIEW, "06_头部特写.png")
+    bpy.ops.render.render(write_still=True)
+    cam.location, aim.location = keep
     scene.render.engine = eng
     scene.render.resolution_x, scene.render.resolution_y = 1280, 720
     scene.frame_set(0)
