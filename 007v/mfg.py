@@ -517,9 +517,11 @@ def spacer(code, name, L, note):
 
 
 def arm_shell():
-    s = M.stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R, 0, 47).cut(M.stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R - 3, -1, 48))
+    s = M.arm_box_solid(0, 42)
     return Printed("D01", "箱形臂座外壳", 4, "ASA / PETG（深灰）", s.rotate(V(0, 0, 0), V(1, 0, 0), -90),
-                   ["夹在臂根内板和摆臂外板之间（高 47 = 两板间距），不受力，只是外壳", "外面的分缝、灯带槽下一版加"])
+                   ["夹在臂根内板和摆臂外板之间（高 42 = 两板间距），不受力，只是外壳",
+                    "从髋一直包到轮子跟前，尽头是贴着轮子的弧面（离轮子 4 mm），中间不留空档",
+                    "靠机身那面：臂根内板以外的部分封 2 mm 墙；从髋那头装进去"])
 
 
 def lidar_mount():

@@ -218,6 +218,18 @@ def head_parts():
 
 
 # ---------------------------------------------------------------- 摆臂 + 轮子（左前腿，摆臂水平朝前；原点在髋轴上）
+def arm_box_solid(y0, y1):
+    """箱形臂座外壳（摆臂坐标，髋轴在原点，轮轴在 (ARM, 0)），Y 从 y0 到 y1：
+    一圈 3 mm 的壳从髋一直包到轮子跟前，尽头是贴着轮子的弧面（离轮子 ARM_WHEEL_CLEAR），不留空档；
+    靠机身那面在臂根内板以外的部分封 2 mm 的墙（内板管不到那里）。"""
+    R = ARM_ROOT_R
+    rc = WHEEL_D / 2 + ARM_WHEEL_CLEAR
+    outer = stadium_xz(0, ARM - R, R, y0, y1).cut(cyl_y(ARM, 0, 2 * rc, y0 - 1, y1 + 1))
+    inner = stadium_xz(0, ARM - R, R - 3, y0 - 1, y1 + 1).cut(cyl_y(ARM, 0, 2 * (rc + 3), y0 - 2, y1 + 2))
+    wall = outer.intersect(box(70, ARM, y0, y0 + 2, -R - 1, R + 1))
+    return outer.cut(inner).fuse(wall)
+
+
 def leg_parts_FL():
     W2 = BODY_W / 2
     wy0 = W2 + WHEEL_GAP                       # 轮子内侧
@@ -231,8 +243,7 @@ def leg_parts_FL():
         ("臂座轴毂", cyl_y(0, 0, HUB["boss_d"], hub0, hub0 + HUB["boss_l"]).fuse(
             cyl_y(0, 0, HUB["flange_d"], hub0 + HUB["boss_l"], hub0 + HUB["boss_l"] + HUB["flange_t"])), "alu"),
         ("臂根内板", stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R, root0, root1), "alu"),
-        ("箱形臂座外壳", shell.soft(stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R, root1, my1).cut(
-            stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R - 3, root1 - 1, my1 + 1)), 1.5), "armor"),
+        ("箱形臂座外壳", shell.soft(arm_box_solid(root1, my1), 1.5), "armor"),
         ("摆臂外板", stadium_xz(0, ARM, ARM_END_R, my1, oy1), "anod"),
         ("轮子电机GIM4310", cyl_y(ARM, 0, WHEEL_MOTOR_D, wy1, my1), "motor"),
         ("麦轮外包络", cyl_y(ARM, 0, WHEEL_D, wy0, wy1), "envelope"),      # 只用来查碰撞，不显示
