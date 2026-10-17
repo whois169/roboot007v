@@ -93,19 +93,38 @@ def body_shell():
     P = []
     W2, L2 = BODY_W / 2, BODY_L / 2
     deck = BODY_H + PLATE
-    # ---- 下层底盘：一整圈，四角 R16，底边斜切；凸出机身 6（只在下半截，折叠的轮子扫不到）
-    tub = rrect_ring(L2 + 4, W2 + 6, 16, 12, TUB_TOP).fuse(rrect_ring(L2 - 2, W2, 10, 4, 12.01, L2 - 2, W2 - 0.01))
-    tub = tub.fuse(prism_xz([(-L2 + 2, 4), (L2 - 2, 4), (L2 + 4, 12), (-L2 - 4, 12)], W2 - 1, W2 + 6))
-    tub = tub.fuse(prism_xz([(-L2 + 2, 4), (L2 - 2, 4), (L2 + 4, 12), (-L2 - 4, 12)], -W2 - 6, -W2 + 1))
-    tub = tub.cut(box(-L2 + 0.01, L2 - 0.01, -W2 + 0.01, W2 - 0.01, 0, TUB_TOP + 1))
+    # ---- 底盘框架（外露的金属骨架）：两根矩形边梁贴在侧板外面 + 前后两根横管；外壳架在它上面，中间留一道看得见的缝
+    rw, rz0, rz1 = FRAME_RAIL
+    for sy, tag in ((1, "左"), (-1, "右")):
+        rail = soft(prism_xz(chamfer_rect(-L2 - 10, L2 + 10, rz0, rz1, 5), *sorted((sy * W2, sy * (W2 + rw)))), 1.0)
+        P.append((f"底盘边梁{tag}", rail, "anod"))
+    for sx, tag in ((1, "前"), (-1, "后")):
+        P.append((f"底盘横管{tag}", cyl_y(sx * (L2 + 10), 10, 16, -W2, W2), "anod"))
+        P.append((f"外壳·横管端盖{tag}左", cyl_y(sx * (L2 + 10), 10, 12, W2 + rw, W2 + rw + 1.5), "silver"))
+        P.append((f"外壳·横管端盖{tag}右", cyl_y(sx * (L2 + 10), 10, 12, -W2 - rw - 1.5, -W2 - rw), "silver"))
+    # 髋支座：独立的铝件，下面两颗螺栓拧在边梁上、上面两颗拧在侧板上；轴承座从中间的孔穿出来
     for hx in (-HIP_X, HIP_X):
-        tub = tub.cut(cyl_y(hx, HIP_Z, 62, -W2 - 8, W2 + 8))                    # 髋部像轮拱一样让开
+        for sy, tag in ((1, "左"), (-1, "右")):
+            y0, y1 = sorted((sy * (W2 + rw), sy * (W2 + rw + 5)))
+            sup = prism_xz(chamfer_rect(hx - 34, hx + 34, 14, 66, 8), y0, y1).cut(cyl_y(hx, HIP_Z, 47, y0 - 1, y1 + 1))
+            name = f"髋支座{'前' if hx > 0 else '后'}{tag}"
+            P.append((name, soft(sup, 1.0), "anod"))
+            for bx, bz in ((hx - 27, 21), (hx + 27, 21), (hx - 27, 58), (hx + 27, 58)):
+                yb = sorted((sy * (W2 + rw + 5), sy * (W2 + rw + 6.5)))
+                P.append((f"外壳·{name}螺栓 x{bx:+.0f}z{bz}", cyl_y(bx, bz, 6, *yb), "silver"))
+    # ---- 下层外壳：架在边梁上面（下沿 = 边梁上沿 + 缝），一整圈，四角 R16
+    z0 = rz1 + FRAME_GAP
+    tub = rrect_ring(L2 + 4, W2 + 6, 16, z0, TUB_TOP)
+    for hx in (-HIP_X, HIP_X):
+        tub = tub.cut(cyl_y(hx, HIP_Z, 70, -W2 - 8, W2 + 8))                    # 髋支座的位置让开
     dx, dy, dz = DEPTH_CAM
     tub = tub.cut(box(L2 - 1, L2 + 8, -dy / 2 - 1, dy / 2 + 1, 23, 24 + dz + 2))   # 深度相机窗
     tub = tub.cut(cq.Solid.makeCylinder(13, 10, V(-L2 - 8, 0, 70), V(1, 0, 0)))    # 急停
     tub = tub.cut(cq.Solid.makeCylinder(9, 10, V(-L2 - 8, 55, 70), V(1, 0, 0)))    # 总开关
     tub = tub.cut(box(-L2 - 8, -L2 + 1, -71, -53, 59, 69))                         # 充电口
-    P.append(("外壳·下层底盘", soft(tub, 1.5), "shell"))
+    for sy in (1, -1):                                                            # 侧挂板的位置：外壳开窗，挂板四周留 1 mm 缝
+        tub = tub.cut(box(-101, 101, *sorted((sy * (W2 - 1), sy * (W2 + 8))), z0 + 1, TUB_TOP - 1))
+    P.append(("外壳·下层外壳", soft(tub, 1.5), "shell"))
     # ---- 黑腰：凹进去的一圈 + 两侧琥珀灯、前后青灯
     P.append(("外壳·黑腰", rrect_ring(L2 + 1.5, W2 + 1.5, 13, TUB_TOP, WAIST_TOP), "dark"))
     for sy in (1, -1):
@@ -123,18 +142,11 @@ def body_shell():
     P.append(("上层甲板壳", slab, "shell"))
     for sy, tag in ((1, "左"), (-1, "右")):
         out = []
-        # 侧装甲模块：贴在下层底盘外面
-        frame = prism_xz(chamfer_rect(-100, 100, 16, 62, 6), W2 + 6, W2 + 12).cut(prism_xz(chamfer_rect(-90, 90, 24, 54, 4), W2 + 5, W2 + 13))
-        out.append((f"外壳·{tag}侧装甲框", soft(frame, 2.5), "dark"))
-        out.append((f"外壳·{tag}侧装甲面板", prism_xz(chamfer_rect(-90, 90, 24, 54, 4), W2 + 6, W2 + 9), "dark"))
-        for i in range(7):
-            out.append((f"外壳·{tag}散热槽{i + 1}", box(30 + i * 8, 33 + i * 8, W2 + 9, W2 + 9.6, 29, 49), "seam"))
-        out.append((f"外壳·{tag}警示条", box(-75, -15, W2 + 9, W2 + 9.6, 44, 50), "amber"))
-        for i in range(6):
-            x0 = -75 + i * 10
-            out.append((f"外壳·{tag}斜纹{i + 1}", prism_xz([(x0, 44), (x0 + 5, 44), (x0 + 9, 50), (x0 + 4, 50)], W2 + 9, W2 + 9.8), "black"))
-        for x, z in ((-94, 22), (94, 22), (-94, 56), (94, 56)):
-            out.append((f"外壳·{tag}螺栓 x{x}z{z}", cyl_y(x, z, 6, W2 + 12, W2 + 13.5), "silver"))
+        # 侧挂板：独立的一块，四角螺栓固定，和外壳之间一圈 1 mm 缝（拆下来就能看到里面的电池、驱动）
+        z0 = FRAME_RAIL[2] + FRAME_GAP
+        out.append((f"侧挂板{tag}", soft(prism_xz(chamfer_rect(-100, 100, z0 + 2, TUB_TOP - 2, 5), W2 + 1, W2 + 9), 1.0), "dark"))
+        for x, z in ((-91, z0 + 7), (91, z0 + 7), (-91, TUB_TOP - 7), (91, TUB_TOP - 7)):
+            out.append((f"外壳·{tag}挂板螺栓 x{x}z{z:.0f}", cyl_y(x, z, 5, W2 + 9, W2 + 10.2), "silver"))
         out.append((f"外壳·{tag}甲板边线", box(-170, 170, W2 + 1.5, W2 + 1.8, BODY_H - 6, BODY_H - 4), "silver"))
         for n, s_, c in out:
             P.append((n, s_ if sy > 0 else mirror_y(s_), c))
@@ -168,7 +180,7 @@ def body_shell():
     for sy in (1, -1):
         P.append((f"外壳·底光{'左' if sy > 0 else '右'}", box(-140, 140, *sorted((sy * 30, sy * 36)), -1.5, 0), "cyan"))
     # 栏板顶边的琥珀反光条
-    rail_top = deck + PROFILE
+    rail_top = deck + TOP_PLATE_T + PROFILE
     ftop = rail_top - FENCE_INSERT + FENCE_H
     for sy in (1, -1):
         P.append((f"外壳·栏板反光条{'左' if sy > 0 else '右'}", box(BED_X0 + 15, BED_X1 - 15, sy * RAIL_Y - 3.5, sy * RAIL_Y + 3.5, ftop - 6, ftop + 0.5), "amber"))

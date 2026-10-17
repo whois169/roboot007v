@@ -16,8 +16,9 @@ import shell  # noqa: E402  外壳、头部内部结构
 
 V = cq.Vector
 DECK = BODY_H + PLATE                 # 甲板上表面（机身坐标）
-NECK_Z = DECK                         # 脖子坐标原点的高度
-PIVOT = (NECK_X, DECK + PIVOT_UP)     # 俯仰轴（x, z）
+NECK_Z = DECK + TOP_PLATE_T + TOP_STEP   # 脖子坐标原点的高度（坐在头部平台盖上）
+BED_Z = DECK + TOP_PLATE_T              # 货斗底板上表面（导轨坐在上面）
+PIVOT = (NECK_X, NECK_Z + PIVOT_UP)   # 俯仰轴（x, z）
 
 
 # ---------------------------------------------------------------- 基本形状
@@ -95,6 +96,17 @@ def body_parts():
     add("后板", box(-L2, -L2 + PLATE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H), "anod")
     dk = cq.Workplane("XY").box(BODY_L, BODY_W, PLATE, centered=(True, True, False)).edges("|Z").fillet(10).val().translate(V(0, 0, BODY_H))
     add("甲板", shell.soft(dk, 1.2), "anod")
+    # 顶面三块叠层板：头部平台盖（高）—— 货斗底板（低，货放这里）—— 后检修盖（高）；板边看得见 4 mm 厚，下面垫一圈缩进 3 mm 的垫条，像一块块装上去的
+    def top_plate(x0, x1, raised):
+        t, st = TOP_PLATE_T, (TOP_STEP if raised else 0.0)
+        p = cq.Workplane("XY").box(x1 - x0, BODY_W - 2, t, centered=False).edges("|Z").fillet(8).val().translate(V(x0, -W2 + 1, DECK + st))
+        p = shell.soft(p, 1.0)
+        if raised:
+            p = p.fuse(box(x0 + 3, x1 - 3, -W2 + 4, W2 - 4, DECK, DECK + st + 0.5))
+        return p
+    add("头部平台盖", top_plate(BED_X1 + 2, L2, True), "deck")
+    add("货斗底板", top_plate(BED_X0 - 1, BED_X1, False), "deck")
+    add("后检修盖", top_plate(-L2, BED_X0 - 4, True), "deck")
     for x0 in (L2 - PLATE - PROFILE - 2, -L2 + PLATE + 2):            # 前后上下四根 2020 横梁
         for z0 in (PLATE, BODY_H - PROFILE):
             add(f"2020横梁 x{x0:+.0f} z{z0:.0f}", box(x0, x0 + PROFILE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, z0, z0 + PROFILE), "profile")
@@ -130,20 +142,20 @@ def body_parts():
         add(n, s.translate(V(NECK_X, 0, NECK_Z)), c)
 
     # 货斗：2020 卡槽导轨 + 打印栏板 + 机械臂接口板
-    rail_top = DECK + PROFILE
+    rail_top = BED_Z + PROFILE
     for sy in (1, -1):
         y0 = sy * RAIL_Y - PROFILE / 2
-        add(f"{'左' if sy > 0 else '右'}导轨2020", box(BED_X0, BED_X1, y0, y0 + PROFILE, DECK, rail_top), "profile")
+        add(f"{'左' if sy > 0 else '右'}导轨2020", box(BED_X0, BED_X1, y0, y0 + PROFILE, BED_Z, rail_top), "profile")
         f0 = sy * RAIL_Y - FENCE_T / 2
         add(f"{'左' if sy > 0 else '右'}栏板", box(BED_X0 + 5, BED_X1 - 5, f0, f0 + FENCE_T, rail_top - FENCE_INSERT, rail_top - FENCE_INSERT + FENCE_H), "shell")
     inner = RAIL_Y - PROFILE / 2
-    add("后导轨2020", box(BED_X0, BED_X0 + PROFILE, -inner, inner, DECK, rail_top), "profile")
-    add("前导轨2020", box(BED_X1 - PROFILE, BED_X1, -inner, inner, DECK, rail_top), "profile")
+    add("后导轨2020", box(BED_X0, BED_X0 + PROFILE, -inner, inner, BED_Z, rail_top), "profile")
+    add("前导轨2020", box(BED_X1 - PROFILE, BED_X1, -inner, inner, BED_Z, rail_top), "profile")
     add("后栏板", box(BED_X0 + 10 - FENCE_T / 2, BED_X0 + 10 + FENCE_T / 2, -inner + 2, inner - 2, rail_top - FENCE_INSERT, rail_top - FENCE_INSERT + FENCE_H), "shell")
     add("前栏板", box(BED_X1 - 10 - FENCE_T / 2, BED_X1 - 10 + FENCE_T / 2, -inner + 2, inner - 2, rail_top - FENCE_INSERT, rail_top - FENCE_INSERT + 50), "shell")
     ax, at, ay = ARM_PORT
     cx, cy = ARM_PORT_XY
-    add("机械臂接口板", box(cx - ax / 2, cx + ax / 2, cy - ay / 2, cy + ay / 2, DECK, DECK + at), "alu")
+    add("机械臂接口板", box(cx - ax / 2, cx + ax / 2, cy - ay / 2, cy + ay / 2, BED_Z, BED_Z + at), "alu")
     return P
 
 

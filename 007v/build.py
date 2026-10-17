@@ -30,7 +30,7 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
 os.makedirs(OUT, exist_ok=True)
 R = WHEEL_D / 2
 LEGS = {"FL": (1, 1, "前左"), "FR": (1, -1, "前右"), "RL": (-1, 1, "后左"), "RR": (-1, -1, "后右")}
-PIVOT_Z = M.DECK + PIVOT_UP
+PIVOT_Z = M.NECK_Z + PIVOT_UP
 THETA_FOLD = -(180.0 - FOLD_DEG)                                      # 摆臂角：正 = 往下；-110 = 往上往里翻 70°
 THETA_GROUND = math.degrees(math.asin((SKID_H - R + HIP_Z) / ARM))   # 机身刚好坐到滑撬上、轮子还着地的角度
 t0 = time.time()
