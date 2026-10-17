@@ -210,15 +210,15 @@ def ld19():
 
 
 def neck_parts():
-    """脖子坐标：原点在头部平台盖上表面、俯仰轴正下方。固定颈座 + 耳轴座 + 雷达桅杆 + 雷达。"""
-    P = shell.neck()
-    P.append(("雷达LD19", ld19().translate(V(0, LIDAR_Y, PIVOT_UP + LIDAR_UP)), "black"))
+    """脖子坐标：原点在头部平台盖上表面、俯仰轴正下方。传感塔 + 轴承座 + 塔顶雷达。"""
+    P, (lx, ly, lz) = shell.neck()
+    P.append(("雷达LD19", ld19().translate(V(lx, ly, lz)), "black"))
     return P
 
 
 def head_parts():
     """中间屏幕头，画在“俯仰轴坐标”里：原点在俯仰轴上。build.py 绕 Y 轴转，再挪到 PIVOT。"""
-    return shell.head()                                        # 空心头壳 + 屏板卡槽 + 舵盘 / 轴销 + 外面的装饰
+    return shell.head() + [("编织线缆", shell.cable(), "black")]   # 屏幕模块 + 到传感塔的线缆
 
 
 # ---------------------------------------------------------------- 摆臂 + 轮子（左前腿，摆臂水平朝前；原点在髋轴上）
