@@ -423,15 +423,18 @@ def fork_profile(k=0.0):
 
 def fork_plate(y0, y1, k=0.0):
     poly, r = fork_profile(k)
-    p = wprism(poly, y0, y1).fuse(cyl_y(ARM, 0, 2 * r, y0, y1))
-    slot = [(-6 + 4 * math.cos(math.radians(a)), 46 + 4 * math.sin(math.radians(a))) for a in range(0, 181, 15)] + \
-           [(-6 + 4 * math.cos(math.radians(a)), 24 + 4 * math.sin(math.radians(a))) for a in range(180, 361, 15)]
-    return p.cut(wprism(slot, y0 - 1, y1 + 1))                                   # 中段长圆减重孔，透出后面的轮子
+    return wprism(poly, y0, y1).fuse(cyl_y(ARM, 0, 2 * r, y0, y1))              # 实心（用户 2026-10-18：不要镂空）
 
 
-def leg_skin(oy, ly0, ly1, fy0):
-    """腿和叉的外观件（左前腿坐标）。oy = 腿板外表面；ly0 / ly1 = 电机两端；fy0 = 叉板内侧。"""
+def leg_skin(oy, ly0, ly1, fy0, hub0):
+    """腿和叉的外观件（左前腿坐标）。oy = 腿板外表面；ly0 / ly1 = 电机两端；fy0 = 叉板内侧；hub0 = 臂座外壳内侧。"""
     P = []
+    # 臂座上的黄色箍（截图那版的样子，跟着臂座收窄）+ 腿板外面髋边上三道斜黄条
+    for i, y in enumerate((hub0 + 5, hub0 + 11, hub0 + 17)):
+        hoop = waist_xz(0, ARM, ARM_ROOT_R + 1.2, ARM_END_R + 1.2, y, y + 2.5).cut(waist_xz(0, ARM, ARM_ROOT_R - 0.5, ARM_END_R - 0.5, y - 1, y + 4))
+        P.append((f"外壳·臂座黄箍{i + 1}", hoop.intersect(box(-40, ARM_BOX_LEN, y - 1, y + 4, -40, 40)), "amber"))
+    for i, u in enumerate((34, 41, 48)):
+        P.append((f"外壳·腿板黄条{i + 1}", strip((u, -14), (u + 10, 14), 2.4, oy, oy + 0.6), "amber"))
     f1 = fy0 + sum(FORK_PLATE_T)
     # 挡泥横梁：轮子上方一段圆弧，把腿板和叉板连成 U 形叉；顶上一道凹槽线，两头各一道 1.5 mm 分缝
     r0, r1 = FENDER_R
@@ -459,23 +462,36 @@ def leg_skin(oy, ly0, ly1, fy0):
         u, v = w2a(X, FENDER_R[1] - 9)
         P.append((f"外壳·叉板螺栓{X:+d}", cyl_y(u, v, BOLT_D, f1, f1 + 0.6), "dark"))
     # 金线：叉板一条（从横梁走到端盖），腿板一条（从髋关节走到轴心）
-    P.append(("外壳·叉板金线", strip(w2a(10, 58), w2a(8, 17), 1.6, f1, f1 + 0.6), "amber"))
-    P.append(("外壳·腿板金线", strip((34, 15.5), (ARM - 30, 17.5), 1.6, oy, oy + 0.6), "amber"))
-    # 电机半包护罩：只包下半圈（挡地上的石子），带三道散热纹、两头螺栓；电机端面一圈青光
-    half = wprism([(-40, 0), (40, 0), (40, -40), (-40, -40)], ly0 - 1, ly1 + 1)
-    shroud = ring_y(ARM, 0, 61, 56, ly0 + 1, ly1 - 1).intersect(half)
-    P.append(("电机护罩", soft(shroud, 0.8), "anod"))
-    for i in range(3):
-        yy = ly0 + 8 + i * 9
-        P.append((f"外壳·护罩散热纹{i + 1}", ring_y(ARM, 0, 63, 60, yy, yy + 1.5).intersect(half), "anod"))
-    for X in (-27, 27):
-        u, v = w2a(X, -6)
-        P.append((f"外壳·护罩螺栓{X:+d}", cyl_dir((u, (ly0 + ly1) / 2, v), (math.copysign(1, X) * math.cos(math.radians(STANCE_DEG)), 0,
-                                                                         math.copysign(1, X) * math.sin(math.radians(STANCE_DEG))), 6, 1.0), "dark"))
+    P.append(("外壳·叉板金线", strip(w2a(15, 58), w2a(12, 17), 1.6, f1, f1 + 0.6), "amber"))
+    P.append(("外壳·腿板金线", strip((62, 16), (ARM - 30, 17.5), 1.6, oy, oy + 0.6), "amber"))
+    # 电机护罩（“靴子”）：从腿末端长出来——浅色臂座在轮子前收成一道 R59 的弧，深色护罩从 R58 接着往下包住电机（1 mm 分缝）；
+    # 切角八边形，背面封住拧在腿板上，朝机身那头敞开露出电机端面；底面 4 道散热槽，两侧各两颗沉头螺栓；后上方出线口，线沿臂座上沿走到髋
+    def oct_w(h, ch):
+        return [(-h + ch, -h), (h - ch, -h), (h, -h + ch), (h, h - ch), (h - ch, h), (-h + ch, h), (-h, h - ch), (-h, -h + ch)]
+    tail = [(ARM - 75, 24), (ARM, 31), (ARM, -31), (ARM - 75, -22)]
+    gy0, gy1 = ly0 + 2, ly1
+
+    def boot(k, y0, y1):
+        body = wprism(oct_w(31 - k, 10 - k * 0.4), y0, y1)
+        pts = [(x + (k if x < ARM else 0), v - math.copysign(k, v)) for x, v in tail]
+        t = prism_xz(pts, y0, y1).intersect(cyl_y(ARM, 0, 2 * (58 - k), y0 - 1, y1 + 1))
+        return body.fuse(t)
+    guard = boot(0, gy0, gy1).cut(boot(3, gy0 - 1, gy1 - 3))                       # 3 mm 壳，靠腿板那面封住
+    guard = guard.cut(cyl_y(ARM, 0, WHEEL_MOTOR_D + 1, gy1 - 4, gy1 + 1))           # 封住那面中间开孔，电机从这里拧到腿板上
+    for X in (-12, -4, 4, 12):                                                      # 底面散热槽
+        guard = guard.cut(wprism([(X - 1, -31.5), (X + 1, -31.5), (X + 1, -30), (X - 1, -30)], gy0 + 4, gy1 - 5))
+    P.append(("电机护罩", soft(guard, 0.8), "anod"))
+    c55, s55 = math.cos(math.radians(STANCE_DEG)), math.sin(math.radians(STANCE_DEG))
+    for X in (-31, 31):
+        for yb in (gy0 + 9, gy1 - 9):
+            u, v = w2a(X, -14)
+            sg = math.copysign(1, X)
+            P.append((f"外壳·护罩螺栓{X:+d}y{yb:.0f}", cyl_dir((u, yb, v), (sg * c55, 0, sg * s55), BOLT_D, 0.6), "dark"))
     P.append(("外壳·电机端面青光环", ring_y(ARM, 0, 40, 36, ly0 - 0.6, ly0), "cyan"))
-    # 电机线缆：从电机顶上出来，沿腿板内侧走到髋，三个小线夹
-    pts = [w2a(-6, 27), (ARM - 40, 21), (95, 22), (45, 19)]
-    yy = oy - sum(LEG_PLATE_T) - 4.5
+    # 出线口（线缆接头）+ 电机线缆：沿臂座上沿走到髋，三个小线夹
+    yy = oy - sum(LEG_PLATE_T) - 5
+    P.append(("外壳·出线口", cyl_dir((ARM - 46, yy, 25), (0, 0, 1), 10, 5), "dark"))
+    pts = [(ARM - 46, 30), (ARM - 62, 30), (95, 27), (45, 29)]
     cab = None
     for (p0, p1) in zip(pts, pts[1:]):
         d = V(p1[0] - p0[0], 0, p1[1] - p0[1])
@@ -483,8 +499,8 @@ def leg_skin(oy, ly0, ly1, fy0):
         cab = seg if cab is None else cab.fuse(seg)
         cab = cab.fuse(cq.Solid.makeSphere(3.5, V(p1[0], yy, p1[1])))
     P.append(("外壳·电机线缆", cab, "black"))
-    for i, (u, v) in enumerate(((ARM - 40, 21), (95, 22), (60, 20))):
-        P.append((f"外壳·线夹{i + 1}", box(u - 3, u + 3, yy - 4.5, oy - sum(LEG_PLATE_T), v - 4.5, v + 4.5), "dark"))
+    for i, (u, v) in enumerate(((ARM - 62, 30), (95, 27), (60, 28.5))):
+        P.append((f"外壳·线夹{i + 1}", box(u - 3, u + 3, yy - 4.5, yy + 4.5, v - 4.5, v + 4.5), "dark"))
     # 髋端编码器罩（AS5600）
     P.append(("编码器罩", soft(cyl_y(0, 0, 44, oy, oy + 4), 1.0), "anod"))
     for i in range(4):
@@ -516,7 +532,7 @@ def leg_label(key, fx, sy):
         t = t.rotate(V(0, 0, 0), V(0, 0, 1), 180)
     t = t.rotate(V(0, 0, 0), V(0, 1, 0), -STANCE_DEG if fx > 0 else STANCE_DEG)
     c, s_ = math.cos(math.radians(STANCE_DEG)), math.sin(math.radians(STANCE_DEG))
-    X, Z = 0.0, 33.0                                                              # 叉板中段（减重孔旁边）
+    X, Z = -4.0, 33.0                                                             # 叉板中段，金线左边
     u, v = (ARM + X * c - Z * s_, X * s_ + Z * c)
     if fx < 0:                                                                    # 后腿是前腿前后镜像过去的
         u = -u

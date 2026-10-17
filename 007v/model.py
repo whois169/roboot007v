@@ -238,9 +238,8 @@ def arm_box_solid(y0, y1):
 
 
 def leg_plate(y0, y1, k=0.0):
-    """腿板的一层：变截面（中段收窄），中段长圆减重孔；k = 外层四周缩进。"""
-    p = waist_xz(0, ARM, ARM_ROOT_R - k, ARM_END_R - k, y0, y1)
-    return p.cut(prism_xz(shell.stadium_pts(55, 115, 7 + k, 7 + k), y0 - 1, y1 + 1))
+    """腿板的一层：变截面（中段收窄），实心（用户 2026-10-18：不要镂空）；k = 外层四周缩进。"""
+    return waist_xz(0, ARM, ARM_ROOT_R - k, ARM_END_R - k, y0, y1)
 
 
 def leg_parts_FL():
@@ -255,7 +254,7 @@ def leg_parts_FL():
         ("臂座轴毂", cyl_y(0, 0, HUB["boss_d"], hub0, hub0 + HUB["boss_l"]).fuse(
             cyl_y(0, 0, HUB["flange_d"], hub0 + HUB["boss_l"], hub0 + HUB["boss_l"] + HUB["flange_t"])), "alu"),
         ("臂根内板", waist_xz(0, ARM, ARM_ROOT_R - 4, ARM_END_R - 4, root0, root1).intersect(box(-40, ARM_BOX_LEN, root0 - 1, root1 + 1, -40, 40)), "alu"),
-        ("髋部护罩", shell.soft(arm_box_solid(hub0 + 1, lp0).intersect(box(-40, 34, hub0, lp0, -40, 40)), 1.0), "anod"),
+        ("箱形臂座外壳", shell.soft(arm_box_solid(hub0 + 1, lp0), 1.5), "armor"),            # 浅色臂座：从髋一直包到轮子跟前（和截图那版一样）
         ("腿板内层", shell.soft(leg_plate(lp0, lp0 + LEG_PLATE_T[0]), 0.8), "anod"),
         ("腿板外层", shell.soft(leg_plate(lp0 + LEG_PLATE_T[0], lp1, PLATE_INSET), 0.8), "deck"),
         ("轮子电机GIM4310", cyl_y(ARM, 0, WHEEL_MOTOR_D, M0, LP0), "motor"),          # 在腿板内侧，联轴器穿过腿板驱动轮轴
@@ -266,7 +265,7 @@ def leg_parts_FL():
         ("麦轮侧板内", cyl_y(ARM, 0, WHEEL_PLATE_D, wy0, wy0 + WHEEL_PLATE_T), "steel"),
         ("麦轮侧板外", cyl_y(ARM, 0, WHEEL_PLATE_D, wy1 - WHEEL_PLATE_T, wy1), "steel"),
     ]
-    P += shell.leg_skin(lp1, M0, LP0, FORK_Y0)
+    P += shell.leg_skin(lp1, M0, LP0, FORK_Y0, hub0)
     for i, (u, v) in enumerate(ARM_STANDOFFS):
         P.append((f"臂根支柱{i + 1}", cyl_y(u, v, STANDOFF_HEX, root1, lp0), "alu"))
     yc = (wy0 + wy1) / 2
