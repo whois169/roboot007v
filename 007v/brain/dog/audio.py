@@ -76,7 +76,7 @@ class Speaker:
         return asyncio.create_task(self._play_stream(chunks, sample_rate, on_chunk, prebuffer_seconds))
 
     def stop(self):
-        """马上停止正在播放的声音（被摸了一下要它别说了）。"""
+        """马上停止正在播放的声音（被点了屏幕要它别说了）。"""
         sd.stop()
         self._abort = True
         s = getattr(self, "_stream", None)

@@ -149,7 +149,7 @@ def chirp(sr=24000):
 
 
 def beep(sr=24000):
-    """两声短促的“嘀嘀”：唤醒、摸头后的本地反应。"""
+    """两声短促的“嘀嘀”：唤醒、点屏幕后的本地反应。"""
     t = np.arange(int(sr * 0.08)) / sr
     tone = lambda hz: 0.3 * np.sin(2 * np.pi * hz * t) * np.hanning(len(t))
     gap = np.zeros(int(sr * 0.04))

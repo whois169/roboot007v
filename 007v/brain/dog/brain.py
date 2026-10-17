@@ -43,7 +43,7 @@ class Brain:
         self.voice = tts_mod.make(cfg["tts"])
         self.speaker = Speaker(cfg["audio"]["output_device"], cfg["audio"]["mute_tail_seconds"])
         self.eyes = eyes or eyes_mod.make(cfg.get("eyes", {}), self.persona["name"])
-        self.eyes.on_event = self.on_head_event   # 头部发来的事件：触摸、传感器、隐私开关、心跳
+        self.eyes.on_event = self.on_head_event   # 头部发来的事件：屏幕触摸、传感器、隐私开关、心跳
         self.chassis = chassis_mod.make(cfg.get("chassis", {}))   # 底盘：virtual 仿真 / serial 真车 / none
         self.chassis.on_event = self.on_chassis_event
         self.motions = []              # 这次回答里大模型要做的动作（按顺序做）
@@ -63,7 +63,7 @@ class Brain:
         self.quiet_until = 0.0         # quiet 技能设置的“安静到什么时候”
         self.attention = None          # 第⑥块：主动开口（语音模式、开了摄像头才有）
         self.privacy = False           # 头上的隐私开关拨到“隐私”了（相机和麦克风硬件断电）
-        self.interrupted = ""          # 说话时被摸了一下：listen = 停下来听你说 / idle = 停下来待机
+        self.interrupted = ""          # 说话时被点了屏幕：listen = 停下来听你说 / idle = 停下来待机
         self.head_online = None        # 头部 ESP32 连着没有（只有真串口才检查心跳）
         self.state = "idle"
         self.via = ""                   # 这次是怎么开始听的：look 看着我 / wake 唤醒词 / follow 接着说
@@ -435,30 +435,25 @@ class Brain:
             self.eyes.log(f"HEAD ERR {ev.get('code', '')}")
 
     def on_touch(self, zone: str, action: str):
-        """摸头顶或点屏幕：平时 = 唤醒并确认（闪 ONLINE + 提示音 + 开始听）；它说话时 = 停下来听你说。
-        摸下巴：它说话时 = 停下来待机；它在听时 = 不听了。长按先只记一笔，以后再定用途。"""
+        """点屏幕：平时 = 唤醒并确认（闪 ONLINE + 提示音 + 开始听）；它在想、在说、在走、在学遥控器时 = 马上停下来听你说。
+        长按先只记一笔，以后再定用途。（2026-10-17 取消了头顶、下巴触摸，只剩屏幕。）"""
         if self.privacy or action == "release":
             return
         if action == "hold":
-            log.info("长按了%s（暂时没有用途）", {"head": "头顶", "chin": "下巴", "screen": "屏幕"}[zone])
-            self.eyes.log(f"TOUCH {zone.upper()} HOLD")
+            log.info("长按了屏幕（暂时没有用途）")
+            self.eyes.log("TOUCH SCREEN HOLD")
             return
-        self.eyes.log(f"TOUCH {zone.upper()}")
-        busy = self.state in ("thinking", "speaking", "learning")
-        if zone in ("head", "screen"):
-            if busy:
-                self.interrupt("listen")
-            else:
-                self.touch_wake()
-        elif busy:
-            self.interrupt("idle")
-        elif self.state == "listening":
-            log.info("摸了下巴：不听了")
-            self.to_idle()
+        self.eyes.log("TOUCH SCREEN")
+        if self.state in ("thinking", "speaking", "learning"):
+            self.interrupt("listen")
+        else:
+            if self.motion_job and not self.motion_job.done():   # 正在走：先停
+                self.halt()
+            self.touch_wake()
 
     def touch_wake(self):
-        """摸头唤醒并确认：马上响提示音、屏幕闪 ONLINE，然后开始听（不用看着它、不用喊唤醒词）。"""
-        log.info("摸了头顶：唤醒")
+        """点屏幕唤醒并确认：马上响提示音、屏幕闪 ONLINE，然后开始听（不用看着它、不用喊唤醒词）。"""
+        log.info("点了屏幕：唤醒")
         self.speaker.play(*self.ack)
         self.eyes.mode("wake")
         if hasattr(self, "listener"):                    # 文字模式没有麦克风，只做屏幕确认
@@ -466,7 +461,7 @@ class Brain:
         self.look_when_called()
 
     def interrupt(self, then: str):
-        """它正在想或在说的时候被摸了：马上停，后面的话都不说了。"""
+        """它正在想、在说的时候被点了屏幕：马上停，后面的话都不说了。"""
         log.info("被打断了：%s", "停下来听你说" if then == "listen" else "停下来待机")
         self.eyes.log("TOUCH STOP")
         self.interrupted = then
@@ -627,7 +622,7 @@ class Brain:
 
         async def play_worker():                          # 每句一出来就去要声音（服务那边排队合成），播放按顺序、边收边播
             while (u := await say_q.get()) is not None:
-                if self.interrupted:                       # 被摸了一下：后面的都不说了
+                if self.interrupted:                       # 被点了屏幕：后面的都不说了
                     u.cancel()
                     continue
                 if await u.first() is None or self.interrupted:
@@ -864,7 +859,7 @@ class Brain:
         return ""
 
     def motion_fail(self, what, why) -> str:
-        if why == "STOPPED":                                # 是用户让停的（stop 技能、摸头打断）：不用解释
+        if why == "STOPPED":                                # 是用户让停的（stop 技能、点屏幕打断）：不用解释
             return ""
         if why.startswith("OBSTACLE"):
             return f"前方 {why.split(':')[1]} 厘米有障碍，已停下。"

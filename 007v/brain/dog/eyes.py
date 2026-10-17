@@ -7,9 +7,9 @@
 指令格式见 dog/hud.py 开头。模拟器收到的也是“先变成一行 JSON 文字、再解析”的结果，
 和串口上走的字节完全一样，所以以后换成 ESP32，大脑代码不用改。
 
-反方向（ESP32 → 大脑）的事件：触摸、传感器读数、隐私开关、心跳，格式见 dog/protocol.py。
+反方向（头部的板 → 大脑）的事件：屏幕触摸、传感器读数、隐私开关、心跳，格式见 dog/protocol.py。
 收到的每一行先过 protocol.check_event()，合法的交给 on_event（大脑注册的回调）。
-模拟器里用键盘代替：T = 摸头顶，C = 摸下巴（按住 1 秒以上 = hold），P = 拨隐私开关，
+模拟器里用键盘代替：T = 点屏幕（按住 1 秒以上 = hold；也可以直接用鼠标点窗口），P = 拨隐私开关，
 R = 红外学习时“拿遥控器对着它按了一下”。模拟器收到发码指令，会回一个 sent。
 模拟器还假装有热成像：按大脑要的频率发假房间的热画面（dog/thermal.py 的 FakeScene），H = 打开 / 关掉假灶台。
 还假装有 SHT40 温湿度：每 5 秒发一次屋里的温度、湿度，[ ] 键调温度（每次 1 度），, . 键调湿度（每次 5%）。
@@ -142,7 +142,7 @@ class SimEyes(Eyes):
         self.canvas = pygame.Surface((hud.W, hud.H))
         self.r = hud.HudRenderer(hud.Gfx(self.canvas), now=time.monotonic())
         self._task = asyncio.create_task(self._loop())
-        log.info("HUD 模拟器已打开。窗口快捷键：T 摸头顶、C 摸下巴（按住 1 秒 = 长按）、P 拨隐私开关、R 模拟按遥控器、H 开关假灶台、[ ] 调屋里温度、, . 调湿度；"
+        log.info("HUD 模拟器已打开。窗口快捷键：T 或鼠标点窗口 = 点屏幕（按住 1 秒 = 长按）、P 拨隐私开关、R 模拟按遥控器、H 开关假灶台、[ ] 调屋里温度、, . 调湿度；"
                  "1-9、0、-、= 切换 12 个模式，方向键移动视线，Q/A 调音量，Esc 退出")
 
     def _send_line(self, line):
@@ -208,14 +208,21 @@ class SimEyes(Eyes):
                     if self.on_quit:
                         self.on_quit()
                     return
+                if e.type == pg.MOUSEBUTTONDOWN and e.button == 1:     # 鼠标点窗口 = 手指点屏幕
+                    pressed["mouse"] = ("screen", now, False)
+                    continue
+                if e.type == pg.MOUSEBUTTONUP and e.button == 1 and "mouse" in pressed:
+                    zone, t0, held = pressed.pop("mouse")
+                    self._fake({"ev": "touch", "zone": zone, "action": "release" if held else "tap"})
+                    continue
                 if e.type == pg.KEYUP and e.key in pressed:
                     zone, t0, held = pressed.pop(e.key)
                     self._fake({"ev": "touch", "zone": zone, "action": "release" if held else "tap"})
                     continue
                 if e.type != pg.KEYDOWN:
                     continue
-                if e.key in (pg.K_t, pg.K_c):
-                    pressed[e.key] = ("head" if e.key == pg.K_t else "chin", now, False)
+                if e.key == pg.K_t:
+                    pressed[e.key] = ("screen", now, False)
                     continue
                 if e.key == pg.K_p:
                     privacy = not privacy

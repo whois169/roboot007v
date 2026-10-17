@@ -11,9 +11,9 @@
   {"thermal":{"hz":1}}                                       每秒发几帧热画面过来（0 = 不发，最多 8）
 ESP32 → 大脑：事件，都带 "ev" 字段，格式见 EVENTS，进来先过 check_event()：
 
-  {"ev":"hello","fw":"0.1.0","caps":["touch","light"]}       开机或重连时发一次：固件版本、有哪些功能
+  {"ev":"hello","fw":"0.1.0","caps":["light","ir"]}         开机或重连时发一次：固件版本、有哪些功能
   {"ev":"hb","up":1234}                                       心跳，每秒一次；up = 开机多少秒。3 秒收不到就算掉线
-  {"ev":"touch","zone":"head","action":"tap"}                触摸：zone = head 头顶 / chin 下巴 / screen 屏幕（屏幕板的触摸屏）；action = tap 点一下 / hold 按住 1 秒以上 / release 松开
+  {"ev":"touch","zone":"screen","action":"tap"}              点屏幕（屏幕板自带的触摸屏，2026-10-17 起不再做头顶、下巴触摸）；action = tap 点一下 / hold 按住 1 秒以上 / release 松开
   {"ev":"sensor","name":"light","value":120.5,"unit":"lux"}   传感器读数，name 见 SENSORS
   {"ev":"privacy","on":true}                                  隐私开关：on = true 表示拨到“隐私”（相机和麦克风已经硬件断电）
   {"ev":"error","code":"I2C","text":"BH1750 no ack"}          ESP32 自己的错误
@@ -27,7 +27,7 @@ ESP32 → 大脑：事件，都带 "ev" 字段，格式见 EVENTS，进来先过
 from . import thermal
 
 
-ZONES = ("head", "chin", "screen")
+ZONES = ("screen",)
 ACTIONS = ("tap", "hold", "release")
 # 传感器：名字 -> (给人看的名字, 单位, 装在哪)
 SENSORS = {

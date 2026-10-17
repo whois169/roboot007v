@@ -53,7 +53,7 @@ def system_prompt(persona: dict, can_move: bool = False) -> str:
 
 TRIGGERS = {"look": "看着我说话（没喊唤醒词）", "wake": "喊了唤醒词", "text": "打字", "follow": "刚聊完接着说",
             "proactive": "主动开口（没有人问我，是我自己发现了值得说的事）",
-            "touch": "摸了我的头顶（确认是在叫我）"}
+            "touch": "点了我的屏幕（确认是在叫我）"}
 
 
 def user_message(text: str, sensed: str = "", looked_up: str = "", memory: str = "", via: str = "",

@@ -309,15 +309,16 @@ async def test_proactive_llm():
 
 # ---------------------------------------------------------------- 头部：触摸、隐私开关、传感器、协议
 async def test_head_link():
-    section("头部 ESP32 事件：协议检查、摸头唤醒、摸一下打断、隐私开关、传感器（不联网，假回答）")
+    section("头部事件：协议检查、点屏幕唤醒、点一下打断、隐私开关、传感器（不联网，假回答）")
     from dog import protocol
     from dog.brain import Brain
     from dog.eyes import ConsoleEyes
-    good = [{"ev": "hello", "fw": "0.1.0", "caps": ["touch"]}, {"ev": "hb", "up": 12},
-            {"ev": "touch", "zone": "head", "action": "tap"}, {"ev": "sensor", "name": "light", "value": 120, "unit": "lux"},
+    good = [{"ev": "hello", "fw": "0.1.0", "caps": ["light"]}, {"ev": "hb", "up": 12},
+            {"ev": "touch", "zone": "screen", "action": "tap"}, {"ev": "sensor", "name": "light", "value": 120, "unit": "lux"},
             {"ev": "sensor", "name": "presence", "value": True}, {"ev": "privacy", "on": True}, {"ev": "error", "code": "I2C"}]
     check("合法的头部事件都通过", all(protocol.check_event(e) == "" for e in good))
-    bad = [{"ev": "touch", "zone": "tail", "action": "tap"}, {"ev": "touch", "zone": "head", "action": "poke"},
+    bad = [{"ev": "touch", "zone": "head", "action": "tap"}, {"ev": "touch", "zone": "chin", "action": "tap"},
+           {"ev": "touch", "zone": "screen", "action": "poke"},
            {"ev": "sensor", "name": "laser", "value": 1}, {"ev": "privacy", "on": "yes"}, {"ev": "boom"}, [1, 2]]
     check("不合法的头部事件都被拦下", all(protocol.check_event(e) for e in bad))
 
@@ -338,13 +339,9 @@ async def test_head_link():
         b.eyes.receive_line(json.dumps(ev))
         await asyncio.sleep(0.05)
 
-    await feel({"ev": "touch", "zone": "head", "action": "tap"})
-    check("待机时摸头顶：唤醒并开始听", b.state == "listening" and b.via == "touch" and b.eyes.mode_now in ("wake", "listen"))
-    await feel({"ev": "touch", "zone": "chin", "action": "tap"})
-    check("在听的时候摸下巴：不听了", b.state == "idle")
     await feel({"ev": "touch", "zone": "screen", "action": "tap"})
-    check("待机时点屏幕（007v 的触摸屏）：和摸头顶一样，唤醒并开始听", b.state == "listening" and b.via == "touch")
-    await feel({"ev": "touch", "zone": "chin", "action": "tap"})
+    check("待机时点屏幕：唤醒并开始听", b.state == "listening" and b.via == "touch" and b.eyes.mode_now in ("wake", "listen"))
+    b.to_idle()
 
     from dog.eyes import SerialEyes                       # 两块板分线：屏幕指令去屏幕板，红外、热成像去传感器板
 
@@ -378,16 +375,16 @@ async def test_head_link():
         if b.state == "speaking":
             break
         await asyncio.sleep(0.02)
-    await feel({"ev": "touch", "zone": "head", "action": "tap"})
+    await feel({"ev": "touch", "zone": "screen", "action": "tap"})
     await task
-    check("说话时摸头顶：马上停，后面的不说了", stops and len(plays) == 1, f"停了 {len(stops)} 次，说了 {len(plays)} 句")
-    check("被摸头打断后：停下来听你说", b.after_interrupt() and b.state == "listening" and b.via == "touch")
+    check("说话时点屏幕：马上停，后面的不说了", stops and len(plays) == 1, f"停了 {len(stops)} 次，说了 {len(plays)} 句")
+    check("被点屏幕打断后：停下来听你说", b.after_interrupt() and b.state == "listening" and b.via == "touch")
 
     b.to_idle()
     await feel({"ev": "privacy", "on": True})
     check("隐私开关拨下：不听不看，屏幕显示 PRIVACY", b.privacy and b.eyes.mode_now == "sleep")
-    await feel({"ev": "touch", "zone": "head", "action": "tap"})
-    check("隐私开关打开时摸头不唤醒", b.state == "idle")
+    await feel({"ev": "touch", "zone": "screen", "action": "tap"})
+    check("隐私开关打开时点屏幕不唤醒", b.state == "idle")
     await feel({"ev": "privacy", "on": False})
     check("隐私开关拨回来：恢复待机", not b.privacy and b.state == "idle" and b.eyes.mode_now == "idle")
 
@@ -500,13 +497,13 @@ async def test_ir():
     check("学按键超时：汇报没收到信号，不存", "风扇" not in b.ir.devices() and any("没有收到红外信号" in s for s in b.last_reply)
           and sent[-1]["op"] == "cancel")
 
-    # 3. 学的时候摸头顶：不学了，转去听你说
+    # 3. 学的时候点屏幕：不学了，转去听你说
     Script.lines = [{"skill": "ir_learn", "device": "风扇", "action": "开关"}, {"skill": "say", "text": "请按一下。"}]
     task = asyncio.create_task(b.respond("学一下风扇的开关", via="text"))
     await until_learning()
-    await feel({"ev": "touch", "zone": "head", "action": "tap"})
+    await feel({"ev": "touch", "zone": "screen", "action": "tap"})
     await asyncio.wait_for(task, 5)
-    check("学的时候摸头顶：取消学习，转去听你说", "风扇" not in b.ir.devices() and b.after_interrupt() and b.state == "listening")
+    check("学的时候点屏幕：取消学习，转去听你说", "风扇" not in b.ir.devices() and b.after_interrupt() and b.state == "listening")
     b.to_idle()
 
     # 4. 发码：说法不同（电源）也能找到学过的（开关）
@@ -1070,8 +1067,8 @@ async def run_flow(text, att=True, look=True, via_echo=False, mock=False, touch=
 
     class Mic:
         async def frames(self):
-            if touch:                                   # 先摸一下头顶再说话
-                b.eyes.receive_line('{"ev":"touch","zone":"head","action":"tap"}')
+            if touch:                                   # 先点一下屏幕再说话
+                b.eyes.receive_line('{"ev":"touch","zone":"screen","action":"tap"}')
                 await asyncio.sleep(0.05)
             for i in range(0, len(audio), 1600):
                 yield audio[i:i + 1600]
@@ -1120,7 +1117,7 @@ async def test_flow(online: bool):
         ("说话时扭头了 → 不理", dict(text="现在外面多少度", look=False, mock=True), ("ignore", "NOT FACING")),
         ("听到自己刚说的话 → 当回声不理", dict(text="外部温度二十二度天气晴", via_echo=True, mock=True), ("ignore", "ECHO")),
         ("看着它说话 → 回答两句，过程不报错（假回答）", dict(text="帮我扫描一下客厅", mock=True), ("answer", "")),
-        ("没看着它，但先摸了头顶再说 → 回答（假回答）", dict(text="帮我扫描一下客厅", att=False, look=False, mock=True, touch=True), ("answer", "")),
+        ("没看着它，但先点了屏幕再说 → 回答（假回答）", dict(text="帮我扫描一下客厅", att=False, look=False, mock=True, touch=True), ("answer", "")),
     ]
     if online:
         cases += [
