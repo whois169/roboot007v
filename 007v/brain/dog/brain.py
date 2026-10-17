@@ -25,6 +25,7 @@ from . import llm as llm_mod
 from . import prompt, skills
 from .audio import Microphone, Speaker
 from . import eyes as eyes_mod
+from . import chassis as chassis_mod
 from . import tts as tts_mod
 from . import senses as senses_mod
 from .lookup import Weather
@@ -43,6 +44,10 @@ class Brain:
         self.speaker = Speaker(cfg["audio"]["output_device"], cfg["audio"]["mute_tail_seconds"])
         self.eyes = eyes or eyes_mod.make(cfg.get("eyes", {}), self.persona["name"])
         self.eyes.on_event = self.on_head_event   # 头部发来的事件：触摸、传感器、隐私开关、心跳
+        self.chassis = chassis_mod.make(cfg.get("chassis", {}))   # 底盘：virtual 仿真 / serial 真车 / none
+        self.chassis.on_event = self.on_chassis_event
+        self.motions = []              # 这次回答里大模型要做的动作（按顺序做）
+        self.motion_job = None         # 正在做动作的任务
         self.history: list = []
         self.memory = Memory(**cfg.get("memory", {}))   # 第⑤块：长期记忆（data/memory/<家>.db）
         self.ir = IrCodes(self.memory.db)               # 第⑧块：红外遥控码库（和记忆同一个文件、同一个连接）
@@ -87,6 +92,9 @@ class Brain:
         if th.get("hz", 1):
             self.eyes.send_thermal({"hz": th.get("hz", 1)})       # 让头部每秒发热画面过来
         self.eyes.log("BOOT 007V BRAIN")                        # 开机自检：屏幕上逐行打出真实的初始化过程
+        await self.chassis.start()
+        self.board.add_provider(self.chassis.readings)
+        self.eyes.log(f"BASE {self.chassis.kind.upper()} " + ("OK" if self.chassis.online else "OFF" if self.chassis.kind == "none" else "NO LINK"))
         react = self.cfg["react"]
         self.ack = ((tts_mod.beep(), 24000) if react.get("ack", "beep") == "beep"
                     else await self.voice.cached(react.get("ack_text", "在。")))
@@ -154,7 +162,10 @@ class Brain:
         n = 0
         while True:
             r = self.board.get("room.temp")
-            self.eyes.status(temp=None if r is None else r.value, sim=bool(r and r.confidence <= 0), bat=None)
+            st = self.chassis.status if self.chassis.online else None
+            self.eyes.status(temp=None if r is None else r.value, sim=bool(r and r.confidence <= 0),
+                             bat=st.get("bat") if st else None, load=st.get("load") if st else None,
+                             spd=round(math.hypot(st["v"][0], st["v"][1]), 2) if st else None)
             if self.eyes.is_real:
                 online = time.monotonic() - self.eyes.last_hb < 3
                 if online != self.head_online:
@@ -175,7 +186,7 @@ class Brain:
             if r is None:
                 return "--"
             return fmt.format(r.value) + ("*" if r.confidence <= 0 else "")
-        kind = 3 if n % 15 == 14 else n % 3                    # 天气变化慢，大约每 30 秒推一次
+        kind = 3 if n % 15 == 14 else n % 4 if self.chassis.online else n % 3     # 天气变化慢，大约每 30 秒推一次
         if kind == 0:
             snd = self.board.get("sound.level")
             db = re.match(r"-?\d+", str(snd.value)).group() if snd else "--"
@@ -186,6 +197,10 @@ class Brain:
         if kind == 2:
             up = (time.time() - self.started) / 60
             return f"{time.strftime('%H:%M:%S')} UP {up:.0f}M STATE {self.state.upper()}"
+        if kind == 3 and n % 15 != 14 and self.chassis.online:
+            st = self.chassis.status
+            x, y, h = st["odo"]
+            return f"BASE {st['st'][:5].upper()} V{st['v'][0]:+.2f} X{x:+.2f} Y{y:+.2f} H{h:+.0f}"
         if kind == 3 and self.weather:
             return self.weather.short()
         return ""
@@ -457,6 +472,7 @@ class Brain:
         self.interrupted = then
         self.speaker.stop()
         self.ir_pending = None
+        self.halt()                                      # 正在走：马上停
         if self.ir_wait and not self.ir_wait.done():     # 正在学遥控器：不学了
             self.ir_wait.set_result({"ev": "ir", "op": "cancelled"})
 
@@ -635,7 +651,7 @@ class Brain:
                    "memory": self.memory.recall(text),
                    "devices": self.ir.text(),
                    "via": via}
-        messages = prompt.build(self.persona, self.history, text, **context)
+        messages = prompt.build(self.persona, self.history, text, can_move=self.chassis.kind != "none", **context)
         log.debug("这次发给大模型的三栏：\n%s", messages[-1]["content"])
         raw, said = [], []
         ignored = False
@@ -705,6 +721,8 @@ class Brain:
             said.append(call["text"])
             say(call["text"])
             self.recent_said.append((time.monotonic() + 30, re.sub(r"[\W_]+", "", call["text"])))
+        elif name in skills.MOTION:
+            self.motion_skill(call)
         elif name == "display":
             m = call["mode"]
             self.eyes.mode(m, hold=0 if m == "idle" else 6)          # 扫描、热成像、警告至少显示 6 秒
@@ -759,6 +777,129 @@ class Brain:
             n = self.ir.forget(call["device"], "" if every else call["action"])
             self.eyes.log(f"IR FORGET {n}")
             log.info("忘掉了 %d 个遥控按键：%s %s", n, call["device"], "全部" if every else call["action"])
+
+    # ------------------------------------------------------------ 底盘：动作
+    def motion_skill(self, call: dict):
+        """大模型的动作技能：stop 马上执行；其余排队，在后台按顺序做（和说话同时进行）。"""
+        name = call["skill"]
+        if name == "stop":
+            self.halt()
+            self.eyes.log("CMD BASE STOP")
+            log.info("停下")
+            return
+        self.motions.append(call)
+        self.eyes.log("CMD BASE " + {"move": f"{call.get('direction', '')[:4].upper()} {call.get('meters', 0):.2f}M",
+                                     "turn": f"TURN {call.get('degrees', 0):+.0f}", "posture": call.get("pose", "").upper()}[name])
+        if not self.motion_job or self.motion_job.done():
+            self.motion_job = asyncio.create_task(self.motion_run())
+
+    async def motion_run(self):
+        """动作在后台做，不挡着听（走的时候还能听到“停”）。没走成：等它空下来再说原因。"""
+        msg = await self.motion_flow()
+        if not msg:
+            return
+        for _ in range(150):                                # 正在说话或想事情：最多等 15 秒
+            if self.state == "idle":
+                break
+            await asyncio.sleep(0.1)
+        if self.state == "idle" and not self.privacy:
+            self.state = "speaking"
+            await self.speak_now(msg)
+            self.to_idle()
+        else:
+            log.info("没走成，但一直没空说：%s", msg)
+
+    def halt(self):
+        """马上停：清掉排队的动作，让底盘刹车。"""
+        self.motions.clear()
+        if self.chassis.kind != "none":
+            self.chassis.stop()
+
+    async def motion_flow(self) -> str:
+        """按顺序做排队的动作。全做完返回空字符串（响一声提示音）；做不成返回要说的话（被叫停的不用说，也返回空）。"""
+        mc = self.cfg.get("chassis", {})
+        v = mc.get("speed", 0.4)
+        did = []
+        while self.motions:
+            call = self.motions.pop(0)
+            name = call["skill"]
+            if self.chassis.kind == "none":
+                self.motions.clear()
+                return "底盘没有接上，我现在不能移动。"
+            if name in ("move", "turn") and self.chassis.state == "folded":
+                log.info("趴着：先站起来")
+                ok, why = await self.chassis.pose("stand")
+                if not ok:
+                    return self.motion_fail("站起来", why)
+            if name == "posture":
+                what = "站起来" if call["pose"] == "stand" else "趴下"
+                ok, why = await self.chassis.pose(call["pose"])
+            elif name == "turn":
+                what = f"{'左' if call['degrees'] > 0 else '右'}转 {abs(call['degrees']):g} 度"
+                ok, why = await self.chassis.move(dth=call["degrees"], v=v)
+                if not ok and why == "FOLDED":                       # 状态还没刷新（刚趴下）：先站起来再来一次
+                    ok, why = await self.chassis.pose("stand")
+                    if ok:
+                        ok, why = await self.chassis.move(dth=call["degrees"], v=v)
+            else:
+                d = call["direction"]
+                m = min(call["meters"], mc.get("max_meters", 3.0))
+                what = {"forward": "往前", "backward": "往后", "left": "往左", "right": "往右"}[d] + f"走 {m:g} 米"
+                dx = m if d == "forward" else -m if d == "backward" else 0.0
+                dy = m if d == "left" else -m if d == "right" else 0.0
+                ok, why = await self.guarded_move(dx, dy, v)
+                if not ok and why == "FOLDED":
+                    ok, why = await self.chassis.pose("stand")
+                    if ok:
+                        ok, why = await self.guarded_move(dx, dy, v)
+            log.info("%s：%s", what, "完成" if ok else f"没成（{why}）")
+            self.eyes.log(f"BASE DONE" if ok else f"BASE FAIL {why}")
+            if not ok:
+                self.motions.clear()
+                return self.motion_fail(what, why)
+            did.append(what)
+            self.memory.add_event("move", f"移动：{what}")
+        if did:
+            self.speaker.play(*self.chirp)
+        return ""
+
+    def motion_fail(self, what, why) -> str:
+        if why == "STOPPED":                                # 是用户让停的（stop 技能、摸头打断）：不用解释
+            return ""
+        if why.startswith("OBSTACLE"):
+            return f"前方 {why.split(':')[1]} 厘米有障碍，已停下。"
+        return f"没能{what}：{chassis_mod.WHY_CN.get(why, why)}。"
+
+    async def guarded_move(self, dx, dy, v):
+        """走一段；往前走时盯着下巴的测距，前面太近就停。"""
+        stop_mm = self.cfg.get("chassis", {}).get("stop_distance", 0.35) * 1000
+        job = asyncio.create_task(self.chassis.move(dx=dx, dy=dy, v=v))
+        while not job.done():
+            await asyncio.sleep(0.1)
+            r = self.board.get("head.distance")
+            if (dx > 0 and r is not None and r.confidence > 0 and time.time() - r.t < 2
+                    and isinstance(r.value, (int, float)) and r.value < stop_mm):
+                self.chassis.stop()
+                await job
+                return False, f"OBSTACLE:{r.value / 10:.0f}"
+        return job.result()
+
+    async def on_chassis_event(self, ev: dict):
+        """底盘的提醒和故障：记日志、上屏幕；急停、故障、电量低换屏幕模式。"""
+        kind, code = ev["ev"], ev.get("code", "")
+        if kind == "hello":
+            log.info("底盘连上了：固件 %s", ev.get("fw", "?"))
+            self.eyes.log(f"BASE FW {ev.get('fw', '?')}")
+            return
+        (log.warning if kind == "fault" else log.info)("底盘%s：%s %s", "故障" if kind == "fault" else "提醒", code, ev.get("text", ""))
+        self.eyes.log(f"BASE {code}")
+        self.memory.add_event("base", f"底盘{'故障' if kind == 'fault' else '提醒'}：{code} {ev.get('text', '')}")
+        if code in ("ESTOP_BTN", "ESTOP_CMD"):
+            self.eyes.mode("alert", text="E-STOP", hold=3)
+        elif kind == "fault":
+            self.eyes.mode("error", text=code[:6], hold=3)
+        elif code == "BAT_LOW":
+            self.eyes.mode("low_bat", hold=3)
 
     # ------------------------------------------------------------ 热成像
     def on_thermal(self, ev: dict):

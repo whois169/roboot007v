@@ -44,6 +44,18 @@ class MockLLM:
                  {"skill": "say", "text": "当前为模拟模式，未连接大模型。"}]
         if "记住" in said:
             lines.append({"skill": "remember", "fact": said[:60]})
+        if "停" in said:
+            lines.insert(0, {"skill": "stop"})
+        elif "趴下" in said:
+            lines.append({"skill": "posture", "pose": "fold"})
+        elif "站起来" in said:
+            lines.append({"skill": "posture", "pose": "stand"})
+        elif "往前" in said:
+            lines.append({"skill": "move", "direction": "forward", "meters": 1.0})
+        elif "往后" in said:
+            lines.append({"skill": "move", "direction": "backward", "meters": 0.5})
+        elif "转" in said:
+            lines.append({"skill": "turn", "degrees": 90})
         await asyncio.sleep(0.6)
         for obj in lines:
             text = json.dumps(obj, ensure_ascii=False) + "\n"

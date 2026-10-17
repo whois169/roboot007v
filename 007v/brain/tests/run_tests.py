@@ -1156,6 +1156,140 @@ async def test_llm_judgement():
                   "汪" not in out and "结论：" not in out and "结论:" not in out, out.replace("\n", " ")[:80])
 
 
+def base_brain(folded=True, payload=10.0, kind="virtual", home="base_test"):
+    """带虚拟底盘的大脑（仿真按真实时间在后台跑）。"""
+    from dog.brain import Brain
+    from dog.eyes import ConsoleEyes
+    cfg = config.load()
+    cfg["memory"] = dict(cfg.get("memory", {}), home=home, folder="data/test_logs")
+    path = f"data/test_logs/{home}.db"
+    if os.path.exists(path):
+        os.remove(path)
+    cfg["chassis"] = dict(cfg.get("chassis", {}), type=kind, virtual={"payload": payload, "view": False, "start_folded": folded})
+    b = Brain(cfg, force_mock=True, eyes=ConsoleEyes())
+    b.log_dir = "data/test_logs"
+    mute(b, 0.05)
+    b.ack = b.chirp = (np.zeros(10, np.float32), 24000)
+    b.chirps = []
+    b.speaker.play = lambda pcm, sr: b.chirps.append(1)
+    return b
+
+
+async def wait_motion(b, timeout=20):
+    for _ in range(int(timeout * 10)):
+        if not b.motion_job or b.motion_job.done():
+            return True
+        await asyncio.sleep(0.1)
+    return False
+
+
+async def test_chassis():
+    section("底盘：虚拟底盘 + 走路技能（仿真按真实时间跑，不联网，假回答）")
+    from dog import senses as senses_mod
+    b = base_brain(folded=True)
+    await b.chassis.start()
+    b.board.add_provider(b.chassis.readings)
+    await asyncio.sleep(0.3)
+    st = b.board.get("base.state")
+    check("开机：底盘连上，感觉板上写着趴着", b.chassis.online and st is not None and "趴着" in str(st.value), str(st and st.value))
+    said = []
+    b.motion_skill({"skill": "move", "direction": "forward", "meters": 1.0})
+    ok = await wait_motion(b, 20)
+    x, y, h = b.chassis.status["odo"]
+    check("趴着时让它往前走 1 米：自动先站起来，再走到 1 米（±3 cm），成功响一声",
+          ok and b.chassis.state == "standing" and abs(x - 1.0) < 0.03 and b.chirps, f"走到 x={x:.3f}，状态 {b.chassis.state}")
+    load = b.board.get("base.load")
+    check("走一趟以后感觉板上有估出来的载重（仿真背 10 kg）", load is not None and abs(load.value - 10) <= 1.5, str(load and load.value))
+    b.motion_skill({"skill": "turn", "degrees": 90})
+    ok = await wait_motion(b, 10)
+    h = b.chassis.status["odo"][2]
+    check("左转 90°：朝向 90° ±3°", ok and abs(h - 90) < 3, f"{h:.1f}°")
+    b.eyes.status = lambda **kw: setattr(b, "last_status", kw)
+    st = b.chassis.status
+    b.eyes.status(bat=st.get("bat"), spd=0.0, load=st.get("load"))
+    check("屏幕下面那条能拿到电量、载重", b.last_status["bat"] is not None and b.last_status["load"] is not None, str(b.last_status))
+    b.chirps.clear()
+    b.motion_skill({"skill": "move", "direction": "forward", "meters": 3.0})
+    await asyncio.sleep(1.5)
+    b.motion_skill({"skill": "stop"})
+    ok = await wait_motion(b, 6)
+    await asyncio.sleep(1.0)
+    v = b.chassis.status["v"][0]
+    check("走着时说“停”（stop 技能）：马上刹住，不说原因、不响提示音", ok and abs(v) < 0.03 and not b.chirps, f"速度 {v:.2f}")
+    b.board.put(senses_mod.Reading("head.distance", "前方最近物体距离", 280, "mm", confidence=0.8, max_age=30))
+    b.motions.append({"skill": "move", "direction": "forward", "meters": 1.0})
+    msg = await b.motion_flow()
+    check("往前走时下巴测距只有 28 cm：停下，说出障碍距离", "28 厘米有障碍" in msg, msg)
+    b.motions.append({"skill": "move", "direction": "backward", "meters": 0.3})
+    msg = await b.motion_flow()
+    check("往后走不看前面的测距：照样走", msg == "", msg)
+    del b.board.readings["head.distance"]
+    b.motions.append({"skill": "posture", "pose": "fold"})
+    msg = await b.motion_flow()
+    await asyncio.sleep(0.3)
+    check("趴下：状态变成趴着", msg == "" and b.chassis.state == "folded", msg)
+    b.motions.append({"skill": "move", "direction": "left", "meters": 0.3})
+    msg = await b.motion_flow()
+    await asyncio.sleep(0.3)
+    check("刚趴下就让它横走：自动先站起来再走", msg == "" and b.chassis.state == "standing", msg)
+    b.chassis.estop()
+    await asyncio.sleep(0.3)
+    b.motions.append({"skill": "move", "direction": "forward", "meters": 0.5})
+    msg = await b.motion_flow()
+    check("急停后让它走：说出“急停没解除”", "急停没解除" in msg, msg)
+    b.chassis.reset()
+    await b.chassis.close()
+
+    nb = base_brain(kind="none", home="base_test_none")
+    await nb.chassis.start()
+    nb.motions.append({"skill": "move", "direction": "forward", "meters": 1.0})
+    msg = await nb.motion_flow()
+    sp = prompt.system_prompt(nb.persona, can_move=False)
+    check("没接底盘：说动不了；提示词里没有走路技能", "不能移动" in msg and '"skill": "move"' not in sp, msg)
+
+    b = base_brain(folded=False, home="base_test_flow")
+    await b.chassis.start()
+    b.board.add_provider(b.chassis.readings)
+    await asyncio.sleep(0.3)
+    await b.respond("往前走", via="text")
+    ok = await wait_motion(b, 10)
+    x = b.chassis.status["odo"][0]
+    check("完整一轮（假回答）：说“往前走” → 说完话的同时走 1 米，回答结束不用等走完", ok and abs(x - 1.0) < 0.03, f"x={x:.3f}")
+    await b.chassis.close()
+
+
+async def test_chassis_llm():
+    section("大模型：走路技能用得对不对（联网）")
+    from dog import llm as llm_mod
+    cfg = config.load()
+    llm = llm_mod.make(cfg["llm"])
+    sensed_stand = "- 底盘状态：站着｜来源：虚拟底盘（MuJoCo 仿真，不是真车）｜位置：机身｜时间：0 秒前｜可信度：高"
+
+    async def ask(text, sensed=sensed_stand):
+        msgs = prompt.build(cfg["persona"], [], text, can_move=True, sensed=sensed, via="text")
+        out = ""
+        async for d in llm.stream(msgs):
+            out += d
+        calls = [c for c in (skills.parse(line)[0] for line in out.splitlines()) if c]
+        return calls, out.replace("\n", " ")[:160]
+
+    calls, out = await ask("往前走一米")
+    mv = [c for c in calls if c["skill"] == "move"]
+    check("“往前走一米” → move forward 1", mv and mv[0]["direction"] == "forward" and abs(mv[0]["meters"] - 1) < 0.01, out)
+    calls, out = await ask("往左边挪半米")
+    mv = [c for c in calls if c["skill"] == "move"]
+    check("“往左边挪半米” → move left 0.5（麦轮直接横走）", mv and mv[0]["direction"] == "left" and abs(mv[0]["meters"] - 0.5) < 0.01, out)
+    calls, out = await ask("转过去，背对着我")
+    tn = [c for c in calls if c["skill"] == "turn"]
+    check("“转过去背对着我” → 转 180°", tn and abs(abs(tn[0]["degrees"]) - 180) < 1, out)
+    calls, out = await ask("停！")
+    check("“停！” → 第一行就是 stop", calls and calls[0]["skill"] == "stop", out)
+    calls, out = await ask("去厨房帮我看看水开了没")
+    check("“去厨房” → 不乱走，说做不到", not any(c["skill"] == "move" for c in calls) and any(c["skill"] == "say" for c in calls), out)
+    calls, out = await ask("收起来吧，我要把你搬到车上")
+    check("“收起来，要搬走” → 趴下折叠", any(c["skill"] == "posture" and c["pose"] == "fold" for c in calls), out)
+
+
 async def main():
     quick = "--quick" in sys.argv
     online = not quick and bool(config.load()["llm"].get("api_key"))
@@ -1196,6 +1330,11 @@ async def main():
     except Exception as e:
         check("test_faces", False, f"{type(e).__name__}: {e}")
         traceback.print_exc()
+    try:
+        await test_chassis()
+    except Exception as e:
+        check("test_chassis", False, f"{type(e).__name__}: {e}")
+        traceback.print_exc()
     from dog.tts import Voice
     if await Voice(**config.load()["tts"]).health():
         try:
@@ -1213,6 +1352,7 @@ async def main():
         await test_proactive_llm()
         await test_ir_llm()
         await test_thermal_llm()
+        await test_chassis_llm()
         await test_comfort_llm()
         await test_faces_llm()
     else:

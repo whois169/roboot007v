@@ -10,6 +10,7 @@
 给人看 / 拆散 / 做动画：`python 007v/export_sw.py`（SolidWorks 装配体，按运动部件分组，带铰链标记）、`python 007v/blender/export_parts.py` 再用 Blender 5.2 跑 `007v/blender/make_blend.py`（生成 `007v/out/blender/机械狗007v.blend`，带动画和拆散滑块），说明见 `docs/机械狗007v/SolidWorks和Blender使用说明.md`。这台电脑只有 eDrawings，SolidWorks 主程序没装。
 仿真在 `007v/sim/`：`python 007v/sim/run_sim.py --export`（改了 CAD 要加 --export），`007v/out/sim_report.txt` 的结论除“演示”外都要 ✓；说明和得出的控制规矩在 `docs/机械狗007v/仿真报告.md`（写底盘程序时照做）。
 大脑程序在 `007v/brain/`（2026-10-17 挪进来；改完跑 `python tests/run_tests.py`，在 `007v/brain` 里跑；屏幕 HUD 是 800×440，截图 `python scripts/hud_capture.py`）。
+底盘程序在 `007v/chassis/`（Python 参考实现 + 虚拟底盘，以后翻成 C++ 烧进底盘 ESP32）；改完跑 `python 007v/chassis/test_chassis.py`，说明在 `docs/机械狗007v/底盘程序说明.md`。大脑默认接虚拟底盘（`config.yaml` 的 `chassis.type`），`python main.py --text --view` 能边打字边看仿真里的车走。
 按步骤做，每步给用户看、点头再往下：①选型（完成）②骨架（完成）③仿真（完成）④打印件、采购表、接线、资料包（4a 初版图纸完成，等样品和卖家图纸再出 4b 定稿）。下面写的四足内容（`cad/` 等）是旧版存档，2026-10-17 已挪到 `../旧版/四足工程/`，旧文档在 `../旧版/旧文档/`。
 
 ## 项目是什么（旧版四足，存档）

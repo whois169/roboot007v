@@ -7,6 +7,7 @@ python main.py --devices  列出麦克风和扬声器
 python main.py --eyes     只开眼睛窗口，自动轮流演示所有表情（不加载语音和大模型）
 python main.py --see      摄像头调试：画面 + 检测框 + 眼睛跟着人看
 python main.py --memory   看它记住了什么（事实、最近的事件、每日小结）
+python main.py --text --view   打字跟它说话，同时开虚拟底盘的仿真窗口，看它按你说的走
 """
 import argparse
 import asyncio
@@ -26,6 +27,7 @@ def main():
     ap.add_argument("--see", action="store_true", help="摄像头调试窗口")
     ap.add_argument("--memory", action="store_true", help="查看长期记忆")
     ap.add_argument("--debug", action="store_true", help="打印更多日志")
+    ap.add_argument("--view", action="store_true", help="虚拟底盘开仿真窗口，看车怎么动")
     args = ap.parse_args()
     os.chdir(config.BRAIN_DIR)           # 从哪里运行都行；有的库要用相对路径（见 config.rel）
 
@@ -53,6 +55,8 @@ def main():
             pass
         return
 
+    if args.view:
+        cfg.setdefault("chassis", {}).setdefault("virtual", {})["view"] = True
     from dog.brain import Brain
     brain = Brain(cfg, force_mock=args.mock)
     brain.eyes.on_quit = bye             # 关掉眼睛窗口 = 退出程序

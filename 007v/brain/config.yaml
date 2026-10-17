@@ -20,6 +20,20 @@ eyes:
     sensor_port: ""          # 传感器板（头里的旧 ESP32-S3），例：/dev/ttyACM1；空 = 没单独接，全走屏幕板那根
     baud: 115200
 
+# ---------------- 底盘（四个麦轮 + 四个髋） ----------------
+chassis:
+  type: virtual              # virtual = 笔记本上的虚拟底盘（MuJoCo 仿真）；serial = 真底盘 ESP32；none = 没有底盘
+  virtual:
+    payload: 10              # 仿真里背上放多少 kg
+    view: false              # true = 开一个 MuJoCo 窗口看车怎么动（也可以运行时加 --view）
+    start_folded: true       # 开机时是趴着的
+  serial:
+    port: COM5               # 树莓派上一般是 /dev/ttyACM2（和头部两块板区分开）
+    baud: 115200
+  speed: 0.4                 # 大模型让它走时的最高速度 m/s（底盘最快 1.1，在家里慢一点）
+  max_meters: 3              # 一次最多走几米
+  stop_distance: 0.35        # 往前走时，下巴测距看到前面这么近（米）就停
+
 # ---------------- 看（摄像头） ----------------
 # 本地一直做人脸和动静检测，画面不出电脑；只在“有人出现、有人叫它、空闲太久”时截一张图给看图模型
 vision:

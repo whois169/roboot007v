@@ -32,6 +32,14 @@ SKILLS = {
                  "args": {"name": ("str", 1, 10), "relation": ("enum", ["用户本人", "家人", "朋友", "访客"])}},
     "forget_person": {"desc": "删掉一个登记过的人（名字和脸部特征都删掉）",
                       "args": {"name": ("str", 1, 10)}},
+    "move":     {"desc": "移动一段距离（麦轮，能直接横着走）：forward 往前、backward 往后、left 往左、right 往右。趴着时会自动先站起来",
+                 "args": {"direction": ("enum", ["forward", "backward", "left", "right"]), "meters": ("num", 0.05, 3)}},
+    "turn":     {"desc": "原地转身：degrees 正数往左转、负数往右转",
+                 "args": {"degrees": ("num", -180, 180)}},
+    "stop":     {"desc": "马上停下（用户说“停”“别动”“站住”时，第一行就输出它）",
+                 "args": {}},
+    "posture":  {"desc": "姿势：stand 站起来（展开）、fold 趴下折叠（收起来、要搬走、不用了的时候）",
+                 "args": {"pose": ("enum", ["stand", "fold"])}},
     "ignore":   {"desc": "不回答：这句话不是对你说的（只在【触发方式】是“看着我说话”时用，整次只输出这一行）",
                  "args": {}},
 }
@@ -41,13 +49,17 @@ EXAMPLES = {"say": {"text": "收到。外部温度 22 度，晴。"}, "display":
             "forget": {"fact": "钥匙放在鞋柜上"}, "quiet": {"minutes": 30},
             "ir_send": {"device": "空调", "action": "关"}, "ir_learn": {"device": "电视", "action": "开关"},
             "ir_forget": {"device": "电视", "action": "全部"}, "enroll": {"name": "阿峰", "relation": "用户本人"},
-            "forget_person": {"name": "小李"}, "ignore": {}}
+            "forget_person": {"name": "小李"}, "move": {"direction": "forward", "meters": 1.0},
+            "turn": {"degrees": 90}, "stop": {}, "posture": {"pose": "fold"}, "ignore": {}}
+MOTION = ("move", "turn", "stop", "posture")         # 底盘的技能：没接底盘时不放进菜单
 
 
-def menu_text() -> str:
+def menu_text(can_move=True) -> str:
     """给系统提示词用的技能说明。"""
     lines = []
     for name, s in SKILLS.items():
+        if name in MOTION and not can_move:
+            continue
         ex = json.dumps({"skill": name, **EXAMPLES[name]}, ensure_ascii=False)
         rules = []
         for arg, rule in s["args"].items():
