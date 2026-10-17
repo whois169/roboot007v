@@ -114,12 +114,13 @@ def body_shell():
     for sx in (1, -1):
         P.append((f"外壳·腰线青灯 x{sx}", box(*sorted((sx * (L2 + 1.5), sx * (L2 + 2.1))), -60, 60, 73.5, 76.5), "cyan"))
     # ---- 上层甲板：薄皮（侧面只凸 1.5，上半截离折叠的轮子只有 5 mm）+ 前后大斜面
-    P.append(("外壳·上层甲板皮", soft(rrect_ring(L2 + 1.5, W2 + 1.5, 12, WAIST_TOP, BODY_H), 0.6), "shell"))
-    for sx in (1, -1):
-        nose = prism_xz([(0, WAIST_TOP), (16, WAIST_TOP + 14), (16, BODY_H - 14), (0, BODY_H)], -W2 + 6, W2 - 6)
-        if sx < 0:
-            nose = nose.mirror("YZ")
-        P.append((f"{'前' if sx > 0 else '后'}鼻子", soft(nose, 4.0).translate(V(sx * (L2 + 1.5), 0, 0)), "deck"))
+    # ---- 上层甲板：整块带前后两道斜面的外壳（侧面看就是效果图那种往回收的装甲板）；侧面只有 1.5 mm 皮
+    prof = [(-L2 + 14, WAIST_TOP), (L2 - 14, WAIST_TOP), (L2 + 16, WAIST_TOP + 20), (L2 + 16, BODY_H - 20), (L2 + 1, BODY_H + 0.5),
+            (-L2 - 1, BODY_H + 0.5), (-L2 - 16, BODY_H - 22), (-L2 - 16, WAIST_TOP + 22)]
+    wp = cq.Workplane("XY").polyline(prof).close().offset2D(-3, "arc").offset2D(3, "arc").extrude(BODY_W + 3)   # 侧面轮廓的转角先倒圆
+    slab = wp.val().rotate(V(0, 0, 0), V(1, 0, 0), 90).translate(V(0, W2 + 1.5, 0))
+    slab = slab.cut(box(-L2, L2, -W2, W2, WAIST_TOP - 1, BODY_H + PLATE + 1))
+    P.append(("上层甲板壳", slab, "shell"))
     for sy, tag in ((1, "左"), (-1, "右")):
         out = []
         # 侧装甲模块：贴在下层底盘外面
@@ -162,7 +163,7 @@ def body_shell():
         y = -60 + i * 24
         P.append((f"外壳·格栅鳍{i + 1}", box(-L2 - 10, -L2 - 8, y - 1, y + 1, 20, 50), "silver"))
     for sy in (1, -1):
-        P.append((f"外壳·尾灯{'左' if sy > 0 else '右'}", box(-L2 - 18.1, -L2 - 17.4, *sorted((sy * 40, sy * 100)), 118, 126), "amber"))
+        P.append((f"外壳·尾灯{'左' if sy > 0 else '右'}", box(-L2 - 16.6, -L2 - 15.9, *sorted((sy * 40, sy * 100)), 114, 122), "amber"))
     # 底光（青色，夜里照地面）
     for sy in (1, -1):
         P.append((f"外壳·底光{'左' if sy > 0 else '右'}", box(-140, 140, *sorted((sy * 30, sy * 36)), -1.5, 0), "cyan"))
@@ -307,17 +308,17 @@ def stadium_pts(x0, x1, r0, r1, n=24):
 def arm_marks(oy1, root1, my1):
     """摆臂外面（左前腿坐标，髋轴在原点，轮轴在 (ARM, 0)）：外盖板 + 长槽 + 黄条、髋部大圆盖、轮端青光圈、臂座上的黄色箍。"""
     P = []
-    cover = prism_xz(stadium_pts(0, ARM, ARM_ROOT_R - 1, ARM_END_R - 1), oy1, oy1 + 3)
-    cover = cover.cut(prism_xz(stadium_pts(48, 128, 6, 6), oy1 - 1, oy1 + 4))
+    cover = prism_xz(stadium_pts(0, ARM, ARM_ROOT_R - 1, ARM_END_R - 1), oy1, oy1 + 2)
+    cover = cover.cut(prism_xz(stadium_pts(48, 120, 5, 5), oy1 - 1, oy1 + 3))
     P.append(("摆臂外盖板", soft(cover, 1.2), "dark"))
-    P.append(("外壳·长槽底", prism_xz(stadium_pts(48, 128, 6, 6), oy1, oy1 + 1), "black"))
+    P.append(("外壳·长槽底", prism_xz(stadium_pts(48, 120, 5, 5), oy1, oy1 + 0.8), "black"))
     for i, u in enumerate((34, 41, 48)):                                   # 髋边上三道斜黄条
-        P.append((f"外壳·摆臂黄条{i + 1}", strip((u, -14), (u + 10, 14), 2.4, oy1 + 3, oy1 + 3.6), "amber"))
-    P.append(("外壳·摆臂边黄线", strip((60, 16), (135, 19), 1.6, oy1 + 3, oy1 + 3.6), "amber"))
-    P.append(("髋部大圆盖", soft(cyl_y(0, 0, 50, oy1 + 3, oy1 + 6), 1.2), "dark"))
-    P.append(("外壳·髋盖黄圈", ring_y(0, 0, 50, 40, oy1 + 6, oy1 + 6.6), "amber"))
-    P.append(("外壳·髋盖六角", prism_xz([(9 * math.cos(math.pi / 6 + k * math.pi / 3), 9 * math.sin(math.pi / 6 + k * math.pi / 3)) for k in range(6)], oy1 + 6, oy1 + 8), "silver"))
-    P.append(("外壳·轮端青光圈", ring_y(ARM, 0, 26, 20, oy1 + 3, oy1 + 3.6), "cyan"))
+        P.append((f"外壳·摆臂黄条{i + 1}", strip((u, -14), (u + 10, 14), 2.4, oy1 + 2, oy1 + 2.6), "amber"))
+    P.append(("外壳·摆臂边黄线", strip((60, 16), (135, 19), 1.6, oy1 + 2, oy1 + 2.6), "amber"))
+    P.append(("髋部大圆盖", soft(cyl_y(0, 0, 46, oy1 + 2, oy1 + 4.5), 1.2), "dark"))
+    P.append(("外壳·髋盖黄圈", ring_y(0, 0, 46, 37, oy1 + 4.5, oy1 + 5.1), "amber"))
+    P.append(("外壳·髋盖六角", prism_xz([(9 * math.cos(math.pi / 6 + k * math.pi / 3), 9 * math.sin(math.pi / 6 + k * math.pi / 3)) for k in range(6)], oy1 + 4.5, oy1 + 6), "silver"))
+    P.append(("外壳·轮端青光圈", ring_y(ARM, 0, 24, 18, oy1 + 2, oy1 + 2.6), "cyan"))
     for i, y in enumerate((root1 + 8, root1 + 16, root1 + 24, root1 + 32)):    # 臂座上的黄色箍（像减震弹簧）
         P.append((f"外壳·臂座黄箍{i + 1}", prism_xz(stadium_pts(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R + 1.2, ARM_ROOT_R + 1.2), y, y + 2.5)
                   .cut(prism_xz(stadium_pts(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R - 0.5, ARM_ROOT_R - 0.5), y - 1, y + 4)), "amber"))
