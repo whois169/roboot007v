@@ -305,14 +305,14 @@ for o in bpy.data.objects:
 # ---------------------------------------------------------------- 好看一点：屏幕 HUD 眼睛、灯带发光、影棚灯
 def hud_image():
     import numpy as np
-    W, H = 640, 384
+    W, H = 640, 272
     a = np.zeros((H, W, 4), np.float32)
     a[..., 0], a[..., 1], a[..., 2], a[..., 3] = 0.004, 0.02, 0.03, 1.0
     a[::4, :, 1] += 0.012                                    # 扫描线
     yy, xx = np.mgrid[0:H, 0:W]
-    for cx in (W * 0.33, W * 0.67):                          # 两只方眼睛（圆角）
-        dx = np.maximum(np.abs(xx - cx) - 46, 0)
-        dy = np.maximum(np.abs(yy - H * 0.52) - 46, 0)
+    for cx in (W * 0.36, W * 0.64):                          # 两只方眼睛（圆角）
+        dx = np.maximum(np.abs(xx - cx) - 40, 0)
+        dy = np.maximum(np.abs(yy - H * 0.5) - 40, 0)
         d = np.sqrt(dx * dx + dy * dy)
         m = d < 16
         a[m, 0], a[m, 1], a[m, 2] = 0.05, 0.85, 1.0

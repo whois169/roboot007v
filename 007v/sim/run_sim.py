@@ -50,6 +50,7 @@ WHEEL_RPM_RATED, WHEEL_RPM_FREE = 150.0, 228.0
 WHEEL_STALL = WHEEL_RATED / (1 - WHEEL_RPM_RATED / WHEEL_RPM_FREE)   # 电压限制线外推到 0 转速
 HEAD_LIMIT = 1.9
 HIP_SPEED = 80.0
+V_TOP = 1.1                                             # 最高速度：110 轮 + GIM4310-10 带载约 1.1 m/s（2026-10-17 轮子改小后）
 HIP_ACC = 300.0                                         # °/s²，髋从 0 加到 80°/秒 约 0.27 秒
 
 KP_H, KD_H = 1500.0, 30.0
@@ -382,37 +383,37 @@ def sc_standup():
 def sc_drive():
     r = Robot()
     r.run(0.5, "站稳")
-    r.ramp((1.4, 0, 0), 0.5, "加速到 1.4 m/s（0.5 m/s²）")
-    r.run(1.5, "匀速 1.4 m/s")
+    r.ramp((V_TOP, 0, 0), 0.5, f"加速到 {V_TOP} m/s（0.5 m/s²）")
+    r.run(1.5, f"匀速 {V_TOP} m/s")
     r.ramp((0, 0, 0), 1.0, "正常刹车（1 m/s²）")
     r.run(0.6, "停稳")
-    r.ramp((1.4, 0, 0), 0.5, "再加速到 1.4 m/s")
-    r.run(1.0, "匀速 1.4 m/s")
+    r.ramp((V_TOP, 0, 0), 0.5, f"再加速到 {V_TOP} m/s")
+    r.run(1.0, f"匀速 {V_TOP} m/s")
     x0 = r.d.qpos[0]
     r.ramp((0, 0, 0), 4.0, "急停（4 m/s²）")
     r.run(1.0, "急停后停住")
     x1 = r.d.qpos[0]
-    S_acc, _ = r.mask(["加速到 1.4 m/s（0.5 m/s²）", "再加速到 1.4 m/s"])
-    S_cru, L_cru = r.mask("匀速 1.4 m/s", 0.5)
+    S_acc, _ = r.mask([f"加速到 {V_TOP} m/s（0.5 m/s²）", f"再加速到 {V_TOP} m/s"])
+    S_cru, L_cru = r.mask(f"匀速 {V_TOP} m/s", 0.5)
     S_brk, L_brk = r.mask(["急停（4 m/s²）", "急停后停住"])
     v_cru = L_cru[:, C_VX].mean()
     wt = lambda S: float(np.abs(S[:, 5:9]).max())  # noqa: E731
     vb = L_brk[:, C_VX]
     tb = L_brk[:, 1]
-    i0 = int(np.argmax(vb < 1.3)) if (vb < 1.3).any() else 0
+    i0 = int(np.argmax(vb < V_TOP - 0.1)) if (vb < V_TOP - 0.1).any() else 0
     i1 = int(np.argmax(vb < 0.1)) if (vb < 0.1).any() else len(vb) - 1
     dec = (vb[i0] - vb[i1]) / max(tb[i1] - tb[i0], 1e-3)
     rear = smooth(L_brk[:, 4:6]).min() / G
     pitch = np.abs(L_brk[:, C_PITCH]).max()
     rows = [row("加速时轮子扭矩最大", round(wt(S_acc), 2), "N·m", WHEEL_PEAK, wt(S_acc) <= WHEEL_PEAK, f"额定 {WHEEL_RATED}"),
-            row("1.4 m/s 匀速时轮子扭矩", round(float(np.abs(S_cru[:, 5:9]).mean()), 2), "N·m", WHEEL_RATED,
+            row(f"{V_TOP} m/s 匀速时轮子扭矩", round(float(np.abs(S_cru[:, 5:9]).mean()), 2), "N·m", WHEEL_RATED,
                 bool(np.abs(S_cru[:, 5:9]).mean() <= WHEEL_RATED)),
-            row("实际速度", round(float(v_cru), 2), "m/s", None, bool(v_cru > 1.33), "指令 1.4"),
+            row("实际速度", round(float(v_cru), 2), "m/s", None, bool(v_cru > V_TOP * 0.95), f"指令 {V_TOP}"),
             row("急停实际减速度", round(float(dec), 1), "m/s²", None, bool(dec > 3.0), "指令 4"),
             row("急停刹车距离", round(float((x1 - x0) * 100)), "cm"),
             row("急停时后轮最少还压着", round(float(rear), 1), "kg", None, bool(rear > 0.5), "大于 0 就没翘起来"),
             row("急停时车身最大点头", round(float(pitch), 1), "°")]
-    return pack(r, "drive", "平地加速和急停", "背上 10 kg，加速到跟人走的 1.4 m/s，正常刹车，再加速后急停。", rows,
+    return pack(r, "drive", "平地加速和急停", f"背上 10 kg，加速到最高速 {V_TOP} m/s（110 轮 + GIM4310-10 的上限），正常刹车，再加速后急停。", rows,
                 [f"轮子电机限幅触发 {r.wheel_sat * DT:.2f} 秒"] if r.wheel_sat else [])
 
 
