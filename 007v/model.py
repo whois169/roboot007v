@@ -93,7 +93,8 @@ def body_parts():
     add("底板", box(-L2 + PLATE, L2 - PLATE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, 0, PLATE), "alu")
     add("前板", box(L2 - PLATE, L2, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H), "anod")
     add("后板", box(-L2, -L2 + PLATE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H), "anod")
-    add("甲板", box(-L2, L2, -W2, W2, BODY_H, DECK), "anod")
+    dk = cq.Workplane("XY").box(BODY_L, BODY_W, PLATE, centered=(True, True, False)).edges("|Z").fillet(10).val().translate(V(0, 0, BODY_H))
+    add("甲板", shell.soft(dk, 1.2), "anod")
     for x0 in (L2 - PLATE - PROFILE - 2, -L2 + PLATE + 2):            # 前后上下四根 2020 横梁
         for z0 in (PLATE, BODY_H - PROFILE):
             add(f"2020横梁 x{x0:+.0f} z{z0:.0f}", box(x0, x0 + PROFILE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, z0, z0 + PROFILE), "profile")
@@ -230,8 +231,8 @@ def leg_parts_FL():
         ("臂座轴毂", cyl_y(0, 0, HUB["boss_d"], hub0, hub0 + HUB["boss_l"]).fuse(
             cyl_y(0, 0, HUB["flange_d"], hub0 + HUB["boss_l"], hub0 + HUB["boss_l"] + HUB["flange_t"])), "alu"),
         ("臂根内板", stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R, root0, root1), "alu"),
-        ("箱形臂座外壳", stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R, root1, my1).cut(
-            stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R - 3, root1 - 1, my1 + 1)), "armor"),
+        ("箱形臂座外壳", shell.soft(stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R, root1, my1).cut(
+            stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R - 3, root1 - 1, my1 + 1)), 1.5), "armor"),
         ("摆臂外板", stadium_xz(0, ARM, ARM_END_R, my1, oy1), "anod"),
         ("轮子电机GIM4310", cyl_y(ARM, 0, WHEEL_MOTOR_D, wy1, my1), "motor"),
         ("麦轮外包络", cyl_y(ARM, 0, WHEEL_D, wy0, wy1), "envelope"),      # 只用来查碰撞，不显示

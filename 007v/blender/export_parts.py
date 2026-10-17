@@ -51,8 +51,9 @@ def export_glb():
         mesh = trimesh.Trimesh(vertices=np.column_stack([v[:, 1], v[:, 2], v[:, 0]]) / 1000.0, faces=np.array(fs), process=False)
         rgb = [lin(int(COL[p.c][k:k + 2], 16)) for k in (1, 3, 5)]
         mesh.visual = trimesh.visual.TextureVisuals(material=trimesh.visual.material.PBRMaterial(
-            name=p.c, baseColorFactor=rgb + [255], metallicFactor=0.85 if p.c in METAL else (0.4 if p.c == "motor" else 0.05),
-            roughnessFactor=0.35 if p.c in METAL else (0.1 if p.c == "glass" else 0.7), emissiveFactor=list(EMISSIVE.get(p.c, (0, 0, 0)))))
+            name=p.c, baseColorFactor=rgb + [255],
+            metallicFactor=0.5 if p.c == "anod" else (0.85 if p.c in METAL else (0.4 if p.c == "motor" else 0.05)),
+            roughnessFactor=0.55 if p.c == "anod" else (0.35 if p.c in METAL else (0.1 if p.c == "glass" else 0.6)), emissiveFactor=list(EMISSIVE.get(p.c, (0, 0, 0)))))
         node = f"P{i:03d}"
         scene.add_geometry(mesh, node_name=node, geom_name=node)
         cen = to_b([p.cen - off])[0]

@@ -271,6 +271,24 @@ scene.frame_set(0)
 print(f"零件 {len(D['parts']) - missing} 个挂好（缺 {missing}），{D['frames']} 帧，标记 {len(D['markers'])} 个")
 
 # ---------------------------------------------------------------- 预览图（Workbench，快）
+# ---------------------------------------------------------------- 圆边看起来更顺：按角度平滑着色 + 很细的倒角修改器（只影响显示）
+for o in bpy.data.objects:
+    if o.type != "MESH" or o.name in ("地面",):
+        continue
+    try:
+        o.data.shade_smooth()
+        o.data.set_sharp_from_angle(angle=math.radians(32))
+    except Exception:
+        pass
+    if "滚子" in o.name:
+        continue
+    m = o.modifiers.new("细倒角", "BEVEL")
+    m.width = 0.0008
+    m.segments = 2
+    m.limit_method = "ANGLE"
+    m.angle_limit = math.radians(40)
+    m.harden_normals = True
+
 # ---------------------------------------------------------------- 好看一点：屏幕 HUD 眼睛、灯带发光、影棚灯
 def hud_image():
     import numpy as np
@@ -348,7 +366,7 @@ if PREVIEW:
     eng = scene.render.engine
     try:
         scene.render.engine = "BLENDER_EEVEE"
-        scene.eevee.taa_render_samples = 32
+        scene.eevee.taa_render_samples = 64
     except Exception:
         scene.render.engine = "BLENDER_WORKBENCH"
     scene.render.resolution_x, scene.render.resolution_y = 1000, 640

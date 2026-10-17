@@ -59,6 +59,20 @@ def chamfer_rect(x0, x1, z0, z1, c):
     return [(x0 + c, z0), (x1 - c, z0), (x1, z0 + c), (x1, z1 - c), (x1 - c, z1), (x0 + c, z1), (x0, z1 - c), (x0, z0 + c)]
 
 
+def soft(s, r):
+    """把一个零件的棱边倒圆（半径 r）；倒不了就退成倒角，再不行原样返回。打印件也按这个出，所以实物也是圆边。"""
+    for fn in (lambda: cq.Workplane().add(s).edges().fillet(r).val(),
+               lambda: cq.Workplane().add(s).edges().chamfer(r * 0.8).val(),
+               lambda: cq.Workplane().add(s).edges().fillet(r * 0.5).val()):
+        try:
+            out = fn()
+            if out.isValid() and out.Volume() > 0.5 * s.Volume():
+                return out
+        except Exception:
+            pass
+    return s
+
+
 def mirror_y(s):
     return s.mirror("XZ")
 
@@ -72,7 +86,7 @@ def body_shell():
         out = []
         # 侧装甲模块：外框（深色）+ 往里凹 2 mm 的面板 + 散热槽 + 警示条 + 4 颗银螺栓
         frame = prism_xz(chamfer_rect(-100, 100, 18, 68, 6), W2 + 4, W2 + 10).cut(prism_xz(chamfer_rect(-90, 90, 26, 60, 4), W2 + 3, W2 + 11))
-        out.append((f"外壳·{tag}侧装甲框", frame, "dark"))
+        out.append((f"外壳·{tag}侧装甲框", soft(frame, 2.5), "dark"))
         out.append((f"外壳·{tag}侧装甲面板", prism_xz(chamfer_rect(-90, 90, 26, 60, 4), W2 + 4, W2 + 7), "dark"))
         for i in range(7):
             out.append((f"外壳·{tag}散热槽{i + 1}", box(30 + i * 8, 33 + i * 8, W2 + 7, W2 + 7.6, 32, 54), "seam"))
@@ -92,7 +106,7 @@ def body_shell():
         tub = prism_xz([(-196, 14), (-186, 4), (186, 4), (196, 14), (196, 90), (-196, 90)], W2, W2 + 4)
         for hx in (-HIP_X, HIP_X):
             tub = tub.cut(cyl_y(hx, HIP_Z, 62, W2 - 1, W2 + 5))                 # 髋部轴承座、臂座让开
-        out.append((f"外壳·{tag}下层底盘", tub, "shell"))
+        out.append((f"外壳·{tag}下层底盘", soft(tub, 1.2), "shell"))
         txt = cq.Workplane("XZ").text("007V", 34, 0.8, halign="center", valign="center").val()
         txt = txt.translate(V(-40, 0, 0)).rotate(V(0, 0, 0), V(0, 0, 1), 180).translate(V(0, W2, 122)) if sy > 0 else             txt.translate(V(-40, -W2, 122))
         out.append((f"外壳·{tag}字样007V", txt, "silver"))
@@ -108,13 +122,13 @@ def body_shell():
         nose = prism_xz([(0, 100), (10, 106), (10, 144), (0, 150)], -W2 + 10, W2 - 10)
         if sx < 0:
             nose = nose.mirror("YZ")
-        P.append((f"{'前' if sx > 0 else '后'}鼻子", nose.translate(V(sx * BODY_L / 2, 0, 0)), "deck"))
+        P.append((f"{'前' if sx > 0 else '后'}鼻子", soft(nose, 3.5).translate(V(sx * BODY_L / 2, 0, 0)), "deck"))
     # 前保险杠：上下斜切，中间给深度相机开窗；两边琥珀雾灯
     L2 = BODY_L / 2
     bump = prism_xz([(L2, 15), (L2 + 12, 21), (L2 + 12, 59), (L2, 65)], -100, 100)
     dx, dy, dz = DEPTH_CAM
     bump = bump.cut(box(L2 - 1, L2 + 13, -dy / 2 - 1, dy / 2 + 1, 24, 24 + dz + 2))
-    P.append(("前保险杠", bump, "dark"))
+    P.append(("前保险杠", soft(bump, 3.0), "dark"))
     P.append(("外壳·深度相机窗", box(L2 + 9, L2 + 10.5, -dy / 2, dy / 2, 25, 24 + dz + 1), "gloss"))
     for sy in (1, -1):
         P.append((f"外壳·雾灯{'左' if sy > 0 else '右'}", box(L2 + 12, L2 + 13.5, *sorted((sy * 64, sy * 88)), 36, 44), "amber"))
@@ -155,7 +169,7 @@ def head():
     sensors = [("相机镜头", 0.0, 12.0, "black"), ("测距窗 VL53L5CX", -30.0, 8.0, "gloss"), ("隐私指示灯", 30.0, 4.0, "amber")]
     for _, y, d, _ in sensors:
         shell = shell.cut(cyl_dir((mid[0] - n[0] * 4, y, mid[1] - n[1] * 4), (n[0], 0, n[1]), d + 1, 8))
-    P = [("屏幕头", shell, "deck")]
+    P = [("屏幕头", soft(shell, 4.0), "deck")]
     board_x0 = SCREEN_X - t
     P.append(("4.3寸屏板", box(board_x0, SCREEN_X, -w / 2, w / 2, SCREEN_Z - h / 2, SCREEN_Z + h / 2), "pcb"))
     P.append(("屏幕玻璃", box(front - 1.5, front + 0.5, -gw / 2, gw / 2, SCREEN_Z - gh / 2, SCREEN_Z + gh / 2), "glass"))
@@ -202,7 +216,7 @@ def pods():
     for sy, tag in ((1, "左"), (-1, "右")):
         out = []
         seal = prism_xz(hexp, y_in, y_in + 2).cut(cyl_y(0, PIVOT_UP, 14 if sy > 0 else 10, y_in - 1, y_in + 3))
-        out.append((f"{tag}肩座封板", seal, "shell"))
+        out.append((f"{tag}肩座封板", soft(seal, 0.8), "shell"))
         core = prism_xz(hexp, y_in + 2, y_out - 14)
         if sy > 0:   # 左：舵机仓 + 舵盘过孔 + 往下的走线孔
             core = core.cut(box(-sx / 2 - 0.5, sx / 2 + 0.5, yc - sw / 2 - 0.5, y_out - 13, PIVOT_UP - sh / 2 - 0.5, PIVOT_UP + sh / 2 + 0.5))
@@ -211,9 +225,9 @@ def pods():
         else:        # 右：轴销铜套孔 + 传感器小板仓
             core = core.cut(cyl_y(0, PIVOT_UP, 10, y_in, y_in + 20))
             core = core.cut(box(30, 62, y_in + 6, y_out - 15, 70, 104))
-        out.append((f"{tag}肩座骨架", core, "dark"))
+        out.append((f"{tag}肩座骨架", soft(core, 4.0), "dark"))
         armor = prism_xz(shrink(hexp, 0.86), y_out - 10, y_out - 4).cut(cyl_y(0, PIVOT_UP, 38, y_out - 11, y_out - 3))
-        out.append((f"{tag}肩座外装甲", armor, "deck"))
+        out.append((f"{tag}肩座外装甲", soft(armor, 2.8), "deck"))
         for i, (x, z) in enumerate(((50, 30), (42, 106), (-30, 62))):
             out.append((f"外壳·{tag}肩座支柱{i + 1}", cyl_y(x, z, 6, y_out - 14, y_out - 10), "silver"))
         out.append((f"外壳·{tag}电机端盖", cyl_y(0, PIVOT_UP, 24, y_out - 14, y_out - 6), "silver"))
@@ -271,12 +285,12 @@ def arm_marks(oy1, root1, my1):
     P = []
     cover = prism_xz(stadium_pts(0, ARM, ARM_ROOT_R - 1, ARM_END_R - 1), oy1, oy1 + 3)
     cover = cover.cut(prism_xz(stadium_pts(48, 128, 6, 6), oy1 - 1, oy1 + 4))
-    P.append(("摆臂外盖板", cover, "dark"))
+    P.append(("摆臂外盖板", soft(cover, 1.2), "dark"))
     P.append(("外壳·长槽底", prism_xz(stadium_pts(48, 128, 6, 6), oy1, oy1 + 1), "black"))
     for i, u in enumerate((34, 41, 48)):                                   # 髋边上三道斜黄条
         P.append((f"外壳·摆臂黄条{i + 1}", strip((u, -14), (u + 10, 14), 2.4, oy1 + 3, oy1 + 3.6), "amber"))
     P.append(("外壳·摆臂边黄线", strip((60, 16), (135, 19), 1.6, oy1 + 3, oy1 + 3.6), "amber"))
-    P.append(("髋部大圆盖", cyl_y(0, 0, 50, oy1 + 3, oy1 + 6), "dark"))
+    P.append(("髋部大圆盖", soft(cyl_y(0, 0, 50, oy1 + 3, oy1 + 6), 1.2), "dark"))
     P.append(("外壳·髋盖黄圈", ring_y(0, 0, 50, 40, oy1 + 6, oy1 + 6.6), "amber"))
     P.append(("外壳·髋盖六角", prism_xz([(9 * math.cos(math.pi / 6 + k * math.pi / 3), 9 * math.sin(math.pi / 6 + k * math.pi / 3)) for k in range(6)], oy1 + 6, oy1 + 8), "silver"))
     P.append(("外壳·轮端青光圈", ring_y(ARM, 0, 26, 20, oy1 + 3, oy1 + 3.6), "cyan"))
