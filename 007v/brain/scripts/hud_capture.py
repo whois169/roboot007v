@@ -31,6 +31,7 @@ SEQ = [
     ("listen", 2.5, {}, [], [(1.8, "listen")]),
     ("think", 2.0, {}, ["ASR 9CH 0.05S"], [(1.5, "think")]),
     ("speak", 2.5, {}, ["LLM 1ST 1.92S", "TTS 0.41S"], [(1.8, "speak")]),
+    ("listen", 2.0, {"face": "happy"}, ["USER THANKS"], [(1.4, "happy")]),
     ("idle", 3.0, {}, ["EVT PERSON OUT"], [(0.25, "dissolve")]),
     ("scan", 3.0, {}, ["SCAN ZONE 1/4"], [(2.0, "scan")]),
     ("thermal", 3.0, {}, [], [(2.0, "thermal")]),

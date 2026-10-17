@@ -14,13 +14,14 @@
   - 所有动画只依赖“现在时间”和每帧的 dt，30 帧。
 
 指令（每条一行 JSON，字段都可以省略，只更新给出的部分）：
-  {"mode": "track", "gaze": [0.3, -0.1], "level": 0.6, "text": "E-NET", "hold": 2.5,
+  {"mode": "track", "gaze": [0.3, -0.1], "level": 0.6, "text": "E-NET", "hold": 2.5, "face": "happy",
    "status": {"temp": 22.1, "sim": true, "bat": 87, "spd": 0.8, "load": 6.5}, "log": "FACE 1 X-0.40"}
   mode   见 MODES
   gaze   [x, y]，-1–1。x 按机器人自己的方向：-1 = 它的左边（面对屏幕时眼睛往你的右边移），y：-1 上，+1 下
   level  0–1：聆听时是麦克风音量，汇报时是语音音量
   text   左下角的短文字（换模式时自动清掉）
   hold   这个模式至少保持几秒，期间来的模式切换先排队（唤醒默认 0.9 秒）
+  face   表情（可省略，换模式时回到这个模式默认的）：normal 圆角方块 / happy 弯弯的 ∩ / angry 上沿往里斜（凶）
   status 上下两条显示的状态：temp 温度（sim=true 表示假数据，后面带 *）、bat 电量 %、spd 速度 m/s、load 背上载重 kg（null = 不知道）
   log    往数据流里加一行（或一组行），最多 72 个字符，只能用字体里有的字符
 """
@@ -31,8 +32,10 @@ from collections import deque
 W, H = 800, 440
 CX, CY = W // 2, H // 2
 U = 3                         # 一个“格”多少像素：旧长条屏的尺寸 × 3
-EYE_DX = 174                  # 眼睛中心到屏幕中线的距离
-GAZE_X, GAZE_Y = 66, 28       # gaze = ±1 时眼睛移动多少像素
+EYE_DX = 130                  # 眼睛中心到屏幕中线的距离（照效果图：两眼在屏幕 1/3 和 2/3 附近）
+EYE_Y = CY - 22               # 眼睛中心的高度（比正中略高，下面留一行给音量条、声波、提示字）
+OV_Y = CY + 96                # 眼睛下面那一行的中心
+GAZE_X, GAZE_Y = 60, 24       # gaze = ±1 时眼睛移动多少像素
 TOP, BOTTOM = 56, 384         # 中间区域（上下两条状态栏）
 LOG_MAX = 72                  # 数据流一行最多几个字
 SS = 2                        # 数据流小字体放大倍数（每字 10 像素宽、10 像素高）
@@ -53,21 +56,25 @@ LABEL = {"idle": "IDLE", "wake": "WAKE", "listen": "LISTEN", "think": "THINK", "
          "sleep": "SLEEP", "low_bat": "LOW BAT"}
 DEFAULT_HOLD = {"wake": 0.9}
 
-# 每个模式：眼睛形状（宽、高、切角、亮度、实心程度、准星程度）、眼睛出不出现、数据流亮度、颜色、叠加层
+# 每个模式：眼睛形状（宽、高、圆角、亮度、实心程度、准星程度、斜切 cut、弯弯 arc）、眼睛出不出现、数据流亮度、颜色、叠加层
+# 眼睛照效果图：平时是发光的圆角方块；唤醒时弯成 ∩（打招呼）；警告时变琥珀色、上沿往里斜（凶）
+_E = dict(w=120, h=104, r=24, bright=0.85, fill=1, ret=0, cut=0, arc=0)
 STYLE = {
-    "idle":    dict(w=138, h=108, ch=27, bright=0.8, fill=1, ret=0, eyes=0, stream=1.0,  color=CYAN,  ov=None),
-    "wake":    dict(w=138, h=108, ch=27, bright=1.0, fill=1, ret=0, eyes=1, stream=0.25, color=CYAN,  ov="online"),
-    "listen":  dict(w=138, h=108, ch=27, bright=0.9, fill=1, ret=0, eyes=1, stream=0.2,  color=CYAN,  ov="bars"),
-    "think":   dict(w=144, h=36,  ch=15, bright=0.85, fill=1, ret=0, eyes=1, stream=0.3, color=CYAN,  ov="think"),
-    "speak":   dict(w=138, h=90,  ch=24, bright=0.9, fill=1, ret=0, eyes=1, stream=0.2,  color=CYAN,  ov="wave"),
-    "track":   dict(w=120, h=120, ch=24, bright=1.0, fill=0, ret=1, eyes=1, stream=0.2,  color=CYAN,  ov=None),
-    "scan":    dict(w=138, h=108, ch=27, bright=0.8, fill=1, ret=0, eyes=0, stream=0.45, color=CYAN,  ov="scan"),
-    "thermal": dict(w=138, h=108, ch=27, bright=0.8, fill=1, ret=0, eyes=0, stream=0.0,  color=CYAN,  ov="thermal"),
-    "alert":   dict(w=138, h=108, ch=27, bright=0.8, fill=1, ret=0, eyes=0, stream=0.5,  color=AMBER, ov="alert"),
-    "error":   dict(w=138, h=108, ch=27, bright=0.8, fill=1, ret=0, eyes=0, stream=0.5,  color=RED,   ov="error"),
-    "sleep":   dict(w=138, h=108, ch=27, bright=0.8, fill=1, ret=0, eyes=0, stream=0.0,  color=CYAN,  ov="sleep"),
-    "low_bat": dict(w=138, h=108, ch=27, bright=0.8, fill=1, ret=0, eyes=0, stream=0.25, color=AMBER, ov="lowbat"),
+    "idle":    dict(_E, eyes=0, stream=1.0,  color=CYAN,  ov=None),
+    "wake":    dict(_E, bright=1.0, arc=1, eyes=1, stream=0.25, color=CYAN, ov="online"),
+    "listen":  dict(_E, bright=0.9, eyes=1, stream=0.2, color=CYAN, ov="bars"),
+    "think":   dict(_E, w=124, h=30, r=14, eyes=1, stream=0.3, color=CYAN, ov="think"),
+    "speak":   dict(_E, h=96, bright=0.9, eyes=1, stream=0.2, color=CYAN, ov="wave"),
+    "track":   dict(_E, w=110, h=110, r=22, bright=1.0, fill=0, ret=1, eyes=1, stream=0.2, color=CYAN, ov=None),
+    "scan":    dict(_E, eyes=0, stream=0.45, color=CYAN,  ov="scan"),
+    "thermal": dict(_E, eyes=0, stream=0.0,  color=CYAN,  ov="thermal"),
+    "alert":   dict(_E, bright=1.0, cut=1, eyes=1, stream=0.5, color=AMBER, ov="alert"),
+    "error":   dict(_E, eyes=0, stream=0.5,  color=RED,   ov="error"),
+    "sleep":   dict(_E, eyes=0, stream=0.0,  color=CYAN,  ov="sleep"),
+    "low_bat": dict(_E, eyes=0, stream=0.25, color=AMBER, ov="lowbat"),
 }
+FACES = {"normal": dict(cut=0, arc=0), "happy": dict(cut=0, arc=1), "angry": dict(cut=1, arc=0)}
+SHAPE = ("w", "h", "r", "bright", "fill", "ret", "cut", "arc", "stream")
 OVERLAYS = ("online", "bars", "think", "wave", "scan", "thermal", "alert", "error", "sleep", "lowbat")
 FROZEN = ("alert", "error")   # 警告、错误时数据流卡住不动
 
@@ -229,11 +236,55 @@ def chamfer_pts(cx, cy, w, h, ch):
     return [(x0 + c, y0), (x1 - c, y0), (x1, y0 + c), (x1, y1 - c), (x1 - c, y1), (x0 + c, y1), (x0, y1 - c), (x0, y0 + c)]
 
 
+def rrect_pts(cx, cy, w, h, r, n=6):
+    """圆角方块（凸多边形，每个圆角 n 段），屏幕板上一样拆成三角形填。"""
+    r = max(0.0, min(r, w / 2, h / 2))
+    pts = []
+    for qx, qy, a0 in ((1, -1, -90), (1, 1, 0), (-1, 1, 90), (-1, -1, 180)):
+        ox, oy = cx + qx * (w / 2 - r), cy + qy * (h / 2 - r)
+        for k in range(n + 1):
+            a = math.radians(a0 + 90 * k / n)
+            pts.append((ox + r * math.cos(a), oy + r * math.sin(a)))
+    return pts
+
+
+def clip_above(pts, x0, y0, x1, y1):
+    """凸多边形切掉直线 (x0,y0)-(x1,y1) 上面的部分（结果还是凸多边形）。"""
+    def side(p):
+        return (x1 - x0) * (p[1] - y0) - (y1 - y0) * (p[0] - x0)
+    out = []
+    for i, a in enumerate(pts):
+        b = pts[(i + 1) % len(pts)]
+        sa, sb = side(a), side(b)
+        if sa >= 0:
+            out.append(a)
+        if (sa >= 0) != (sb >= 0):
+            t = sa / (sa - sb)
+            out.append((a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
+    return out
+
+
+def eye_pts(cx, cy, w, h, r, cut, inner):
+    """一只眼睛的外形。cut 0–1：上沿往鼻子那边斜下去（凶），inner = 鼻子在哪边（-1 左 / +1 右）。"""
+    pts = rrect_pts(cx, cy, w, h, r)
+    if cut > 0.01:
+        drop = h * 0.42 * cut
+        top = cy - h / 2
+        a, b = (cx - inner * w / 2 - 2, top - 2), (cx + inner * w / 2 + 2, top + drop)
+        pts = clip_above(pts, *a, *b) if inner > 0 else clip_above(pts, *b, *a)
+    return pts
+
+
+def arc_pts(cx, cy, w, h, n=16):
+    """弯弯的 ∩ 眼睛的中心线（半个椭圆，开口朝下）。"""
+    return [(cx - w / 2 * math.cos(math.pi * k / n), cy + h / 2 - h * math.sin(math.pi * k / n)) for k in range(n + 1)]
+
+
 # ---------------------------------------------------------------- 指令检查（模拟器和屏幕板都按这个来）
 def check(cmd) -> str:
     if not isinstance(cmd, dict):
         return "指令不是 JSON 对象"
-    bad = set(cmd) - {"mode", "gaze", "level", "text", "hold", "status", "log"}
+    bad = set(cmd) - {"mode", "gaze", "level", "text", "hold", "status", "log", "face"}
     if bad:
         return f"不认识的字段：{sorted(bad)}"
     if "mode" in cmd and cmd["mode"] not in MODES:
@@ -251,6 +302,8 @@ def check(cmd) -> str:
         lines = cmd["log"] if isinstance(cmd["log"], list) else [cmd["log"]]
         if not all(isinstance(s, str) and len(s) <= LOG_MAX for s in lines):
             return f"log 每行最多 {LOG_MAX} 个字符"
+    if "face" in cmd and cmd["face"] not in FACES:
+        return f"face 只能是 {tuple(FACES)}"
     if "status" in cmd and not isinstance(cmd["status"], dict):
         return "status 要是 JSON 对象"
     return ""
@@ -267,8 +320,7 @@ class HudRenderer:
         self.hold_until = 0.0
         self.pending = None
         st = STYLE["idle"]
-        keys = ("w", "h", "ch", "bright", "fill", "ret", "stream")
-        self.cur = {k: float(st[k]) for k in keys}
+        self.cur = {k: float(st[k]) for k in SHAPE}
         self.cur.update(gx=0.0, gy=0.0)
         self.tgt = dict(self.cur)
         self.color, self.tcolor = st["color"], st["color"]
@@ -307,6 +359,8 @@ class HudRenderer:
                 self.pending = (m, hold, cmd.get("text"))   # 正在保持的模式还没到时间：排队
             else:
                 self._enter(m, hold)
+        if "face" in cmd:
+            self.tgt.update({k: float(v) for k, v in FACES[cmd["face"]].items()})
         if "level" in cmd:
             self.level_t = float(cmd["level"])
         if "text" in cmd and not self.pending:
@@ -319,7 +373,7 @@ class HudRenderer:
         self.mode = m
         self.hold_until = self.now + hold
         st = STYLE[m]
-        for k in ("w", "h", "ch", "bright", "fill", "ret", "stream"):
+        for k in SHAPE:
             self.tgt[k] = float(st[k])
         self.tcolor = st["color"]
         if st["eyes"] != self.pres_t:             # 眼睛要出现或要解体：重新撒一批方块
@@ -408,9 +462,9 @@ class HudRenderer:
             self._thermal(f["thermal"])
         if self.pres > 0.001:
             for side in (-1, 1):
-                ex, ey = CX + side * EYE_DX + dx, CY + dy
+                ex, ey = CX + side * EYE_DX + dx, EYE_Y + dy
                 if self.pres >= 1:
-                    self._eye(ex, ey, c)
+                    self._eye(ex, ey, c, -side)
                 else:
                     self._eye_blocks(ex, ey, c)
         p = self.pres
@@ -468,33 +522,51 @@ class HudRenderer:
             return 0.9 + 0.1 * math.sin(2 * math.pi * self.now / 4)
         return 1.0
 
-    def _glow(self, cx, cy, w, h, ch, c, a, n=6, step=3):
-        """发光：往外画几圈越来越暗的切角框（不用透明，屏幕板上照样能画）。"""
+    def _glow(self, cx, cy, w, h, r, c, a, n=6, step=3, cut=0.0, inner=1):
+        """发光：往外画几圈越来越暗的轮廓（不用透明，屏幕板上照样能画）。"""
         for i in range(n, 0, -1):
-            self.g.poly(chamfer_pts(cx, cy, w + 2 * i * step, h + 2 * i * step, ch + i * step * 0.4),
+            self.g.poly(eye_pts(cx, cy, w + 2 * i * step, h + 2 * i * step, r + i * step, cut, inner),
                         dim(c, a * 0.32 * (1 - i / (n + 1)) ** 1.5), step)
 
-    def _eye(self, cx, cy, c):
+    def _eye(self, cx, cy, c, inner):
+        """一只眼睛。inner = 鼻子在哪边（斜切往那边低）。arc 过半就画成弯弯的 ∩，否则画圆角方块。"""
         g, p = self.g, self.cur
         flash = max(0.0, 1 - (self.now - self.flash_t) / 0.25)
         col = mix(c, WHITE, flash)
         bright = min(1.0, p["bright"] * self._breath() + flash)
         lit = dim(col, bright)
-        pts = chamfer_pts(cx, cy, p["w"], p["h"], p["ch"])
-        self._glow(cx, cy, p["w"], p["h"], p["ch"], col, bright)
+        arc = p["arc"]
+        if arc > 0.5:                                                      # 开心：∩，从扁方块“弯”过来
+            k = (arc - 0.5) * 2
+            w, h, t = p["w"] * (0.9 + 0.2 * k), p["h"] * (0.2 + 0.25 * k), 6 + 7 * k
+            pts = arc_pts(cx, cy + p["h"] * 0.1, w, h)
+            for i in range(5, 0, -1):                                       # 发光：同一条弧，越外越粗越暗
+                glow = dim(col, bright * 0.3 * (1 - i / 6) ** 1.5)
+                for a, b in zip(pts, pts[1:]):
+                    g.line(*a, *b, glow, t + i * 6)
+            for a, b in zip(pts, pts[1:]):
+                g.line(*a, *b, lit, t)
+            for x, y in (pts[0], pts[-1]):                                  # 两头圆一点
+                g.fill_poly(rrect_pts(x, y, t, t, t / 2, 3), lit)
+            return
+        squash = 1 - arc * 1.4                                              # 往 ∩ 变的前半段：先压扁
+        w, h, r, cut = p["w"], max(10.0, p["h"] * squash), min(p["r"], p["h"] * squash / 2), p["cut"]
+        pts = eye_pts(cx, cy, w, h, r, cut, inner)
+        self._glow(cx, cy, w, h, r, col, bright, cut=cut, inner=inner)
         if p["fill"] > 0.02:
             g.fill_poly(pts, dim(lit, p["fill"]))
-            if p["fill"] > 0.5 and p["h"] > 30:                            # 高光：上沿一条亮边、内圈细线，做出面板感
-                g.poly(chamfer_pts(cx, cy, p["w"] - 18, p["h"] - 18, p["ch"] - 6), mix(lit, WHITE, 0.35), 2)
-                g.fill_rect(cx - p["w"] / 2 + p["ch"], cy - p["h"] / 2 + 6, p["w"] - 2 * p["ch"], 3, mix(lit, WHITE, 0.55))
+            if p["fill"] > 0.5 and h > 40:                                 # 上沿一条亮边，做出屏幕面板的光泽
+                hi = clip_above(eye_pts(cx, cy, w - 16, h - 16, max(2, r - 8), cut, inner), cx + w, cy - h / 2 + 16, cx - w, cy - h / 2 + 16)   # 只留上沿一窄条
+                if len(hi) >= 3:
+                    g.fill_poly(hi, mix(lit, WHITE, 0.3))
         else:
             g.fill_poly(pts, BG)                                           # 空心准星框里挡住数据流
         g.poly(pts, lit, 3)
         if p["ret"] > 0.02:                                                # 准星框
-            r = p["ret"]
+            rt = p["ret"]
             lock = min(1.0, (self.now - self.lock_t) / 0.3)
-            hw, hh = p["w"] / 2 + 12 + (1 - lock) * 36, p["h"] / 2 + 12 + (1 - lock) * 24
-            rc = dim(lit, r)
+            hw, hh = w / 2 + 12 + (1 - lock) * 36, h / 2 + 12 + (1 - lock) * 24
+            rc = dim(lit, rt)
             for sx in (-1, 1):
                 for sy in (-1, 1):
                     x, y = cx + sx * hw, cy + sy * hh
@@ -507,17 +579,17 @@ class HudRenderer:
             g.fill_rect(cx - 2, cy - 2, 5, 5, rc)
 
     def _eye_blocks(self, cx, cy, c):
-        """眼睛拼合/解体的中间过程：一格一格的方块在数据流和眼睛之间飞。"""
+        """眼睛拼合/解体的中间过程：一格一格的方块在数据流和眼睛之间飞（拼成圆角方块，拼好再变表情）。"""
         p, pres = self.cur, self.pres
-        w, h = p["w"], p["h"]
-        lim = w / 2 + h / 2 - p["ch"]
+        w, h, r = p["w"], max(p["h"], 40.0), p["r"]
         hollow = p["fill"] < 0.5                                           # 准星框只拼外圈
         for u, v, sx, sy, delay in self.particles:
             tx, ty = cx + u * w / 2, cy + v * h / 2
             ax, ay = abs(u * w / 2), abs(v * h / 2)
-            if ax + ay > lim:
+            ex, ey = ax - (w / 2 - r), ay - (h / 2 - r)
+            if ex > 0 and ey > 0 and ex * ex + ey * ey > r * r:            # 圆角外面
                 continue
-            if hollow and ax < w / 2 - 12 and ay < h / 2 - 12 and ax + ay < lim - 12:
+            if hollow and ax < w / 2 - 12 and ay < h / 2 - 12:
                 continue
             q = max(0.0, min(1.0, (pres - delay) / 0.65))
             e = 1 - (1 - q) ** 3
@@ -599,13 +671,13 @@ class HudRenderer:
     def _online(self, ocx, c, f):
         col = dim(WHITE, f)
         w = text_width("ONLINE", 3)
-        self.g.fill_rect(ocx - w / 2 - 18, CY - 22, w + 36, 45, BG)
-        self.g.text(ocx - w / 2, CY - 10, "ONLINE", col, 3)
+        self.g.fill_rect(ocx - w / 2 - 18, OV_Y - 20, w + 36, 40, BG)
+        self.g.text(ocx - w / 2, OV_Y - 10, "ONLINE", col, 3)
         for sx in (-1, 1):
             x = ocx + sx * (w / 2 + 12)
-            self.g.line(x, CY - 18, x, CY + 18, dim(c, f), 3)
-            self.g.line(x, CY - 18, x - sx * 9, CY - 18, dim(c, f), 3)
-            self.g.line(x, CY + 18, x - sx * 9, CY + 18, dim(c, f), 3)
+            self.g.line(x, OV_Y - 16, x, OV_Y + 16, dim(c, f), 3)
+            self.g.line(x, OV_Y - 16, x - sx * 9, OV_Y - 16, dim(c, f), 3)
+            self.g.line(x, OV_Y + 16, x - sx * 9, OV_Y + 16, dim(c, f), 3)
 
     def _bars(self, ocx, c, f):
         if self.now > self.bar_next:
@@ -614,30 +686,30 @@ class HudRenderer:
         shape = (0.35, 0.55, 0.75, 0.9, 1.0, 0.9, 0.75, 0.55, 0.35)
         n = len(shape)
         for i in range(n):
-            target = 6 + 96 * self.level * shape[i] * self.bar_rand[i]
+            target = 4 + 52 * self.level * shape[i] * self.bar_rand[i]
             self.bars[i] += (target - self.bars[i]) * 0.5
             h = self.bars[i]
-            self.g.fill_rect(ocx - (n * 16 - 6) / 2 + i * 16, CY - h / 2, 10, h, dim(c, f * (0.5 + 0.5 * shape[i])))
+            self.g.fill_rect(ocx - (n * 16 - 6) / 2 + i * 16, OV_Y - h / 2, 10, h, dim(c, f * (0.5 + 0.5 * shape[i])))
 
     def _think(self, ocx, dx, dy, c, f):
         k = int(self.now * 6) % 3
         for i in range(3):
-            self.g.fill_rect(ocx - 27 + i * 21, CY - 6 + dy, 12, 12, dim(c, f * (1.0 if i == k else 0.25)))
+            self.g.fill_rect(ocx - 27 + i * 21, EYE_Y - 6 + dy, 12, 12, dim(c, f * (1.0 if i == k else 0.25)))
         p = self.cur
         for side in (-1, 1):                                               # 眼睛下面的进度条来回跑
             ex = CX + side * EYE_DX + dx
-            x0, y = ex - p["w"] / 2, CY + dy + p["h"] / 2 + 18
+            x0, y = ex - p["w"] / 2, EYE_Y + dy + p["h"] / 2 + 18
             self.g.line(x0, y, x0 + p["w"], y, dim(c, 0.25 * f), 3)
             s = (self.now * 180) % (p["w"] + 36) - 36
             self.g.line(max(x0, x0 + s), y, min(x0 + p["w"], x0 + s + 36), y, dim(c, f), 3)
 
     def _wave(self, ocx, c, f):
-        a = 6 + 40 * self.level
+        a = 4 + 26 * self.level
         pts = []
-        for i in range(61):
-            x = ocx - 90 + i * 3
-            env = math.sin(math.pi * i / 60)
-            y = CY + env * a * (0.7 * math.sin(x * 0.11 - self.now * 9) + 0.3 * math.sin(x * 0.3 + self.now * 5))
+        for i in range(81):
+            x = ocx - 120 + i * 3
+            env = math.sin(math.pi * i / 80)
+            y = OV_Y + env * a * (0.7 * math.sin(x * 0.11 - self.now * 9) + 0.3 * math.sin(x * 0.3 + self.now * 5))
             pts.append((x, y))
         col = dim(c, f)
         for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
@@ -651,16 +723,18 @@ class HudRenderer:
         self.g.poly(pts, dim(c, f), 3)
 
     def _alert(self, c, f):
+        """警告：琥珀色的“凶”眼睛（效果图那样），下面一行闪烁的警告三角 + 原因，底部移动的斜纹。"""
         on = (self.now * 2) % 1 < 0.6
-        self._box(400, 120, c, f)
         col = dim(c, f * (1.0 if on else 0.35))
-        tri = [(CX - 135, CY - 36), (CX - 95, CY + 33), (CX - 175, CY + 33)]
-        self.g.poly(tri, col, 4)
-        self.g.text(CX - 141, CY - 12, "!", col, 4)
-        msg = self.text or "WARNING"
-        self.g.text(CX - 60, CY - 30, "WARNING", dim(c, f), 4)
-        self.g.text(CX - 60, CY + 10, msg[:12], dim(WHITE, f), 3)
-        off = int(self.now * 36) % 24                                       # 底部移动的警示斜纹
+        msg = (self.text or "WARNING")[:12]
+        tw = text_width(msg, 3)
+        x0 = CX - (tw + 56) / 2
+        self.g.fill_rect(x0 - 14, OV_Y - 24, tw + 84, 48, BG)
+        self.g.fill_poly([(x0 + 18, OV_Y - 18), (x0 + 38, OV_Y + 16), (x0 - 2, OV_Y + 16)], col)
+        self.g.fill_rect(x0 + 16, OV_Y - 6, 4, 12, BG)
+        self.g.fill_rect(x0 + 16, OV_Y + 9, 4, 4, BG)
+        self.g.text(x0 + 56, OV_Y - 10, msg, dim(WHITE, f), 3)
+        off = int(self.now * 36) % 24
         for x in range(CX - 200 + off, CX + 200, 24):
             self.g.fill_poly([(x, BOTTOM - 4), (x + 10, BOTTOM - 4), (x + 22, BOTTOM - 16), (x + 12, BOTTOM - 16)], dim(c, 0.6 * f))
 
