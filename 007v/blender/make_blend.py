@@ -271,6 +271,19 @@ scene.frame_set(0)
 print(f"零件 {len(D['parts']) - missing} 个挂好（缺 {missing}），{D['frames']} 帧，标记 {len(D['markers'])} 个")
 
 # ---------------------------------------------------------------- 预览图（Workbench，快）
+# ---------------------------------------------------------------- 栏板单独一个集合，默认隐藏（和效果图一样，要看就在大纲里点眼睛）
+C_FENCE = collection("栏板（可拆，默认隐藏）")
+for o in list(bpy.data.objects):
+    if o.type == "MESH" and ("栏板" in o.name) and "反光条" not in o.name or o.name.startswith("外壳·栏板反光条"):
+        for c in list(o.users_collection):
+            c.objects.unlink(o)
+        C_FENCE.objects.link(o)
+C_FENCE.hide_render = True
+for vl in scene.view_layers:
+    lc = vl.layer_collection.children.get(C_FENCE.name)
+    if lc:
+        lc.hide_viewport = True
+
 # ---------------------------------------------------------------- 圆边看起来更顺：按角度平滑着色 + 很细的倒角修改器（只影响显示）
 for o in bpy.data.objects:
     if o.type != "MESH" or o.name in ("地面",):
@@ -350,7 +363,7 @@ for m in bpy.data.materials:                                  # 琥珀、青色�
         b = m.node_tree.nodes.get("Principled BSDF")
         if b:
             b.inputs["Emission Strength"].default_value = 2.2
-for nm, e, loc, rot, size in (("顶光", 90, (0, 0, 2.2), (0, 0, 0), 1.8), ("左前柔光", 70, (1.6, -1.4, 1.0), (55, 0, 50), 1.2),
+for nm, e, loc, rot, size in (("顶光", 60, (0, 0, 2.2), (0, 0, 0), 1.8), ("左前柔光", 45, (1.6, -1.4, 1.0), (55, 0, 50), 1.2),
                               ("右后轮廓光", 90, (-1.4, 1.6, 0.9), (60, 0, -140), 1.0)):
     L = bpy.data.objects.new(nm, bpy.data.lights.new(nm, "AREA"))
     L.data.energy, L.data.size = e, size
@@ -372,7 +385,9 @@ if PREVIEW:
     scene.render.resolution_x, scene.render.resolution_y = 1000, 640
     # 和效果图一样的三个角度
     keep = (cam.location.copy(), aim.location.copy())
-    for nm, loc in (("00a_前斜", (0.78, -0.92, 0.36)), ("00b_侧面", (1.22, -0.08, 0.32)), ("00c_后斜", (-0.78, 0.9, 0.42))):
+    cam.data.lens = 70
+    aim.location = (0, -0.02, 0.07)
+    for nm, loc in (("00a_前斜", (0.75, -1.55, 0.2)), ("00b_侧面", (1.75, -0.12, 0.17)), ("00c_后斜", (-0.85, 1.6, 0.25))):
         cam.location = loc
         scene.frame_set(5)
         scene.render.filepath = os.path.join(PREVIEW, nm + ".png")
