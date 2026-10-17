@@ -25,7 +25,7 @@ from look import rgb  # noqa: E402
 V = cq.Vector
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out", "solidworks")
 W2 = BODY_W / 2
-WY1 = W2 + WHEEL_GAP + WHEEL_W                     # 轮子外侧（= 轮子电机内侧）
+WY1 = WHEEL_Y0 + WHEEL_W                          # 轮子外侧
 HUB0 = W2 + BEARING_HOUSING_W + 1
 POSE = B.POSES["deploy"]                           # 行驶姿态
 CN = {"body": "机身", "head": "屏幕头", **{k: f"{v[2]}摆臂" for k, v in B.LEGS.items()}, **{k + "w": f"{v[2]}麦轮" for k, v in B.LEGS.items()}}

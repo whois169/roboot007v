@@ -237,17 +237,17 @@ def arm_box_solid(y0, y1):
     return outer.cut(inner).fuse(wall)
 
 
-def link_plate(y0, y1):
-    """连杆的一片：变截面，中段开长圆形减重孔（两片一样，孔对齐，能看穿到后面的臂座）。"""
-    return waist_xz(0, ARM, ARM_ROOT_R, ARM_END_R, y0, y1).cut(prism_xz(shell.stadium_pts(55, 115, 7, 7), y0 - 1, y1 + 1))
+def leg_plate(y0, y1, k=0.0):
+    """腿板的一层：变截面（中段收窄），中段长圆减重孔；k = 外层四周缩进。"""
+    p = waist_xz(0, ARM, ARM_ROOT_R - k, ARM_END_R - k, y0, y1)
+    return p.cut(prism_xz(shell.stadium_pts(55, 115, 7 + k, 7 + k), y0 - 1, y1 + 1))
 
 
 def leg_parts_FL():
+    """左前腿（摆臂水平朝前，髋轴原点，轮轴在 (ARM, 0)）：从里往外 电机 → 腿板 → 轴承座 → 麦轮 → 轴承座 → 叉板 → 端盖。"""
     W2 = BODY_W / 2
-    wy0 = W2 + WHEEL_GAP                       # 轮子内侧
-    wy1 = wy0 + WHEEL_W
-    my1 = wy1 + MOTOR_IN_WHEEL                 # 轮子电机塞在轮子里面，外端 = 连杆内片内侧
-    oy1 = my1 + OUTER_PLATE_T
+    wy0, wy1 = WHEEL_Y0, WHEEL_Y0 + WHEEL_W
+    lp0, lp1 = LP0, LP0 + sum(LEG_PLATE_T)
     hub0 = W2 + BEARING_HOUSING_W + 1
     root0 = hub0 + HUB["boss_l"] + HUB["flange_t"]          # 臂根内板内侧
     root1 = root0 + ARM_ROOT_PLATE_T
@@ -255,20 +255,20 @@ def leg_parts_FL():
         ("臂座轴毂", cyl_y(0, 0, HUB["boss_d"], hub0, hub0 + HUB["boss_l"]).fuse(
             cyl_y(0, 0, HUB["flange_d"], hub0 + HUB["boss_l"], hub0 + HUB["boss_l"] + HUB["flange_t"])), "alu"),
         ("臂根内板", waist_xz(0, ARM, ARM_ROOT_R - 4, ARM_END_R - 4, root0, root1).intersect(box(-40, ARM_BOX_LEN, root0 - 1, root1 + 1, -40, 40)), "alu"),
-        ("箱形臂座外壳", shell.soft(arm_box_solid(hub0 + 1, my1), 1.5), "armor"),                  # 从轴毂开始包，臂根内板和轴毂都在里面
-        ("连杆内片", link_plate(my1, my1 + LINK_IN_T), "anod"),
-        ("连杆外片", link_plate(oy1 - LINK_OUT_T, oy1), "anod"),
-        ("轮子电机GIM4310", cyl_y(ARM, 0, WHEEL_MOTOR_D, my1 - WHEEL_MOTOR_W, my1), "motor"),   # 塞在轮子里，后面拧在连杆内片上
+        ("髋部护罩", shell.soft(arm_box_solid(hub0 + 1, lp0).intersect(box(-40, 34, hub0, lp0, -40, 40)), 1.0), "anod"),
+        ("腿板内层", shell.soft(leg_plate(lp0, lp0 + LEG_PLATE_T[0]), 0.8), "anod"),
+        ("腿板外层", shell.soft(leg_plate(lp0 + LEG_PLATE_T[0], lp1, PLATE_INSET), 0.8), "deck"),
+        ("轮子电机GIM4310", cyl_y(ARM, 0, WHEEL_MOTOR_D, M0, LP0), "motor"),          # 在腿板内侧，联轴器穿过腿板驱动轮轴
+        ("轮轴支座内", cyl_y(ARM, 0, 30, lp1, lp1 + 4), "anod"),                         # 腿板上的轴承座
+        ("轮轴支座外", cyl_y(ARM, 0, 30, FORK_Y0 - 3.5, FORK_Y0), "anod"),               # 叉板上的轴承座
         ("麦轮外包络", cyl_y(ARM, 0, WHEEL_D, wy0, wy1), "envelope"),      # 只用来查碰撞，不显示
-        ("麦轮转接盘", cyl_y(ARM, 0, 40, my1 - WHEEL_MOTOR_W - 1, my1 - WHEEL_MOTOR_W), "trim"),    # 电机输出法兰 → 轮子内侧板
+        ("麦轮轮毂", cyl_y(ARM, 0, 60, wy0 - 1, wy1 + 1), "trim"),
         ("麦轮侧板内", cyl_y(ARM, 0, WHEEL_PLATE_D, wy0, wy0 + WHEEL_PLATE_T), "steel"),
-        ("麦轮侧板外", cyl_y(ARM, 0, WHEEL_PLATE_D, wy1 - WHEEL_PLATE_T, wy1).cut(cyl_y(ARM, 0, WHEEL_BORE, wy1 - 5, wy1 + 1)), "steel"),
+        ("麦轮侧板外", cyl_y(ARM, 0, WHEEL_PLATE_D, wy1 - WHEEL_PLATE_T, wy1), "steel"),
     ]
-    for i, u in enumerate((14, 156, 30, 140)):                             # 两片之间的隔柱
-        P.append((f"连杆隔柱{i + 1}", cyl_y(u, 0, 8, my1 + LINK_IN_T, oy1 - LINK_OUT_T), "anod"))
-    P += shell.arm_marks(oy1, hub0, my1)
+    P += shell.leg_skin(lp1, M0, LP0, FORK_Y0)
     for i, (u, v) in enumerate(ARM_STANDOFFS):
-        P.append((f"臂根支柱{i + 1}", cyl_y(u, v, STANDOFF_HEX, root1, my1), "alu"))
+        P.append((f"臂根支柱{i + 1}", cyl_y(u, v, STANDOFF_HEX, root1, lp0), "alu"))
     yc = (wy0 + wy1) / 2
     barrel = roller_solid()
     for k in range(ROLLERS):
@@ -303,5 +303,5 @@ def roller_solid():
 
 
 def half_width():
-    """整机半宽（到电机后盖外侧）。"""
-    return BODY_W / 2 + WHEEL_GAP + WHEEL_W + MOTOR_IN_WHEEL + OUTER_PLATE_T + CAN_T
+    """整机半宽（到叉板端盖外侧）。"""
+    return FORK_Y0 + sum(FORK_PLATE_T) + 4

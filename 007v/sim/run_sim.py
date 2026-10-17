@@ -42,7 +42,7 @@ R_M = WHEEL_D / 2000
 FX = np.array([1, 1, -1, -1])
 SY = np.array([1, -1, 1, -1])
 S_ROLL = np.array([-1, 1, 1, -1])                     # 和 export_mujoco.SIGN_S 一样（FL FR RL RR）
-YW = SY * (BODY_W / 2 + WHEEL_GAP + WHEEL_W / 2) / 1000
+YW = SY * WHEEL_YC / 1000
 
 HIP_RATED = 20.7                                       # 6.9 × 3
 WHEEL_RATED, WHEEL_PEAK = 2.05, 5.6

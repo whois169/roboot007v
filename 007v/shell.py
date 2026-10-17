@@ -400,38 +400,124 @@ def waist_xz(x0, x1, r0, r1, y0, y1, k=LINK_WAIST):
     return poly.fuse(cyl_y(x0, 0, 2 * r0, y0, y1)).fuse(cyl_y(x1, 0, 2 * r1, y0, y1))
 
 
-def can(cx, y0, d=CAN_D, t=CAN_T, name="电机后盖"):
-    """圆盖（轮端 = 电机后盖兼走线口，髋端 = 角度编码器罩）：端面 4 颗小螺栓、中间六角（左前腿坐标，往 +Y 伸出去）。"""
-    P = [(name, soft(cyl_y(cx, 0, d, y0, y0 + t), 1.0), "anod")]
+def w2a(X, Z):
+    """站立姿势下“以轮轴为原点、X 朝前、Z 朝上”的点 → 左前腿的摆臂坐标（髋轴原点，轮轴在 (ARM, 0)）。"""
+    c, s_ = math.cos(math.radians(STANCE_DEG)), math.sin(math.radians(STANCE_DEG))
+    return (ARM + X * c - Z * s_, X * s_ + Z * c)
+
+
+def wprism(pts, y0, y1):
+    return prism_xz([w2a(*p) for p in pts], y0, y1)
+
+
+def arc_pts(r, a0, a1, n=16):
+    return [(r * math.cos(math.radians(a0 + (a1 - a0) * i / n)), r * math.sin(math.radians(a0 + (a1 - a0) * i / n))) for i in range(n + 1)]
+
+
+def fork_profile(k=0.0):
+    """叉板侧面（站立时的方向，轮轴为原点）：轮轴处一个半径 FORK_LOW 的圆（最低点就在轴下 15），往上收成一根臂接到挡泥横梁；k = 往里缩多少。"""
+    r = FORK_LOW - k
+    poly = [(-FORK_LOW + k, 0), (FORK_LOW - k, 0), (24 - k, FENDER_R[1] - k), (-24 + k, FENDER_R[1] - k)]
+    return poly, r
+
+
+def fork_plate(y0, y1, k=0.0):
+    poly, r = fork_profile(k)
+    p = wprism(poly, y0, y1).fuse(cyl_y(ARM, 0, 2 * r, y0, y1))
+    slot = [(-6 + 4 * math.cos(math.radians(a)), 46 + 4 * math.sin(math.radians(a))) for a in range(0, 181, 15)] + \
+           [(-6 + 4 * math.cos(math.radians(a)), 24 + 4 * math.sin(math.radians(a))) for a in range(180, 361, 15)]
+    return p.cut(wprism(slot, y0 - 1, y1 + 1))                                   # 中段长圆减重孔，透出后面的轮子
+
+
+def leg_skin(oy, ly0, ly1, fy0):
+    """腿和叉的外观件（左前腿坐标）。oy = 腿板外表面；ly0 / ly1 = 电机两端；fy0 = 叉板内侧。"""
+    P = []
+    f1 = fy0 + sum(FORK_PLATE_T)
+    # 挡泥横梁：轮子上方一段圆弧，把腿板和叉板连成 U 形叉；顶上一道凹槽线，两头各一道 1.5 mm 分缝
+    r0, r1 = FENDER_R
+    band = arc_pts(r1, 35, 145) + arc_pts(r0, 145, 35)
+    fender = wprism(band, oy, fy0)
+    groove = wprism([(r1 * math.cos(math.radians(a)), r1 * math.sin(math.radians(a))) for a in (89.3, 90.7)] +
+                    [((r1 - 1) * math.cos(math.radians(a)), (r1 - 1) * math.sin(math.radians(a))) for a in (90.7, 89.3)], oy - 1, fy0 + 4)
+    fender = fender.cut(groove)
+    for yy in (oy + 3, fy0 - 3):
+        fender = fender.cut(wprism(arc_pts(r1 + 1, 30, 150) + arc_pts(r1 - 1, 150, 30), yy - 0.75, yy + 0.75))
+    P.append(("挡泥横梁", soft(fender, 1.0), "deck"))
+    # 叉板两层：内层深、外层浅（缩进 2.5，露出台阶）
+    P.append(("叉板内层", soft(fork_plate(fy0, fy0 + FORK_PLATE_T[0]), 0.8), "anod"))
+    P.append(("叉板外层", soft(fork_plate(fy0 + FORK_PLATE_T[0], f1, PLATE_INSET), 0.8), "deck"))
+    # 叉板端盖：盖住轮轴外端，一圈 6 颗螺栓 + 青色光环（半径不超过 15，不低于轴下 15）
+    P.append(("叉板端盖", soft(cyl_y(ARM, 0, 26, f1, f1 + 4), 0.8), "anod"))
+    for i in range(6):
+        a = math.pi / 6 + i * math.pi / 3
+        P.append((f"外壳·端盖钉{i + 1}", cyl_y(ARM + 9 * math.cos(a), 9 * math.sin(a), 3, f1 + 4, f1 + 4.6), "dark"))
+    P.append(("外壳·端盖青光环", ring_y(ARM, 0, 29, 26, f1 + 0.5, f1 + 2.0), "cyan"))
+    P.append(("外壳·端盖六角", prism_xz([(ARM + 4 * math.cos(math.pi / 6 + k * math.pi / 3), 4 * math.sin(math.pi / 6 + k * math.pi / 3)) for k in range(6)],
+                                         f1 + 4, f1 + 5.2), "dark"))
+    # 叉板顶上两颗沉头螺栓（和横梁拧在一起）
+    for X in (-15, 15):
+        u, v = w2a(X, FENDER_R[1] - 9)
+        P.append((f"外壳·叉板螺栓{X:+d}", cyl_y(u, v, BOLT_D, f1, f1 + 0.6), "dark"))
+    # 金线：叉板一条（从横梁走到端盖），腿板一条（从髋关节走到轴心）
+    P.append(("外壳·叉板金线", strip(w2a(10, 58), w2a(8, 17), 1.6, f1, f1 + 0.6), "amber"))
+    P.append(("外壳·腿板金线", strip((34, 15.5), (ARM - 30, 17.5), 1.6, oy, oy + 0.6), "amber"))
+    # 电机半包护罩：只包下半圈（挡地上的石子），带三道散热纹、两头螺栓；电机端面一圈青光
+    half = wprism([(-40, 0), (40, 0), (40, -40), (-40, -40)], ly0 - 1, ly1 + 1)
+    shroud = ring_y(ARM, 0, 61, 56, ly0 + 1, ly1 - 1).intersect(half)
+    P.append(("电机护罩", soft(shroud, 0.8), "anod"))
+    for i in range(3):
+        yy = ly0 + 8 + i * 9
+        P.append((f"外壳·护罩散热纹{i + 1}", ring_y(ARM, 0, 63, 60, yy, yy + 1.5).intersect(half), "anod"))
+    for X in (-27, 27):
+        u, v = w2a(X, -6)
+        P.append((f"外壳·护罩螺栓{X:+d}", cyl_dir((u, (ly0 + ly1) / 2, v), (math.copysign(1, X) * math.cos(math.radians(STANCE_DEG)), 0,
+                                                                         math.copysign(1, X) * math.sin(math.radians(STANCE_DEG))), 6, 1.0), "dark"))
+    P.append(("外壳·电机端面青光环", ring_y(ARM, 0, 40, 36, ly0 - 0.6, ly0), "cyan"))
+    # 电机线缆：从电机顶上出来，沿腿板内侧走到髋，三个小线夹
+    pts = [w2a(-6, 27), (ARM - 40, 21), (95, 22), (45, 19)]
+    yy = oy - sum(LEG_PLATE_T) - 4.5
+    cab = None
+    for (p0, p1) in zip(pts, pts[1:]):
+        d = V(p1[0] - p0[0], 0, p1[1] - p0[1])
+        seg = cq.Solid.makeCylinder(3.5, d.Length, V(p0[0], yy, p0[1]), d.normalized())
+        cab = seg if cab is None else cab.fuse(seg)
+        cab = cab.fuse(cq.Solid.makeSphere(3.5, V(p1[0], yy, p1[1])))
+    P.append(("外壳·电机线缆", cab, "black"))
+    for i, (u, v) in enumerate(((ARM - 40, 21), (95, 22), (60, 20))):
+        P.append((f"外壳·线夹{i + 1}", box(u - 3, u + 3, yy - 4.5, oy - sum(LEG_PLATE_T), v - 4.5, v + 4.5), "dark"))
+    # 髋端编码器罩（AS5600）
+    P.append(("编码器罩", soft(cyl_y(0, 0, 44, oy, oy + 4), 1.0), "anod"))
     for i in range(4):
         a = math.pi / 4 + i * math.pi / 2
-        P.append((f"外壳·{name[:1]}钉{cx:.0f}-{i + 1}", cyl_y(cx + 15 * math.cos(a), 15 * math.sin(a), 4, y0 + t, y0 + t + 0.8), "dark"))
-    P.append((f"外壳·{name[:1]}六角{cx:.0f}", prism_xz([(cx + 6 * math.cos(math.pi / 6 + k * math.pi / 3), 6 * math.sin(math.pi / 6 + k * math.pi / 3)) for k in range(6)],
-                                          y0 + t, y0 + t + 1.5), "dark"))
-    return P
-
-
-def arm_marks(oy1, root1, my1):
-    """摆臂外面（左前腿坐标，髋轴在原点，轮轴在 (ARM, 0)）：外片上的黄条、轮端电机后盖 + 青光圈、髋端编码器罩、
-    台阶测距（斜着往前下方看 30°：前腿看前面，后腿镜像过去就看后面）、臂座上的黄色箍。"""
-    P = []
-    for i, u in enumerate((34, 41, 48)):                                   # 髋边上三道斜黄条（保留）
-        P.append((f"外壳·摆臂黄条{i + 1}", strip((u, -14), (u + 10, 14), 2.4, oy1, oy1 + 0.6), "amber"))
-    P.append(("外壳·摆臂边黄线", strip((60, 17), (135, 18.5), 1.6, oy1, oy1 + 0.6), "amber"))
-    P += can(ARM, oy1, name="电机后盖")
-    P.append(("外壳·轮端青光圈", ring_y(ARM, 0, 24, 18, oy1 + CAN_T + 1.5, oy1 + CAN_T + 2.1), "cyan"))
-    P += can(0, oy1, name="编码器罩")
-    # 台阶测距 VL53L1X：装在连杆外片靠轮子那头的上沿；站立时（摆臂往下 55°）正好朝前下方 30°
+        P.append((f"外壳·编码器罩钉{i + 1}", cyl_y(15 * math.cos(a), 15 * math.sin(a), 4, oy + 4, oy + 4.8), "dark"))
+    P.append(("外壳·编码器罩六角", prism_xz([(6 * math.cos(math.pi / 6 + k * math.pi / 3), 6 * math.sin(math.pi / 6 + k * math.pi / 3)) for k in range(6)],
+                                         oy + 4, oy + 5.5), "dark"))
+    # 腿板沉头螺栓：髋那头两颗、靠轮那头两颗
+    for u, v in ((24, 17), (24, -17), (ARM - 100, 17), (ARM - 100, -17)):
+        P.append((f"外壳·腿板螺栓 u{u}v{v}", cyl_y(u, v, BOLT_D, oy, oy + 0.6), "dark"))
+    # 台阶测距（站立时朝前下方 30°）
     a = math.radians(25)
-    u, n = (math.cos(a), math.sin(a)), (-math.sin(a), math.cos(a))
-    c = (126, 13)
-    corner = lambda su, sn: (c[0] + u[0] * 9 * su + n[0] * 6 * sn, c[1] + u[1] * 9 * su + n[1] * 6 * sn)  # noqa: E731
-    P.append(("台阶测距", soft(prism_xz([corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], oy1, oy1 + 8), 0.8), "anod"))
-    f0 = (c[0] + u[0] * 9 - n[0] * 4, c[1] + u[1] * 9 - n[1] * 4)
-    f1 = (c[0] + u[0] * 9 + n[0] * 4, c[1] + u[1] * 9 + n[1] * 4)
-    P.append(("外壳·台阶测距窗", strip(f0, f1, 1.2, oy1 + 1.5, oy1 + 6.5, inward=(u[0] * 0.5, u[1] * 0.5)), "visor"))
-    for i, y in enumerate((root1 + 4, root1 + 10, root1 + 16)):                # 臂座上的黄色箍（保留，跟着臂座收窄）
-        hoop = waist_xz(0, ARM, ARM_ROOT_R + 1.2, ARM_END_R + 1.2, y, y + 2.5).cut(waist_xz(0, ARM, ARM_ROOT_R - 0.5, ARM_END_R - 0.5, y - 1, y + 4))
-        hoop = hoop.intersect(box(-40, ARM_BOX_LEN, y - 1, y + 4, -40, 40))
-        P.append((f"外壳·臂座黄箍{i + 1}", hoop, "amber"))
+    u_, n_ = (math.cos(a), math.sin(a)), (-math.sin(a), math.cos(a))
+    c = (ARM - 80, 13)
+    corner = lambda su, sn: (c[0] + u_[0] * 9 * su + n_[0] * 6 * sn, c[1] + u_[1] * 9 * su + n_[1] * 6 * sn)  # noqa: E731
+    P.append(("台阶测距", soft(prism_xz([corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], oy, oy + 8), 0.8), "anod"))
+    f0_ = (c[0] + u_[0] * 9 - n_[0] * 4, c[1] + u_[1] * 9 - n_[1] * 4)
+    f1_ = (c[0] + u_[0] * 9 + n_[0] * 4, c[1] + u_[1] * 9 + n_[1] * 4)
+    P.append(("外壳·台阶测距窗", strip(f0_, f1_, 1.2, oy + 1.5, oy + 6.5, inward=(u_[0] * 0.5, u_[1] * 0.5)), "visor"))
     return P
+
+
+def leg_label(key, fx, sy):
+    """叉板外侧的小刻字（每条腿单独做，不跟着镜像，免得变成反字）：编号 · 轮径 · 麦轮旋向（FL/RR 用 A 型，FR/RL 用 B 型）。返回该腿局部坐标里的零件。"""
+    f1 = FORK_Y0 + sum(FORK_PLATE_T)
+    kind = "A" if key in ("FL", "RR") else "B"
+    t = cq.Workplane("XZ").text(f"{key} · Φ110 · {kind}", 3.2, 0.4, halign="center", valign="center").val()
+    if sy > 0:
+        t = t.rotate(V(0, 0, 0), V(0, 0, 1), 180)
+    t = t.rotate(V(0, 0, 0), V(0, 1, 0), -STANCE_DEG if fx > 0 else STANCE_DEG)
+    c, s_ = math.cos(math.radians(STANCE_DEG)), math.sin(math.radians(STANCE_DEG))
+    X, Z = 0.0, 33.0                                                              # 叉板中段（减重孔旁边）
+    u, v = (ARM + X * c - Z * s_, X * s_ + Z * c)
+    if fx < 0:                                                                    # 后腿是前腿前后镜像过去的
+        u = -u
+    return [(f"外壳·叉板刻字{key}", t.translate(V(u, sy * (f1 + 0.4), v)), "dark")]

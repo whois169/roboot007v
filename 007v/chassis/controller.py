@@ -18,7 +18,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import ARM, BODY_W, HIP_X, HIP_Z, SKID_H, STANCE_DEG, WHEEL_D, WHEEL_GAP, WHEEL_W  # noqa: E402
+from config import ARM, HIP_X, HIP_Z, SKID_H, STANCE_DEG, WHEEL_D, WHEEL_YC  # noqa: E402
 
 from . import protocol  # noqa: E402
 
@@ -30,7 +30,7 @@ STATUS_EVERY = 20                           # 每 20 次（0.1 秒）发一次�
 R = WHEEL_D / 2000
 LEG_FX = (1, 1, -1, -1)                     # 前左 前右 后左 后右
 S_ROLL = (-1, 1, 1, -1)                     # 麦轮滚子方向（和仿真 export_mujoco.SIGN_S 一样）
-YW = tuple(sy * (BODY_W / 2 + WHEEL_GAP + WHEEL_W / 2) / 1000 for sy in (1, -1, 1, -1))
+YW = tuple(sy * WHEEL_YC / 1000 for sy in (1, -1, 1, -1))
 FOLD_DEG = -110.0
 TOUCH_DEG = math.degrees(math.asin((SKID_H - WHEEL_D / 2 + HIP_Z) / ARM))   # 轮子刚碰到地的摆臂角（约 -3.4°）
 

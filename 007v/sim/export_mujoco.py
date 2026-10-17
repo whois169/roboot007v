@@ -27,7 +27,6 @@ from config import *  # noqa: E402,F401,F403
 MJ = os.path.join(ROOT, "out", "mujoco")
 MESH = os.path.join(MJ, "meshes")
 R = WHEEL_D / 2
-WHEEL_YC = BODY_W / 2 + WHEEL_GAP + WHEEL_W / 2
 ROLLER_MASS = PART_MASS["麦轮滚子"]
 ROLLER_SPHERES = 7
 SIGN_S = {"FL": -1, "FR": 1, "RL": 1, "RR": -1}          # 着地滚子轴线朝“前右”(-1) 还是“前左”(+1)，做成 X 形布置
