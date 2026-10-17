@@ -1,37 +1,44 @@
-"""长条屏 HUD：渲染器 + 指令协议。按真屏分辨率 284×76 画。
+"""宽屏 HUD（机械狗007v）：渲染器 + 指令协议。按屏幕透过玻璃窗露出来的亮区 800×440 画。
 
-画面思路：平时是一台在工作的机器，全屏的真实数据流（大脑推过来的读数、事件、耗时）用细小的字
-一直平滑地往上流；有人和它打交道时（唤醒、聆听、思考、汇报、锁定目标），
-数据流里的方块往中间飞、“拼”出两只眼睛；结束后眼睛“解体”成方块散开，回到数据流。
+屏幕：微雪 ESP32-S3-Touch-LCD-4.3B（800×480）。前脸玻璃窗 118×50 mm，屏幕亮区约 95×50 mm，
+上下各有约 20 像素藏在框后面，所以只画中间 800×440（屏上 y = 20–460）。
 
-移植规则（以后照着改成 ESP32 的 C++）：
-  - 渲染器只通过 Gfx 画图：点、线、矩形、实心凸多边形、圆、5×7 位图字体。TFT_eSPI 都有对应函数。
-  - 没有透明混合、没有模糊/发光。“淡入淡出”全部用 mix(背景色, 颜色, 程度) 把颜色往背景缩放来做。
+画面思路（和旧长条屏一样）：平时是一台在工作的机器，全屏的真实数据流（大脑推过来的读数、事件、耗时）
+一直平滑地往上流；有人和它打交道时（唤醒、聆听、思考、汇报、锁定目标），数据流里的方块往中间飞、
+“拼”出两只眼睛；结束后眼睛“解体”成方块散开，回到数据流。
+宽屏多出来的地方：上面一条写模式和电量，下面一条写速度、背上载重、温度（运输机器人更关心这些）。
+
+移植规则（以后照着改成屏幕板上的 C++，LVGL 的 canvas 或直接画帧缓冲都行）：
+  - 渲染器只通过 Gfx 画图：点、线（可带粗细）、矩形、实心凸多边形、圆、两套位图字体（可整数倍放大）。
+  - 没有透明混合。“发光”是往外画几圈越来越暗的线；“淡入淡出”都用 mix(背景色, 颜色, 程度) 来做。
   - 所有动画只依赖“现在时间”和每帧的 dt，30 帧。
 
 指令（每条一行 JSON，字段都可以省略，只更新给出的部分）：
   {"mode": "track", "gaze": [0.3, -0.1], "level": 0.6, "text": "E-NET", "hold": 2.5,
-   "status": {"temp": 22.1, "sim": true, "bat": 87}, "log": "FACE 1 X-0.40"}
+   "status": {"temp": 22.1, "sim": true, "bat": 87, "spd": 0.8, "load": 6.5}, "log": "FACE 1 X-0.40"}
   mode   见 MODES
-  gaze   [x, y]，-1–1。x 按狗自己的方向：-1 = 狗的左边（面对屏幕时眼睛往你的右边移），y：-1 上，+1 下
+  gaze   [x, y]，-1–1。x 按机器人自己的方向：-1 = 它的左边（面对屏幕时眼睛往你的右边移），y：-1 上，+1 下
   level  0–1：聆听时是麦克风音量，汇报时是语音音量
   text   左下角的短文字（换模式时自动清掉）
   hold   这个模式至少保持几秒，期间来的模式切换先排队（唤醒默认 0.9 秒）
-  status 边上显示的状态：temp 温度（sim=true 表示假数据，后面带 *），bat 电量（null = 不知道）
-  log    往数据流里加一行（或一组行），最多 52 个字符，只能用字体里有的字符
+  status 上下两条显示的状态：temp 温度（sim=true 表示假数据，后面带 *）、bat 电量 %、spd 速度 m/s、load 背上载重 kg（null = 不知道）
+  log    往数据流里加一行（或一组行），最多 72 个字符，只能用字体里有的字符
 """
 import math
 import random
 from collections import deque
 
-W, H = 284, 76
+W, H = 800, 440
 CX, CY = W // 2, H // 2
-EYE_DX = 58                   # 眼睛中心到屏幕中线的距离
-GAZE_X, GAZE_Y = 22, 8        # gaze = ±1 时眼睛移动多少像素
-TOP, BOTTOM = 11, 66          # 中间区域（上下两条留给边上的状态文字）
-LOG_MAX = 52                  # 数据流一行最多几个字（小字体每字占 5 像素宽）
-LINE_H = 6                    # 数据流行高（小字体 5 像素高 + 1 像素行距）
-FLOW_MIN = 4.0                # 数据流最慢的流速（像素/秒）
+U = 3                         # 一个“格”多少像素：旧长条屏的尺寸 × 3
+EYE_DX = 174                  # 眼睛中心到屏幕中线的距离
+GAZE_X, GAZE_Y = 66, 28       # gaze = ±1 时眼睛移动多少像素
+TOP, BOTTOM = 56, 384         # 中间区域（上下两条状态栏）
+LOG_MAX = 72                  # 数据流一行最多几个字
+SS = 2                        # 数据流小字体放大倍数（每字 10 像素宽、10 像素高）
+LINE_H = 14                   # 数据流行高
+FLOW_MIN = 12.0               # 数据流最慢的流速（像素/秒）
+LOG_X = 30
 
 BG = (2, 7, 10)
 CYAN = (0, 229, 255)          # #00E5FF
@@ -48,18 +55,18 @@ DEFAULT_HOLD = {"wake": 0.9}
 
 # 每个模式：眼睛形状（宽、高、切角、亮度、实心程度、准星程度）、眼睛出不出现、数据流亮度、颜色、叠加层
 STYLE = {
-    "idle":    dict(w=46, h=36, ch=9, bright=0.8, fill=1, ret=0, eyes=0, stream=1.0,  color=CYAN,  ov=None),
-    "wake":    dict(w=46, h=36, ch=9, bright=1.0, fill=1, ret=0, eyes=1, stream=0.25, color=CYAN,  ov="online"),
-    "listen":  dict(w=46, h=36, ch=9, bright=0.9, fill=1, ret=0, eyes=1, stream=0.2,  color=CYAN,  ov="bars"),
-    "think":   dict(w=48, h=12, ch=5, bright=0.85, fill=1, ret=0, eyes=1, stream=0.3, color=CYAN,  ov="think"),
-    "speak":   dict(w=46, h=30, ch=8, bright=0.9, fill=1, ret=0, eyes=1, stream=0.2,  color=CYAN,  ov="wave"),
-    "track":   dict(w=40, h=40, ch=8, bright=1.0, fill=0, ret=1, eyes=1, stream=0.2,  color=CYAN,  ov=None),
-    "scan":    dict(w=46, h=36, ch=9, bright=0.8, fill=1, ret=0, eyes=0, stream=0.45, color=CYAN,  ov="scan"),
-    "thermal": dict(w=46, h=36, ch=9, bright=0.8, fill=1, ret=0, eyes=0, stream=0.0,  color=CYAN,  ov="thermal"),
-    "alert":   dict(w=46, h=36, ch=9, bright=0.8, fill=1, ret=0, eyes=0, stream=0.5,  color=AMBER, ov="alert"),
-    "error":   dict(w=46, h=36, ch=9, bright=0.8, fill=1, ret=0, eyes=0, stream=0.5,  color=RED,   ov="error"),
-    "sleep":   dict(w=46, h=36, ch=9, bright=0.8, fill=1, ret=0, eyes=0, stream=0.0,  color=CYAN,  ov="sleep"),
-    "low_bat": dict(w=46, h=36, ch=9, bright=0.8, fill=1, ret=0, eyes=0, stream=0.25, color=AMBER, ov="lowbat"),
+    "idle":    dict(w=138, h=108, ch=27, bright=0.8, fill=1, ret=0, eyes=0, stream=1.0,  color=CYAN,  ov=None),
+    "wake":    dict(w=138, h=108, ch=27, bright=1.0, fill=1, ret=0, eyes=1, stream=0.25, color=CYAN,  ov="online"),
+    "listen":  dict(w=138, h=108, ch=27, bright=0.9, fill=1, ret=0, eyes=1, stream=0.2,  color=CYAN,  ov="bars"),
+    "think":   dict(w=144, h=36,  ch=15, bright=0.85, fill=1, ret=0, eyes=1, stream=0.3, color=CYAN,  ov="think"),
+    "speak":   dict(w=138, h=90,  ch=24, bright=0.9, fill=1, ret=0, eyes=1, stream=0.2,  color=CYAN,  ov="wave"),
+    "track":   dict(w=120, h=120, ch=24, bright=1.0, fill=0, ret=1, eyes=1, stream=0.2,  color=CYAN,  ov=None),
+    "scan":    dict(w=138, h=108, ch=27, bright=0.8, fill=1, ret=0, eyes=0, stream=0.45, color=CYAN,  ov="scan"),
+    "thermal": dict(w=138, h=108, ch=27, bright=0.8, fill=1, ret=0, eyes=0, stream=0.0,  color=CYAN,  ov="thermal"),
+    "alert":   dict(w=138, h=108, ch=27, bright=0.8, fill=1, ret=0, eyes=0, stream=0.5,  color=AMBER, ov="alert"),
+    "error":   dict(w=138, h=108, ch=27, bright=0.8, fill=1, ret=0, eyes=0, stream=0.5,  color=RED,   ov="error"),
+    "sleep":   dict(w=138, h=108, ch=27, bright=0.8, fill=1, ret=0, eyes=0, stream=0.0,  color=CYAN,  ov="sleep"),
+    "low_bat": dict(w=138, h=108, ch=27, bright=0.8, fill=1, ret=0, eyes=0, stream=0.25, color=AMBER, ov="lowbat"),
 }
 OVERLAYS = ("online", "bars", "think", "wave", "scan", "thermal", "alert", "error", "sleep", "lowbat")
 FROZEN = ("alert", "error")   # 警告、错误时数据流卡住不动
@@ -68,6 +75,11 @@ FROZEN = ("alert", "error")   # 警告、错误时数据流卡住不动
 def mix(a, b, t):
     t = 0.0 if t < 0 else 1.0 if t > 1 else t
     return (int(a[0] + (b[0] - a[0]) * t), int(a[1] + (b[1] - a[1]) * t), int(a[2] + (b[2] - a[2]) * t))
+
+
+def dim(c, a):
+    """颜色往背景缩，亮度分 24 档（屏幕板上可以查表，模拟器可以缓存字形）。"""
+    return mix(BG, c, round(max(0.0, min(1.0, a)) * 24) / 24)
 
 
 # ---------------------------------------------------------------- 5×7 位图字体
@@ -108,7 +120,7 @@ _F = {
 }
 GLYPHS = {k: [[v[r * 5 + c] == "#" for c in range(5)] for r in range(7)] for k, v in _F.items()}
 
-# 数据流用的小字体：4 像素宽、5 像素高，笔画细，每字占 5×6
+# 数据流用的小字体：4 像素宽、5 像素高，放大 SS 倍画
 _S = {
     "A": ['.##.', '#..#', '####', '#..#', '#..#'], "B": ['###.', '#..#', '###.', '#..#', '###.'], "C": ['.###', '#...', '#...', '#...', '.###'],
     "D": ['###.', '#..#', '#..#', '#..#', '###.'], "E": ['####', '#...', '###.', '#...', '####'], "F": ['####', '#...', '###.', '#...', '#...'],
@@ -137,17 +149,23 @@ def text_width(s, scale=1):
     return max(0, len(s) * 6 * scale - scale)
 
 
+def small_width(s, scale=SS):
+    return max(0, len(s) * 5 * scale - scale)
+
+
 def clean(s: str) -> str:
     """转成字体能显示的样子：大写，不认识的字符变空格。"""
     return "".join(ch if ch in GLYPHS else " " for ch in str(s).upper())[:LOG_MAX]
 
 
 class Gfx:
-    """画图接口：渲染器只能用这些（ESP32 上一一对应 TFT_eSPI 的函数）。"""
+    """画图接口：渲染器只能用这些（屏幕板上一一对应 LVGL canvas / 帧缓冲的画点、画线、填矩形、填三角形）。
+    模拟器用 pygame；字形按 (字, 颜色, 倍数) 缓存成小图，免得每帧一个点一个点地画。"""
 
     def __init__(self, surface):
         import pygame
         self.pg, self.s = pygame, surface
+        self._cache = {}
 
     def clear(self, c):
         self.s.fill(c)
@@ -156,57 +174,62 @@ class Gfx:
         if 0 <= x < W and 0 <= y < H:
             self.s.set_at((int(x), int(y)), c)
 
-    def line(self, x0, y0, x1, y1, c):
-        self.pg.draw.line(self.s, c, (int(x0), int(y0)), (int(x1), int(y1)))
+    def line(self, x0, y0, x1, y1, c, w=1):
+        self.pg.draw.line(self.s, c, (int(x0), int(y0)), (int(x1), int(y1)), max(1, int(w)))
 
-    def rect(self, x, y, w, h, c):
-        self.pg.draw.rect(self.s, c, (int(x), int(y), max(1, int(w)), max(1, int(h))), 1)
+    def rect(self, x, y, w, h, c, t=1):
+        self.pg.draw.rect(self.s, c, (int(x), int(y), max(1, int(w)), max(1, int(h))), max(1, int(t)))
 
     def fill_rect(self, x, y, w, h, c):
         self.pg.draw.rect(self.s, c, (int(x), int(y), max(1, int(w)), max(1, int(h))))
 
-    def fill_poly(self, pts, c):        # 只用凸多边形（ESP32 上拆成三角形）
+    def fill_poly(self, pts, c):        # 只用凸多边形（屏幕板上拆成三角形）
         self.pg.draw.polygon(self.s, c, [(int(x), int(y)) for x, y in pts])
 
-    def poly(self, pts, c):
-        self.pg.draw.lines(self.s, c, True, [(int(x), int(y)) for x, y in pts])
+    def poly(self, pts, c, w=1):
+        self.pg.draw.lines(self.s, c, True, [(int(x), int(y)) for x, y in pts], max(1, int(w)))
 
-    def circle(self, x, y, r, c):
-        self.pg.draw.circle(self.s, c, (int(x), int(y)), int(r), 1)
+    def circle(self, x, y, r, c, w=1):
+        self.pg.draw.circle(self.s, c, (int(x), int(y)), int(r), max(1, int(w)))
 
-    def text_small(self, x, y, s, c, top=0, bottom=H):
+    def _glyph(self, font, ch, c, scale):
+        key = (id(font), ch, c, scale)
+        img = self._cache.get(key)
+        if img is None:
+            g = font.get(ch, font[" "])
+            img = self.pg.Surface((len(g[0]) * scale, len(g) * scale))
+            img.set_colorkey((0, 0, 0))
+            for r, row in enumerate(g):
+                for col, on in enumerate(row):
+                    if on:
+                        img.fill(c, (col * scale, r * scale, scale, scale))
+            if len(self._cache) > 6000:
+                self._cache.clear()
+            self._cache[key] = img
+        return img
+
+    def text_small(self, x, y, s, c, top=0, bottom=H, scale=SS):
         """数据流用的 4×5 小字体，超出 top–bottom 的部分不画（流到顶上就被切掉）。"""
+        self.s.set_clip((0, int(top), W, int(bottom - top)))
         for i, ch in enumerate(s):
-            g = SMALL.get(ch, SMALL[" "])
-            ox = x + i * 5
-            for r in range(5):
-                yy = y + r
-                if top <= yy < bottom:
-                    for col in range(4):
-                        if g[r][col]:
-                            self.pixel(ox + col, yy, c)
+            if ch != " ":
+                self.s.blit(self._glyph(SMALL, ch, c, scale), (int(x + i * 5 * scale), int(y)))
+        self.s.set_clip(None)
 
     def text(self, x, y, s, c, scale=1):
         for i, ch in enumerate(s.upper()):
-            g = GLYPHS.get(ch, GLYPHS[" "])
-            ox = x + i * 6 * scale
-            for r in range(7):
-                for col in range(5):
-                    if g[r][col]:
-                        if scale == 1:
-                            self.pixel(ox + col, y + r, c)
-                        else:
-                            self.fill_rect(ox + col * scale, y + r * scale, scale, scale, c)
+            if ch != " ":
+                self.s.blit(self._glyph(GLYPHS, ch, c, scale), (int(x + i * 6 * scale), int(y)))
 
 
 def chamfer_pts(cx, cy, w, h, ch):
-    """带切角的方块（八边形），和机身的斜切角一致。"""
+    """带切角的方块（八边形），和机身、屏幕框的斜切角一致。"""
     x0, x1, y0, y1 = cx - w / 2, cx + w / 2, cy - h / 2, cy + h / 2
     c = max(0.0, min(ch, w / 2, h / 2))
     return [(x0 + c, y0), (x1 - c, y0), (x1, y0 + c), (x1, y1 - c), (x1 - c, y1), (x0 + c, y1), (x0, y1 - c), (x0, y0 + c)]
 
 
-# ---------------------------------------------------------------- 指令检查（模拟器和 ESP32 都按这个来）
+# ---------------------------------------------------------------- 指令检查（模拟器和屏幕板都按这个来）
 def check(cmd) -> str:
     if not isinstance(cmd, dict):
         return "指令不是 JSON 对象"
@@ -228,6 +251,8 @@ def check(cmd) -> str:
         lines = cmd["log"] if isinstance(cmd["log"], list) else [cmd["log"]]
         if not all(isinstance(s, str) and len(s) <= LOG_MAX for s in lines):
             return f"log 每行最多 {LOG_MAX} 个字符"
+    if "status" in cmd and not isinstance(cmd["status"], dict):
+        return "status 要是 JSON 对象"
     return ""
 
 
@@ -250,11 +275,11 @@ class HudRenderer:
         self.fade = {k: 0.0 for k in OVERLAYS}
         self.level, self.level_t = 0.0, 0.0
         self.text = ""
-        self.status = {"temp": None, "sim": False, "bat": None}
+        self.status = {"temp": None, "sim": False, "bat": None, "spd": None, "load": None}
         self.flash_t = self.lock_t = -9.0
         self.sweep_t, self.next_sweep = -9.0, now + 4
-        self.bars = [0.0] * 7
-        self.bar_rand = [1.0] * 7
+        self.bars = [0.0] * 9
+        self.bar_rand = [1.0] * 9
         self.bar_next = 0.0
         # 眼睛出现/消失：pres 0 = 没有眼睛，1 = 完整的眼睛；中间是方块飞来飞去
         self.pres, self.pres_t = 0.0, 0.0
@@ -262,7 +287,7 @@ class HudRenderer:
         self._new_particles()
         # 数据流
         self.lines = []                           # 屏幕上的行：{"s": 文字, "y": 位置, "typed": 已经打出几个字}
-        self.queue = deque(maxlen=40)             # 还没进屏幕的行
+        self.queue = deque(maxlen=60)             # 还没进屏幕的行
         self.thermal, self.thermal_sim = None, False   # 热成像画面（set_thermal）
 
     # ---------------- 收指令
@@ -310,10 +335,10 @@ class HudRenderer:
     def _new_particles(self):
         """眼睛由一格一格的方块组成；每个方块从数据流里随机一个位置飞过来（解体时飞回去）。"""
         self.particles = []
-        for j in range(10):
-            for i in range(12):
-                u, v = (i + 0.5) / 12 * 2 - 1, (j + 0.5) / 10 * 2 - 1
-                self.particles.append((u, v, self.rng.uniform(4, W - 8), self.rng.uniform(TOP, BOTTOM - 4),
+        for j in range(12):
+            for i in range(15):
+                u, v = (i + 0.5) / 15 * 2 - 1, (j + 0.5) / 12 * 2 - 1
+                self.particles.append((u, v, self.rng.uniform(LOG_X, W - 30), self.rng.uniform(TOP, BOTTOM - 10),
                                        self.rng.uniform(0, 0.35)))
 
     # ---------------- 每帧
@@ -357,7 +382,7 @@ class HudRenderer:
             low += LINE_H
         gap = low - rest
         if gap > 0:
-            v = max(FLOW_MIN, gap * 2.5 + len(self.queue) * 4)
+            v = max(FLOW_MIN, gap * 2.5 + len(self.queue) * 10)
             step = min(gap, v * dt)
             for ln in self.lines:
                 ln["y"] -= step
@@ -374,6 +399,7 @@ class HudRenderer:
         ocx = CX + dx                                    # 两眼中间（跟着视线一起动）
         f = self.fade
 
+        self._grid(c)
         self._stream(c, self.cur["stream"])
         self._sweep(c)
         if f["scan"] > 0.02:
@@ -406,6 +432,15 @@ class HudRenderer:
             self._lowbat(c, f["lowbat"])
         self._edges(c)
 
+    def _grid(self, c):
+        """很淡的背景点阵，让黑屏有“屏幕在工作”的质感（休眠时不画）。"""
+        if self.mode == "sleep":
+            return
+        col = dim(c, 0.07)
+        for y in range(TOP + 12, BOTTOM, 24):
+            for x in range(24, W - 12, 24):
+                self.g.fill_rect(x, y, 2, 2, col)
+
     # ---- 数据流：细小的真实日志一直往上流
     def _stream(self, c, vis):
         """数据流：细小的字往上流，越往上越暗，到顶淡出；最新一行最亮，带打字光标。"""
@@ -417,48 +452,59 @@ class HudRenderer:
         for ln in self.lines:
             y = ln["y"]
             height = (y - TOP) / span                           # 0 = 顶上，1 = 底下
-            a = (0.15 + 0.55 * max(0.0, min(1.0, height)) ** 1.3) * vis
+            a = (0.12 + 0.5 * max(0.0, min(1.0, height)) ** 1.3) * vis
             if ln is last:
                 a = 0.95 * vis
             shown = ln["s"][:int(ln["typed"])]
-            g.text_small(12, round(y), shown, mix(BG, c, a), TOP, BOTTOM)
+            col = dim(c, a)
+            if ln is last:                                      # 最新一行前面的小方块
+                g.fill_rect(LOG_X - 12, round(y) + 3, 4, 4, col)
+            g.text_small(LOG_X, round(y), shown, col, TOP, BOTTOM)
             if ln["typed"] < len(ln["s"]) and int(self.now * 10) % 2 == 0:
-                g.fill_rect(12 + len(shown) * 5, round(y), 4, 5, mix(BG, c, a))   # 打字光标
+                g.fill_rect(LOG_X + len(shown) * 5 * SS, round(y), 4 * SS, 5 * SS, col)   # 打字光标
 
     def _breath(self):
         if self.mode in ("idle", "wake", "listen", "track"):
             return 0.9 + 0.1 * math.sin(2 * math.pi * self.now / 4)
         return 1.0
 
+    def _glow(self, cx, cy, w, h, ch, c, a, n=6, step=3):
+        """发光：往外画几圈越来越暗的切角框（不用透明，屏幕板上照样能画）。"""
+        for i in range(n, 0, -1):
+            self.g.poly(chamfer_pts(cx, cy, w + 2 * i * step, h + 2 * i * step, ch + i * step * 0.4),
+                        dim(c, a * 0.32 * (1 - i / (n + 1)) ** 1.5), step)
+
     def _eye(self, cx, cy, c):
         g, p = self.g, self.cur
         flash = max(0.0, 1 - (self.now - self.flash_t) / 0.25)
         col = mix(c, WHITE, flash)
         bright = min(1.0, p["bright"] * self._breath() + flash)
-        lit = mix(BG, col, bright)
+        lit = dim(col, bright)
         pts = chamfer_pts(cx, cy, p["w"], p["h"], p["ch"])
+        self._glow(cx, cy, p["w"], p["h"], p["ch"], col, bright)
         if p["fill"] > 0.02:
-            g.fill_poly(pts, mix(BG, lit, p["fill"]))
-            if p["fill"] > 0.5 and p["h"] > 12:                            # 内圈细线，做出面板感
-                g.poly(chamfer_pts(cx, cy, p["w"] - 7, p["h"] - 7, p["ch"] - 2), mix(BG, lit, 0.45))
+            g.fill_poly(pts, dim(lit, p["fill"]))
+            if p["fill"] > 0.5 and p["h"] > 30:                            # 高光：上沿一条亮边、内圈细线，做出面板感
+                g.poly(chamfer_pts(cx, cy, p["w"] - 18, p["h"] - 18, p["ch"] - 6), mix(lit, WHITE, 0.35), 2)
+                g.fill_rect(cx - p["w"] / 2 + p["ch"], cy - p["h"] / 2 + 6, p["w"] - 2 * p["ch"], 3, mix(lit, WHITE, 0.55))
         else:
             g.fill_poly(pts, BG)                                           # 空心准星框里挡住数据流
-        g.poly(pts, lit)
+        g.poly(pts, lit, 3)
         if p["ret"] > 0.02:                                                # 准星框
             r = p["ret"]
             lock = min(1.0, (self.now - self.lock_t) / 0.3)
-            hw, hh = p["w"] / 2 + 4 + (1 - lock) * 12, p["h"] / 2 + 4 + (1 - lock) * 8
-            rc = mix(BG, lit, r)
+            hw, hh = p["w"] / 2 + 12 + (1 - lock) * 36, p["h"] / 2 + 12 + (1 - lock) * 24
+            rc = dim(lit, r)
             for sx in (-1, 1):
                 for sy in (-1, 1):
                     x, y = cx + sx * hw, cy + sy * hh
-                    g.line(x, y, x - sx * 7, y, rc)
-                    g.line(x, y, x, y - sy * 7, rc)
-            g.line(cx - 9, cy, cx - 3, cy, rc)
-            g.line(cx + 3, cy, cx + 9, cy, rc)
-            g.line(cx, cy - 9, cx, cy - 3, rc)
-            g.line(cx, cy + 3, cx, cy + 9, rc)
-            g.pixel(cx, cy, rc)
+                    g.line(x, y, x - sx * 21, y, rc, 3)
+                    g.line(x, y, x, y - sy * 21, rc, 3)
+            g.line(cx - 27, cy, cx - 9, cy, rc, 3)
+            g.line(cx + 9, cy, cx + 27, cy, rc, 3)
+            g.line(cx, cy - 27, cx, cy - 9, rc, 3)
+            g.line(cx, cy + 9, cx, cy + 27, rc, 3)
+            g.fill_rect(cx - 2, cy - 2, 5, 5, rc)
 
     def _eye_blocks(self, cx, cy, c):
         """眼睛拼合/解体的中间过程：一格一格的方块在数据流和眼睛之间飞。"""
@@ -471,49 +517,52 @@ class HudRenderer:
             ax, ay = abs(u * w / 2), abs(v * h / 2)
             if ax + ay > lim:
                 continue
-            if hollow and ax < w / 2 - 4 and ay < h / 2 - 4 and ax + ay < lim - 4:
+            if hollow and ax < w / 2 - 12 and ay < h / 2 - 12 and ax + ay < lim - 12:
                 continue
             q = max(0.0, min(1.0, (pres - delay) / 0.65))
             e = 1 - (1 - q) ** 3
             x, y = sx + (tx - sx) * e, sy + (ty - sy) * e
-            self.g.fill_rect(x - 1, y - 1, 3, 3, mix(BG, c, 0.25 + 0.75 * q))
+            s = 4 + 3 * q
+            self.g.fill_rect(x - s / 2, y - s / 2, s, s, dim(c, 0.25 + 0.75 * q))
 
     def _sweep(self, c):
-        p = (self.now - self.sweep_t) / 0.9
+        p = (self.now - self.sweep_t) / 1.1
         if 0 <= p <= 1 and self.mode == "idle":
             x = p * W
-            for i, a in enumerate((0.6, 0.3, 0.15)):
-                self.g.line(x - i * 2, TOP - 1, x - i * 2, BOTTOM, mix(BG, c, a))
+            for i, a in enumerate((0.6, 0.3, 0.15, 0.07)):
+                self.g.line(x - i * 6, TOP, x - i * 6, BOTTOM, dim(c, a), 3)
 
     def _scan(self, c, f):
         ph = ((self.now - self.mode_t) / 1.6) % 2
         x = (ph if ph < 1 else 2 - ph) * (W - 1)
         back = -1 if ph < 1 else 1
-        for y in range(TOP + 1, BOTTOM, 6):                                # 淡淡的横向网格
-            self.g.line(0, y, W, y, mix(BG, c, 0.1 * f))
-        for i, a in enumerate((1.0, 0.45, 0.25, 0.12)):
-            self.g.line(x + back * i * 2, TOP - 1, x + back * i * 2, BOTTOM, mix(BG, c, a * f))
+        for y in range(TOP + 6, BOTTOM, 18):                               # 淡淡的横向网格
+            self.g.line(0, y, W, y, dim(c, 0.1 * f))
+        for i, a in enumerate((1.0, 0.45, 0.25, 0.12, 0.06)):
+            self.g.line(x + back * i * 6, TOP, x + back * i * 6, BOTTOM, dim(c, a * f), 3)
         pct = int(((self.now - self.mode_t) / 3.2 * 100) % 100)
         s = f"SWEEP {pct:02d}%"
-        self.g.fill_rect(CX - text_width(s) / 2 - 2, BOTTOM - 9, text_width(s) + 4, 9, BG)
-        self.g.text(CX - text_width(s) / 2, BOTTOM - 8, s, mix(BG, c, f))
+        tw = text_width(s, 3)
+        self.g.fill_rect(CX - tw / 2 - 10, BOTTOM - 40, tw + 20, 34, BG)
+        self.g.rect(CX - tw / 2 - 10, BOTTOM - 40, tw + 20, 34, dim(c, 0.5 * f), 2)
+        self.g.text(CX - tw / 2, BOTTOM - 33, s, dim(c, f), 3)
 
     def set_thermal(self, frame, sim=False):
-        """热成像画面：h 行 × w 列的温度（°C），从左上角开始，列 0 = 狗的左边。
-        ESP32 上是固件自己从 MLX90640 读到的那一帧；模拟器里是假房间。"""
+        """热成像画面：h 行 × w 列的温度（°C），从左上角开始，列 0 = 机器人的左边。
+        屏幕板上是传感器板转过来的那一帧（或大脑转发）；模拟器里是假房间。"""
         self.thermal, self.thermal_sim = frame, sim
 
     def _thermal(self, f):
-        """热成像（全屏）：中间是热画面（每个点画成 3×2 像素），最热点用角标框出来；
-        左边写最高、最低温度，右边是色标。画面左右镜像，像照镜子：狗左边的东西出现在你看到的右边。"""
+        """热成像（全屏）：中间是热画面（每个点画成 10×10 像素），最热点用角标框出来；
+        左边写最高、最低温度，右边是色标。画面左右镜像，像照镜子：它左边的东西出现在你看到的右边。"""
         fr = self.thermal
         if not fr:
             s = "NO THERMAL DATA"
-            self.g.text(CX - text_width(s) / 2, CY - 3, s, mix(BG, WHITE, f))
+            self.g.text(CX - text_width(s, 3) / 2, CY - 10, s, dim(WHITE, f), 3)
             return
         h, w = len(fr), len(fr[0])
-        cw, chh = 3, 2
-        x0, y0 = CX - w * cw // 2, CY - h * chh // 2 + 1
+        cs = 10
+        x0, y0 = CX - w * cs // 2, CY - h * cs // 2
         lo = min(min(r) for r in fr)
         hi = max(max(r) for r in fr)
         span = max(hi - lo, 4.0)                                  # 温差太小时别把噪声放大成满屏花
@@ -525,145 +574,182 @@ class HudRenderer:
                 v = row[c]
                 if v >= fr[hr][hc]:
                     hr, hc = r, c
-                self.g.fill_rect(x0 + (w - 1 - c) * cw, y0 + r * chh, cw, chh, mix(BG, iron(((v - lo) / span) ** 0.5), f))
-        bx, by = x0 + (w - 1 - hc) * cw + 1, y0 + hr * chh + 1      # 最热点：四个角标
-        col = mix(BG, WHITE, f)
+                self.g.fill_rect(x0 + (w - 1 - c) * cs, y0 + r * cs, cs, cs, mix(BG, iron(((v - lo) / span) ** 0.5), f))
+        self.g.rect(x0 - 4, y0 - 4, w * cs + 8, h * cs + 8, dim(CYAN, 0.5 * f), 2)
+        bx, by = x0 + (w - 1 - hc) * cs + cs // 2, y0 + hr * cs + cs // 2      # 最热点：四个角标
+        col = dim(WHITE, f)
         for sx in (-1, 1):
             for sy in (-1, 1):
-                cx, cy = bx + sx * 5, by + sy * 5
-                self.g.line(cx, cy, cx - sx * 2, cy, col)
-                self.g.line(cx, cy, cx, cy - sy * 2, col)
-        lx = x0 - 8                                               # 左边：数字
+                cx, cy = bx + sx * 16, by + sy * 16
+                self.g.line(cx, cy, cx - sx * 8, cy, col, 3)
+                self.g.line(cx, cy, cx, cy - sy * 8, col, 3)
+        lx = x0 - 28                                              # 左边：数字
         for k, (name, v) in enumerate((("MAX", hi), ("MIN", lo))):
             t = f"{name} {v:.1f}C"
-            self.g.text(lx - text_width(t), CY - 10 + k * 11, t, mix(BG, WHITE if k == 0 else CYAN, f))
+            self.g.text(lx - text_width(t, 3), CY - 34 + k * 38, t, dim(WHITE if k == 0 else CYAN, f), 3)
         if self.thermal_sim:
-            self.g.text(lx - text_width("SIM"), CY + 12, "SIM", mix(BG, AMBER, f))
-        rx = x0 + w * cw + 8                                      # 右边：色标
-        top, bot = y0 + 2, y0 + h * chh - 2
-        for y in range(top, bot):
-            self.g.line(rx, y, rx + 3, y, mix(BG, iron((1 - (y - top) / (bot - top)) ** 0.5), f))
-        self.g.text(rx + 7, top - 1, f"{hi:.0f}", mix(BG, WHITE, f))
-        self.g.text(rx + 7, bot - 6, f"{lo:.0f}", mix(BG, CYAN, f))
+            self.g.text(lx - text_width("SIM", 2), CY + 50, "SIM", dim(AMBER, f), 2)
+        rx = x0 + w * cs + 28                                     # 右边：色标
+        top, bot = y0, y0 + h * cs
+        for y in range(top, bot, 2):
+            self.g.fill_rect(rx, y, 14, 2, mix(BG, iron((1 - (y - top) / (bot - top)) ** 0.5), f))
+        self.g.text(rx + 24, top, f"{hi:.0f}", dim(WHITE, f), 3)
+        self.g.text(rx + 24, bot - 21, f"{lo:.0f}", dim(CYAN, f), 3)
 
     def _online(self, ocx, c, f):
-        col = mix(BG, WHITE, f)
-        w = text_width("ONLINE")
-        self.g.fill_rect(ocx - w / 2 - 6, CY - 7, w + 12, 15, BG)
-        self.g.text(ocx - w / 2, CY - 3, "ONLINE", col)
+        col = dim(WHITE, f)
+        w = text_width("ONLINE", 3)
+        self.g.fill_rect(ocx - w / 2 - 18, CY - 22, w + 36, 45, BG)
+        self.g.text(ocx - w / 2, CY - 10, "ONLINE", col, 3)
         for sx in (-1, 1):
-            x = ocx + sx * (w / 2 + 4)
-            self.g.line(x, CY - 6, x, CY + 6, mix(BG, c, f))
-            self.g.line(x, CY - 6, x - sx * 3, CY - 6, mix(BG, c, f))
-            self.g.line(x, CY + 6, x - sx * 3, CY + 6, mix(BG, c, f))
+            x = ocx + sx * (w / 2 + 12)
+            self.g.line(x, CY - 18, x, CY + 18, dim(c, f), 3)
+            self.g.line(x, CY - 18, x - sx * 9, CY - 18, dim(c, f), 3)
+            self.g.line(x, CY + 18, x - sx * 9, CY + 18, dim(c, f), 3)
 
     def _bars(self, ocx, c, f):
         if self.now > self.bar_next:
             self.bar_rand = [self.rng.uniform(0.6, 1.0) for _ in self.bars]
             self.bar_next = self.now + 0.08
-        shape = (0.45, 0.7, 0.9, 1.0, 0.9, 0.7, 0.45)
-        for i in range(7):
-            target = 2 + 26 * self.level * shape[i] * self.bar_rand[i]
+        shape = (0.35, 0.55, 0.75, 0.9, 1.0, 0.9, 0.75, 0.55, 0.35)
+        n = len(shape)
+        for i in range(n):
+            target = 6 + 96 * self.level * shape[i] * self.bar_rand[i]
             self.bars[i] += (target - self.bars[i]) * 0.5
             h = self.bars[i]
-            self.g.fill_rect(ocx - 20 + i * 6, CY - h / 2, 4, h, mix(BG, c, f * (0.5 + 0.5 * shape[i])))
+            self.g.fill_rect(ocx - (n * 16 - 6) / 2 + i * 16, CY - h / 2, 10, h, dim(c, f * (0.5 + 0.5 * shape[i])))
 
     def _think(self, ocx, dx, dy, c, f):
         k = int(self.now * 6) % 3
         for i in range(3):
-            self.g.fill_rect(ocx - 9 + i * 7, CY - 2 + dy, 4, 4, mix(BG, c, f * (1.0 if i == k else 0.25)))
+            self.g.fill_rect(ocx - 27 + i * 21, CY - 6 + dy, 12, 12, dim(c, f * (1.0 if i == k else 0.25)))
         p = self.cur
         for side in (-1, 1):                                               # 眼睛下面的进度条来回跑
             ex = CX + side * EYE_DX + dx
-            x0, y = ex - p["w"] / 2, CY + dy + p["h"] / 2 + 5
-            self.g.line(x0, y, x0 + p["w"], y, mix(BG, c, 0.25 * f))
-            s = (self.now * 60) % (p["w"] + 12) - 12
-            self.g.line(max(x0, x0 + s), y, min(x0 + p["w"], x0 + s + 12), y, mix(BG, c, f))
+            x0, y = ex - p["w"] / 2, CY + dy + p["h"] / 2 + 18
+            self.g.line(x0, y, x0 + p["w"], y, dim(c, 0.25 * f), 3)
+            s = (self.now * 180) % (p["w"] + 36) - 36
+            self.g.line(max(x0, x0 + s), y, min(x0 + p["w"], x0 + s + 36), y, dim(c, f), 3)
 
     def _wave(self, ocx, c, f):
-        a = 2 + 13 * self.level
+        a = 6 + 40 * self.level
         pts = []
-        for i in range(27):
-            x = ocx - 26 + i * 2
-            env = math.sin(math.pi * i / 26)
-            y = CY + env * a * (0.7 * math.sin(x * 0.35 - self.now * 9) + 0.3 * math.sin(x * 0.9 + self.now * 5))
+        for i in range(61):
+            x = ocx - 90 + i * 3
+            env = math.sin(math.pi * i / 60)
+            y = CY + env * a * (0.7 * math.sin(x * 0.11 - self.now * 9) + 0.3 * math.sin(x * 0.3 + self.now * 5))
             pts.append((x, y))
-        col = mix(BG, c, f)
+        col = dim(c, f)
         for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
-            self.g.line(x0, y0, x1, y1, col)
+            self.g.line(x0, y0, x1, y1, col, 3)
 
     def _box(self, w, h, c, f):
         """屏幕中间的提示框：挡住后面的数据流，带边框和切角。"""
-        pts = chamfer_pts(CX, CY, w, h, 5)
+        pts = chamfer_pts(CX, CY, w, h, 15)
+        self._glow(CX, CY, w, h, 15, c, f, n=4)
         self.g.fill_poly(pts, BG)
-        self.g.poly(pts, mix(BG, c, f))
+        self.g.poly(pts, dim(c, f), 3)
 
     def _alert(self, c, f):
         on = (self.now * 2) % 1 < 0.6
-        self._box(120, 34, c, f)
-        col = mix(BG, c, f * (1.0 if on else 0.35))
-        tri = [(CX - 38, CY - 10), (CX - 26, CY + 10), (CX - 50, CY + 10)]
-        self.g.poly(tri, col)
-        self.g.text(CX - 40, CY - 2, "!", col)
+        self._box(400, 120, c, f)
+        col = dim(c, f * (1.0 if on else 0.35))
+        tri = [(CX - 135, CY - 36), (CX - 95, CY + 33), (CX - 175, CY + 33)]
+        self.g.poly(tri, col, 4)
+        self.g.text(CX - 141, CY - 12, "!", col, 4)
         msg = self.text or "WARNING"
-        self.g.text(CX - 18, CY - 8, "WARNING", mix(BG, c, f))
-        self.g.text(CX - 18, CY + 2, msg[:9], mix(BG, WHITE, f))
-        off = int(self.now * 12) % 6                                       # 底部移动的警示斜纹
-        for x in range(104 + off, 214, 6):
-            self.g.line(x, H - 2, x + 3, H - 5, mix(BG, c, 0.6 * f))
+        self.g.text(CX - 60, CY - 30, "WARNING", dim(c, f), 4)
+        self.g.text(CX - 60, CY + 10, msg[:12], dim(WHITE, f), 3)
+        off = int(self.now * 36) % 24                                       # 底部移动的警示斜纹
+        for x in range(CX - 200 + off, CX + 200, 24):
+            self.g.fill_poly([(x, BOTTOM - 4), (x + 10, BOTTOM - 4), (x + 22, BOTTOM - 16), (x + 12, BOTTOM - 16)], dim(c, 0.6 * f))
 
     def _error(self, c, f):
         on = (self.now * 2) % 1 < 0.6
-        self._box(110, 34, c, f)
-        w = text_width("ERR", 2)
-        self.g.text(CX - w / 2 - 22, CY - 7, "ERR", mix(BG, c, f * (1.0 if on else 0.3)), 2)
-        self.g.text(CX + 14, CY - 3, (self.text or "SYS")[:6], mix(BG, WHITE, f))
+        self._box(380, 120, c, f)
+        w = text_width("ERR", 6)
+        self.g.text(CX - w / 2 - 70, CY - 21, "ERR", dim(c, f * (1.0 if on else 0.3)), 6)
+        self.g.text(CX + 40, CY - 10, (self.text or "SYS")[:6], dim(WHITE, f), 3)
 
     def _sleep(self, c, f):
         """休眠：数据流停了，中间只剩一个慢慢闪的光标和一条很暗的线。"""
         a = (0.3 + 0.25 * math.sin(2 * math.pi * self.now / 5)) * f
-        self.g.line(CX - 60, CY, CX + 60, CY, mix(BG, c, a * 0.5))
+        self.g.line(CX - 180, CY, CX + 180, CY, dim(c, a * 0.5), 2)
         if int(self.now * 1.5) % 2 == 0:
-            self.g.fill_rect(CX - 2, CY - 4, 5, 7, mix(BG, c, a))
+            self.g.fill_rect(CX - 6, CY - 12, 14, 21, dim(c, a))
 
     def _lowbat(self, c, f):
         on = self.now % 1 < 0.6
         bat = self.status.get("bat")
         lv = 0.1 if bat is None else max(0.0, min(1.0, bat / 100))
-        self._box(96, 30, c, f)
-        col = mix(BG, c, f)
-        self.g.rect(CX - 38, CY - 6, 24, 12, col)
-        self.g.fill_rect(CX - 14, CY - 2, 2, 4, col)
+        self._box(320, 110, c, f)
+        col = dim(c, f)
+        self.g.rect(CX - 125, CY - 21, 84, 42, col, 3)
+        self.g.fill_rect(CX - 41, CY - 8, 8, 16, col)
         if on:
-            self.g.fill_rect(CX - 36, CY - 4, max(1, 20 * lv), 8, mix(BG, RED, f))
+            self.g.fill_rect(CX - 118, CY - 14, max(3, 70 * lv), 28, mix(BG, RED, f))
         s = "--%" if bat is None else f"{int(bat)}%"
-        self.g.text(CX - 4, CY - 8, "CHARGE", mix(BG, c, f))
-        self.g.text(CX - 4, CY + 2, s, mix(BG, WHITE, f))
+        self.g.text(CX - 12, CY - 28, "CHARGE", dim(c, f), 3)
+        self.g.text(CX - 12, CY + 6, s, dim(WHITE, f), 3)
 
+    # ---- 上下两条状态栏和四角
     def _edges(self, c):
         g = self.g
-        dim = 0.35 if self.mode == "sleep" else 1.0
-        frame = mix(BG, c, 0.6 * dim)
-        L = 8
-        for x, sx in ((0, 1), (W - 1, -1)):                                # 四个角标
-            for y, sy in ((0, 1), (H - 1, -1)):
-                g.line(x, y, x + sx * L, y, frame)
-                g.line(x, y, x, y + sy * L, frame)
-        txt = mix(BG, c, 0.85 * dim)
-        g.text(12, 2, LABEL[self.mode], txt)
-        temp = self.status.get("temp")
-        ts = "T --" if temp is None else f"T{temp:.1f}C" + ("*" if self.status.get("sim") else "")
-        g.text(W - 12 - text_width(ts), 2, ts, txt)
+        dm = 0.35 if self.mode == "sleep" else 1.0
+        frame = dim(c, 0.6 * dm)
+        L = 26
+        for x, sx in ((1, 1), (W - 2, -1)):                                # 四个角标
+            for y, sy in ((1, 1), (H - 2, -1)):
+                g.line(x, y, x + sx * L, y, frame, 3)
+                g.line(x, y, x, y + sy * L, frame, 3)
+        rule = dim(c, 0.22 * dm)                                           # 上下分隔线：两头斜切
+        for y, sy in ((TOP - 8, 1), (BOTTOM + 6, -1)):
+            g.line(40, y, W - 40, y, rule)
+            g.line(40, y, 30, y - sy * 10, rule)
+            g.line(W - 40, y, W - 30, y - sy * 10, rule)
+        txt = dim(c, 0.9 * dm)
+        sub = dim(c, 0.5 * dm)
+        # 上：模式（大字）、名字、电量
+        g.fill_poly(chamfer_pts(36, 25, 10, 18, 3), txt)
+        g.text(50, 15, LABEL[self.mode], txt, 3)
+        name = "007V"
+        g.text(CX - text_width(name, 2) / 2, 18, name, sub, 2)
+        for i in range(-3, 4):                                             # 名字两边的小刻度
+            if i:
+                x = CX + i * 14 + (30 if i > 0 else -30)
+                g.line(x, 24 - (3 if i % 3 == 0 else 1), x, 26 + (3 if i % 3 == 0 else 1), sub)
         bat = self.status.get("bat")
-        bs = "BAT --" if bat is None else f"BAT {int(bat)}%"
-        g.text(W - 12 - text_width(bs), H - 9, bs, txt)
+        bs = "--%" if bat is None else f"{int(bat)}%"
+        bx = W - 30 - text_width(bs, 3)
+        g.text(bx, 15, bs, txt, 3)
+        ix = bx - 58                                                       # 电池图标
+        g.rect(ix, 15, 44, 21, txt, 2)
+        g.fill_rect(ix + 44, 21, 4, 9, txt)
+        lv = 0 if bat is None else max(0.0, min(1.0, bat / 100))
+        for k in range(5):
+            if lv > k / 5 + 0.02:
+                g.fill_rect(ix + 4 + k * 8, 19, 6, 13, AMBER if lv < 0.2 else txt)
+        # 下：左边文字或坐标，右边速度、载重、温度
         if self.mode == "track":
-            g.text(12, H - 9, f"X{self.cur['gx']:+.2f} Y{self.cur['gy']:+.2f}", txt)
+            g.text(30, H - 38, f"X{self.cur['gx']:+.2f} Y{self.cur['gy']:+.2f}", txt, 3)
         elif self.text and self.mode not in ("alert", "error"):
-            g.text(12, H - 9, self.text, txt)
+            g.text(30, H - 38, self.text, txt, 3)
+        spd, load, temp = self.status.get("spd"), self.status.get("load"), self.status.get("temp")
+        items = [("SPD", "--" if spd is None else f"{spd:.1f}", "M/S"),
+                 ("LOAD", "--" if load is None else f"{load:.1f}", "KG"),
+                 ("T", "--" if temp is None else f"{temp:.1f}" + ("*" if self.status.get("sim") else ""), "C")]
+        x = W - 30
+        for label, val, unit in reversed(items):
+            x -= small_width(unit)
+            g.text_small(x, H - 26, unit, sub, scale=SS)
+            x -= 6 + text_width(val, 3)
+            g.text(x, H - 38, val, txt, 3)
+            x -= 8 + small_width(label)
+            g.text_small(x, H - 26, label, sub, scale=SS)
+            x -= 26
         if self.fade["alert"] < 0.5:                                       # 底部刻度尺
-            for i, x in enumerate(range(104, 182, 6)):
-                g.line(x, H - 2, x, H - (4 if i % 5 == 0 else 3), mix(BG, c, 0.35 * dim))
+            for i, xx in enumerate(range(CX - 150, CX - 30, 10)):
+                g.line(xx, H - 6, xx, H - (14 if i % 5 == 0 else 10), dim(c, 0.35 * dm))
 
 
 def iron(t):

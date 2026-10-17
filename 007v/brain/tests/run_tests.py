@@ -342,6 +342,35 @@ async def test_head_link():
     check("待机时摸头顶：唤醒并开始听", b.state == "listening" and b.via == "touch" and b.eyes.mode_now in ("wake", "listen"))
     await feel({"ev": "touch", "zone": "chin", "action": "tap"})
     check("在听的时候摸下巴：不听了", b.state == "idle")
+    await feel({"ev": "touch", "zone": "screen", "action": "tap"})
+    check("待机时点屏幕（007v 的触摸屏）：和摸头顶一样，唤醒并开始听", b.state == "listening" and b.via == "touch")
+    await feel({"ev": "touch", "zone": "chin", "action": "tap"})
+
+    from dog.eyes import SerialEyes                       # 两块板分线：屏幕指令去屏幕板，红外、热成像去传感器板
+
+    class FakePort:
+        def __init__(self):
+            self.out = []
+
+        def write(self, data):
+            self.out.append(json.loads(data.decode("utf-8")))
+
+    se = SerialEyes.__new__(SerialEyes)
+    se.ser, se.sensor = FakePort(), FakePort()
+    se.mode_now = "idle"
+    se.mode("listen")
+    se.send_ir({"op": "cancel"})
+    se.send_thermal({"hz": 1})
+    check("两块板分线：屏幕指令只去屏幕板，红外和热成像只去传感器板",
+          se.ser.out == [{"mode": "listen"}] and [list(c)[0] for c in se.sensor.out] == ["ir", "thermal"], f"{se.ser.out} / {se.sensor.out}")
+    se.base_hz = 1
+    se.mode("thermal")
+    se.mode("idle")
+    check("分线时切到热成像：让传感器板每秒发 4 帧，切走恢复 1 帧",
+          [c.get("thermal") for c in se.sensor.out[2:]] == [{"hz": 4}, {"hz": 1}], str(se.sensor.out[2:]))
+    se.sensor = None
+    se.send_ir({"op": "cancel"})
+    check("只接一根线时：红外指令也走屏幕板那根", se.ser.out[-1] == {"ir": {"op": "cancel"}})
 
     plays.clear()
     task = asyncio.create_task(b.respond("帮我扫描一下客厅", via="touch"))   # 假回答固定说两句

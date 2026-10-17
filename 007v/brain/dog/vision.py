@@ -427,7 +427,7 @@ async def preview(sight: Sight):
                 cv2.putText(frame, f"{score:.2f}", (p1[0], p1[1] - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
             cv2.putText(frame, f"faces {len(faces)}  motion {motion:.2f}  [s] snapshot  [q] close",
                         (10, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-            cv2.imshow("RoboDog camera (debug)", frame)
+            cv2.imshow("007v camera (debug)", frame)
         k = cv2.waitKey(1) & 0xFF
         if k == ord("q"):
             cv2.destroyAllWindows()

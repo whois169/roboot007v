@@ -1,7 +1,7 @@
-"""眼睛（长条屏 HUD）。大脑只发统一的 JSON 指令，不关心另一头是谁：
+"""眼睛（宽屏 HUD）。大脑只发统一的 JSON 指令，不关心另一头是谁：
 
-  sim      笔记本上的模拟器窗口（dog/hud.py 渲染，284×76 原始分辨率放大显示）
-  serial   以后：同样的 JSON 一行一条，通过串口发给头部 ESP32，由它渲染
+  sim      笔记本上的模拟器窗口（dog/hud.py 渲染，800×440 原始分辨率）
+  serial   同样的 JSON 一行一条，通过串口发给屏幕板（微雪 4.3B），由它渲染
   console  只在控制台打印模式变化（没有显示器时用）
 
 指令格式见 dog/hud.py 开头。模拟器收到的也是“先变成一行 JSON 文字、再解析”的结果，
@@ -26,7 +26,7 @@ from . import hud, protocol, thermal
 log = logging.getLogger("eyes")
 
 DIRECTIONS = ("center", "left", "right", "up", "down")
-# look 技能的方向 -> gaze（按狗自己的方向：左 = -1）
+# look 技能的方向 -> gaze（按机器人自己的方向：左 = -1）
 GAZE = {"center": [0, 0], "left": [-0.8, 0], "right": [0.8, 0], "up": [0, -0.8], "down": [0, 0.8]}
 
 
@@ -117,14 +117,14 @@ class Eyes:
 
 
 class SimEyes(Eyes):
-    """模拟器：一个 pygame 窗口，按 284×76 原始分辨率画，再放大 scale 倍显示。"""
+    """模拟器：一个 pygame 窗口，按屏幕亮区 800×440 原始分辨率画，再按 scale 缩放显示。"""
 
     KEYS = "1234567890-="      # 数字键依次切换 12 个模式
 
-    def __init__(self, scale=3, fps=30, name="RoboDog", **_):
+    def __init__(self, scale=1.0, fps=30, name="007v", **_):
         super().__init__()
         self.scale, self.fps = scale, fps
-        self.title = f"{name} HUD 模拟器（284×76）"
+        self.title = f"{name} HUD 模拟器（{hud.W}×{hud.H}）"
         self._task = None
         self._ir_until = 0.0         # 模拟红外：学习到什么时候为止
         self._th_hz, self._th_next, self._th_draw = 0, 0.0, 0.0   # 模拟热成像：发给大脑每秒几帧、下一帧何时发、何时重画
@@ -137,7 +137,7 @@ class SimEyes(Eyes):
         import pygame
         self.pg = pygame
         pygame.init()
-        self.win = pygame.display.set_mode((hud.W * self.scale, hud.H * self.scale))
+        self.win = pygame.display.set_mode((int(hud.W * self.scale), int(hud.H * self.scale)))
         pygame.display.set_caption(self.title)
         self.canvas = pygame.Surface((hud.W, hud.H))
         self.r = hud.HudRenderer(hud.Gfx(self.canvas), now=time.monotonic())
@@ -260,41 +260,65 @@ class SimEyes(Eyes):
 
 
 class SerialEyes(Eyes):
-    """发给头部 ESP32：每条指令一行 JSON（UTF-8，结尾 \\n）。ESP32 固件以后写，按 dog/hud.py 渲染。"""
+    """真硬件：屏幕板（port）收屏幕指令，传感器板（sensor_port）收红外、热成像指令；两根线来的事件都交给大脑。
+    只写了 port 时，所有指令都走这一根线（以前一块板的接法）。每条指令一行 JSON（UTF-8，结尾 \\n）。"""
 
-    def __init__(self, port, baud=115200, **_):
+    def __init__(self, port, baud=115200, sensor_port="", **_):
         super().__init__()
         try:
             import serial
         except ImportError:
             raise SystemExit("串口眼睛要先安装：pip install pyserial")
         self.ser = serial.Serial(port, baud, timeout=0.1)
+        self.sensor = serial.Serial(sensor_port, baud, timeout=0.1) if sensor_port else None
         self.is_real = True
-        self._task = None
-        log.info("眼睛：串口 %s @ %d", port, baud)
+        self._tasks = []
+        self.base_hz = 0                 # 大脑平时要的热画面频率；屏幕切到 THERMAL 时临时提到 THERMAL_HZ
+        log.info("屏幕板：串口 %s；传感器板：%s", port, sensor_port or "没单独接（和屏幕板共用一根）")
+
+    THERMAL_HZ = 4
+
+    def send(self, cmd: dict):
+        """分线时，屏幕自己读不到热成像：切到 THERMAL 就让传感器板每秒发 4 帧（转给屏幕板画），切走再恢复。"""
+        was = self.mode_now
+        super().send(cmd)
+        if self.sensor and "mode" in cmd and (was == "thermal") != (self.mode_now == "thermal"):
+            hz = self.THERMAL_HZ if self.mode_now == "thermal" else self.base_hz
+            self._send_line(json.dumps({"thermal": {"hz": hz}}, separators=(",", ":")))
+
+    def send_thermal(self, th: dict):
+        self.base_hz = th.get("hz", 0) if isinstance(th, dict) else 0
+        if self.sensor and self.mode_now == "thermal":
+            th = {"hz": max(self.base_hz, self.THERMAL_HZ)}
+        super().send_thermal(th)
 
     async def start(self):
-        self._task = asyncio.create_task(self._read_loop())
+        self._tasks = [asyncio.create_task(self._read_loop(s)) for s in (self.ser, self.sensor) if s]
 
-    async def _read_loop(self):
-        """一直读 ESP32 发来的行（在线程里读，不卡住大脑）。"""
+    async def _read_loop(self, ser):
+        """一直读一块板发来的行（在线程里读，不卡住大脑）。"""
         buf = b""
         while True:
-            chunk = await asyncio.to_thread(self.ser.read, 256)
+            chunk = await asyncio.to_thread(ser.read, 256)
             if not chunk:
                 continue
             buf += chunk
             while b"\n" in buf:
                 line, buf = buf.split(b"\n", 1)
+                if ser is self.sensor and b'"ev":"thermal"' in line[:40]:
+                    self.ser.write(line + b"\n")        # 热画面原样转给屏幕板，THERMAL 模式用它画
                 self.receive_line(line.decode("utf-8", errors="replace"))
 
     def _send_line(self, line):
-        self.ser.write((line + "\n").encode("utf-8"))
+        to_sensor = self.sensor and (line.startswith('{"ir"') or line.startswith('{"thermal"'))
+        (self.sensor if to_sensor else self.ser).write((line + "\n").encode("utf-8"))
 
     async def close(self):
-        if self._task:
-            self._task.cancel()
-        self.ser.close()
+        for t in self._tasks:
+            t.cancel()
+        for s in (self.ser, self.sensor):
+            if s:
+                s.close()
 
 
 class ConsoleEyes(Eyes):
@@ -310,7 +334,7 @@ class ConsoleEyes(Eyes):
             log.info("[眼睛] %s %s", hud.LABEL[cmd["mode"]], cmd.get("text", ""))
 
 
-def make(cfg_eyes: dict, persona_name="RoboDog") -> Eyes:
+def make(cfg_eyes: dict, persona_name="007v") -> Eyes:
     kind = cfg_eyes.get("type", "sim")
     if kind in ("sim", "window"):
         return SimEyes(name=persona_name, **cfg_eyes.get("sim", cfg_eyes.get("window", {})))

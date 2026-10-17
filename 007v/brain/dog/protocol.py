@@ -1,4 +1,6 @@
-"""大脑 ↔ 头部 ESP32 的通信协议：一根 USB 串口，两个方向都是“一行一条 JSON”（UTF-8，结尾 \\n）。
+"""大脑 ↔ 头部两块板的通信协议：每块板一根 USB 串口，两个方向都是“一行一条 JSON”（UTF-8，结尾 \\n）。
+机械狗007v 头里有两块板：屏幕板（微雪 4.3B，收屏幕指令、发屏幕触摸）和传感器板（旧 ESP32-S3，红外、热成像、传感器、隐私开关）。
+两块板的事件格式完全一样，大脑不管是从哪根线来的；只接一根线时，所有指令都走这一根（和以前一样）。
 
 大脑 → ESP32：屏幕指令（格式和检查在 dog/hud.py：mode / gaze / level / text / hold / status / log）
               红外指令（带 "ir" 字段，格式见 check_ir_cmd()）：
@@ -11,7 +13,7 @@ ESP32 → 大脑：事件，都带 "ev" 字段，格式见 EVENTS，进来先过
 
   {"ev":"hello","fw":"0.1.0","caps":["touch","light"]}       开机或重连时发一次：固件版本、有哪些功能
   {"ev":"hb","up":1234}                                       心跳，每秒一次；up = 开机多少秒。3 秒收不到就算掉线
-  {"ev":"touch","zone":"head","action":"tap"}                触摸：zone = head 头顶 / chin 下巴；action = tap 点一下 / hold 按住 1 秒以上 / release 松开
+  {"ev":"touch","zone":"head","action":"tap"}                触摸：zone = head 头顶 / chin 下巴 / screen 屏幕（屏幕板的触摸屏）；action = tap 点一下 / hold 按住 1 秒以上 / release 松开
   {"ev":"sensor","name":"light","value":120.5,"unit":"lux"}   传感器读数，name 见 SENSORS
   {"ev":"privacy","on":true}                                  隐私开关：on = true 表示拨到“隐私”（相机和麦克风已经硬件断电）
   {"ev":"error","code":"I2C","text":"BH1750 no ack"}          ESP32 自己的错误
@@ -20,17 +22,17 @@ ESP32 → 大脑：事件，都带 "ev" 字段，格式见 EVENTS，进来先过
   {"ev":"ir","op":"sent"}                                     码发完了
   {"ev":"ir","op":"fail","text":"..."}                        学习或发送出错
   {"ev":"thermal","w":32,"h":24,"min":21.3,"max":55.2,"px":"<base64>"}   一帧热画面（格式见 dog/thermal.py）
-完整说明见 docs/头部通信协议.md。
+完整说明见 robodog/docs/头部通信协议.md。
 """
 from . import thermal
 
 
-ZONES = ("head", "chin")
+ZONES = ("head", "chin", "screen")
 ACTIONS = ("tap", "hold", "release")
 # 传感器：名字 -> (给人看的名字, 单位, 装在哪)
 SENSORS = {
     "light":    ("环境光照", "lux", "头顶光照窗（BH1750）"),
-    "distance": ("前方最近物体距离", "mm", "前脸测距窗（VL53L5CX）"),
+    "distance": ("前方最近物体距离", "mm", "下巴测距窗（VL53L5CX）"),
     "presence": ("毫米波检测到有人", "", "屏幕上方（LD2410，人背对着、不动也能测到）"),
     "presence_distance": ("毫米波测到的人的距离", "cm", "屏幕上方（LD2410）"),
     "head_temp": ("头内温度", "°C", "头壳里（ESP32 旁边，测的是头里不是屋里）"),

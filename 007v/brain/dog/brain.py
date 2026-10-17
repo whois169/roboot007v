@@ -86,7 +86,7 @@ class Brain:
         th = self.cfg.get("thermal", {})
         if th.get("hz", 1):
             self.eyes.send_thermal({"hz": th.get("hz", 1)})       # 让头部每秒发热画面过来
-        self.eyes.log("BOOT ROBODOG BRAIN")                        # 开机自检：屏幕上逐行打出真实的初始化过程
+        self.eyes.log("BOOT 007V BRAIN")                        # 开机自检：屏幕上逐行打出真实的初始化过程
         react = self.cfg["react"]
         self.ack = ((tts_mod.beep(), 24000) if react.get("ack", "beep") == "beep"
                     else await self.voice.cached(react.get("ack_text", "在。")))
@@ -420,17 +420,17 @@ class Brain:
             self.eyes.log(f"HEAD ERR {ev.get('code', '')}")
 
     def on_touch(self, zone: str, action: str):
-        """摸头顶：平时 = 唤醒并确认（闪 ONLINE + 提示音 + 开始听）；它说话时 = 停下来听你说。
+        """摸头顶或点屏幕：平时 = 唤醒并确认（闪 ONLINE + 提示音 + 开始听）；它说话时 = 停下来听你说。
         摸下巴：它说话时 = 停下来待机；它在听时 = 不听了。长按先只记一笔，以后再定用途。"""
         if self.privacy or action == "release":
             return
         if action == "hold":
-            log.info("长按了%s（暂时没有用途）", "头顶" if zone == "head" else "下巴")
+            log.info("长按了%s（暂时没有用途）", {"head": "头顶", "chin": "下巴", "screen": "屏幕"}[zone])
             self.eyes.log(f"TOUCH {zone.upper()} HOLD")
             return
         self.eyes.log(f"TOUCH {zone.upper()}")
         busy = self.state in ("thinking", "speaking", "learning")
-        if zone == "head":
+        if zone in ("head", "screen"):
             if busy:
                 self.interrupt("listen")
             else:
@@ -771,7 +771,7 @@ class Brain:
         self.board.put(senses_mod.Reading(
             "thermal", "热成像", thermal_mod.describe(a),
             source="头部热成像（MLX90640）" if real else "模拟器的假房间（热成像模块还没装）",
-            location="前脸，视野约 55°×35°，只看得到正前方", confidence=0.8 if real else 0, max_age=5,
+            location="右肩，视野约 55°×35°，只看得到正前方", confidence=0.8 if real else 0, max_age=5,
             note="测的是物体表面温度，不是空气温度；热源是什么是按温度和大小猜的，不一定对"))
         now = time.monotonic()
         limit = th.get("alert_temp", 60)
@@ -831,7 +831,7 @@ class Brain:
             self.eyes.send_ir({"op": "cancel"})
             self.eyes.log("IR LEARN TIMEOUT")
             log.info("%d 秒内没收到红外信号", timeout)
-            msg = "没有收到红外信号，学习已取消。把遥控器靠近我的前脸再试一次。"
+            msg = "没有收到红外信号，学习已取消。把遥控器靠近我的右肩再试一次。"
         elif op == "fail":
             self.eyes.log("IR LEARN FAIL")
             log.warning("红外学习出错：%s", ev.get("text", ""))

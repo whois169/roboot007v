@@ -157,7 +157,7 @@ class Memory:
                 lines = "\n".join(f"{datetime.fromtimestamp(ts):%H:%M} [{k}] {t}" for ts, k, t in evs[-200:])
                 try:
                     summary = await llm.complete([
-                        {"role": "system", "content": "你是一台家用科技机械狗的记忆整理程序。根据这一天的事件日志，"
+                        {"role": "system", "content": "你是一台家用轮足机器人（机械狗007v）的记忆整理程序。根据这一天的事件日志，"
                                                       "用 2–4 句简短的中文写当天小结：发生了哪些值得记住的事、用户交代了什么、"
                                                       "有没有异常。只写日志里有的，不要编。不要写标题。"},
                         {"role": "user", "content": f"{day} 的事件日志：\n{lines}"}])

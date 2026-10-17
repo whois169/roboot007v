@@ -16,11 +16,12 @@ from PIL import Image, ImageDraw
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dog import hud, thermal  # noqa: E402
 
-SCALE = 3
+SCALE = 1
+GIF_SCALE = 0.5               # 演示 GIF 缩小一半，文件小一点
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "hud_shots")
 FPS = 30
 TELE = ["T22.1* H55* SND -52DB", "FACE {f} MOT 0.0{m}", "10:32:{ss:02d} UP 12M STATE {st}"]   # 和大脑每秒推的读数同一个格式
-BOOT = ["BOOT ROBODOG BRAIN", "TTS QWEN3 OK", "CAM OK FACE YUNET", "KWS OK ASR SENSEVOICE",
+BOOT = ["BOOT 007V BRAIN", "TTS QWEN3 OK", "CAM OK FACE YUNET", "KWS OK ASR SENSEVOICE",
         "WX OK OUT 21.2C RH77", "LLM DEEPSEEK-CHAT READY"]
 # (模式, 秒数, 额外指令, 这一段里推的日志, 截图: [(第几秒, 名字)])
 SEQ = [
@@ -48,7 +49,7 @@ def main():
     surf = pygame.Surface((hud.W, hud.H))
     r = hud.HudRenderer(hud.Gfx(surf), now=0.0, seed=7)
     send = lambda cmd: r.apply(json.loads(json.dumps(cmd)))      # 和串口一样：先变成一行 JSON 再解析
-    send({"status": {"temp": 22.1, "sim": True, "bat": 87}})
+    send({"status": {"temp": 22.1, "sim": True, "bat": 87, "spd": 0.0, "load": 6.5}})
     scene = thermal.FakeScene(seed=3)                            # 热成像用模拟器的假房间
     t, frames, shots = 0.0, [], []
     last_sec, tele_n = -1, 0
@@ -91,7 +92,7 @@ def main():
             big = pygame.transform.scale(surf, (hud.W * SCALE, hud.H * SCALE))
             img = Image.frombytes("RGB", big.get_size(), pygame.image.tobytes(big, "RGB"))
             if i % 2 == 0:
-                frames.append(img)
+                frames.append(img.resize((int(img.width * GIF_SCALE), int(img.height * GIF_SCALE)), Image.LANCZOS))
             while pending and u >= pending[0][0]:
                 name = pending.pop(0)[1]
                 img.save(os.path.join(OUT, f"{len(shots) + 1:02d}_{name}.png"))

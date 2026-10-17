@@ -1,4 +1,4 @@
-"""RoboDog 大脑入口。
+"""机械狗007v 大脑入口。
 
 python main.py            语音模式：叫唤醒词跟它说话
 python main.py --text     文字模式：打字跟它说话（不用麦克风，测大模型和语音合成）
@@ -18,7 +18,7 @@ from dog import config
 
 
 def main():
-    ap = argparse.ArgumentParser(description="RoboDog 大脑")
+    ap = argparse.ArgumentParser(description="机械狗007v 大脑")
     ap.add_argument("--text", action="store_true", help="文字模式")
     ap.add_argument("--mock", action="store_true", help="用假回答，不调用大模型")
     ap.add_argument("--devices", action="store_true", help="列出声音设备")
