@@ -72,7 +72,7 @@ def groups():
         G[k].append((f"铰链标记-{cn}髋（摆臂侧）", marker((0, 0), sy * HUB0, sy * (HUB0 + 2)), "trim"))
         G[k].append((f"铰链标记-{cn}轮（摆臂侧）", marker((fx * ARM, 0), sy * WY1, sy * (WY1 + 2)), "trim"))
         G[k + "w"].append((f"铰链标记-{cn}轮（麦轮侧）", marker((0, 0), sy * (WY1 - 2), sy * WY1), "trim"))
-    G["body"].append(("铰链标记-头（传感塔侧）", marker((NECK_X, B.PIVOT_Z), TOWER_Y0 - 2, TOWER_Y0), "trim"))
+    G["body"].append(("铰链标记-头（电机耳侧）", marker((NECK_X, B.PIVOT_Z), POD_IN - 2, POD_IN), "trim"))
     G["head"].append(("铰链标记-头（屏幕头侧）", marker((0, 0), HEAD_W / 2 - 2, HEAD_W / 2), "trim"))
     return G
 

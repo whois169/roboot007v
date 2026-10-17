@@ -4,7 +4,7 @@
 - 一盏单侧强主光（左前方 45° 侧上方，平行光，影子硬）+ 一盏很弱的补光；用 Cycles 光线追踪，缝和孔里有真实阴影（环境光遮蔽）
 - 1800×1150，显卡渲染（没有显卡就用 CPU）
 
-用法：blender --background --factory-startup --python 007v/blender/render_white.py -- <机械狗007v.blend> <输出目录> [前缀]
+用法：blender --background --factory-startup --python 007v/blender/render_white.py -- <机械狗007v.blend> <输出目录> [前缀] [只出哪几张，逗号分开]
 """
 import math
 import os
@@ -99,8 +99,16 @@ cam.data.lens = 70
 if aim:
     aim.location = (0, -0.02, 0.09)
 os.makedirs(OUT, exist_ok=True)
-for nm, loc in (("正面", (0.0, -1.85, 0.22)), ("侧面", (1.85, -0.05, 0.2)), ("前45度", (1.25, -1.3, 0.42)), ("后45度", (-1.25, 1.3, 0.42))):
+VIEWS = [("正面", (0.0, -1.85, 0.22), None), ("侧面", (1.85, -0.05, 0.2), None), ("前45度", (1.25, -1.3, 0.42), None),
+         ("后45度", (-1.25, 1.3, 0.42), None),
+         ("头部特写", (0.40, -0.70, 0.42), (0.0, -0.13, 0.25)), ("腿部特写", (0.72, -0.50, 0.10), (0.22, -0.17, -0.02))]   # 瞄准点相对机身（比离地低约 0.12）
+ONLY = argv[3].split(",") if len(argv) > 3 else None          # 只出这几张，例：正面,侧面,前45度,头部特写,腿部特写
+for nm, loc, look_at in VIEWS:
+    if ONLY and nm not in ONLY:
+        continue
     cam.location = loc
+    if aim:
+        aim.location = look_at or (0, -0.02, 0.09)
     scene.frame_set(5)
     scene.render.filepath = os.path.join(OUT, f"{PREFIX}_{nm}.png")
     try:

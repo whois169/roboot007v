@@ -210,7 +210,7 @@ def ld19():
 
 
 def neck_parts():
-    """脖子坐标：原点在头部平台盖上表面、俯仰轴正下方。传感塔 + 轴承座 + 塔顶雷达。"""
+    """脖子坐标：原点在头部平台盖上表面、俯仰轴正下方。脖子底座 + 两只耳朵 + 电机耳顶上的雷达。"""
     P, (lx, ly, lz) = shell.neck()
     P.append(("雷达LD19", ld19().translate(V(lx, ly, lz)), "black"))
     return P
@@ -222,16 +222,24 @@ def head_parts():
 
 
 # ---------------------------------------------------------------- 摆臂 + 轮子（左前腿，摆臂水平朝前；原点在髋轴上）
+waist_xz = shell.waist_xz
+
+
 def arm_box_solid(y0, y1):
     """箱形臂座外壳（摆臂坐标，髋轴在原点，轮轴在 (ARM, 0)），Y 从 y0 到 y1：
     一圈 3 mm 的壳从髋一直包到轮子跟前，尽头是贴着轮子的弧面（离轮子 ARM_WHEEL_CLEAR），不留空档；
     靠机身那面在臂根内板以外的部分封 2 mm 的墙（内板管不到那里）。"""
     R = ARM_ROOT_R
     rc = WHEEL_D / 2 + ARM_WHEEL_CLEAR
-    outer = stadium_xz(0, ARM - R, R, y0, y1).cut(cyl_y(ARM, 0, 2 * rc, y0 - 1, y1 + 1))
-    inner = stadium_xz(0, ARM - R, R - 3, y0 - 1, y1 + 1).cut(cyl_y(ARM, 0, 2 * (rc + 3), y0 - 2, y1 + 2))
+    outer = waist_xz(0, ARM, R, ARM_END_R, y0, y1).cut(cyl_y(ARM, 0, 2 * rc, y0 - 1, y1 + 1))        # 跟着连杆一起中段收窄
+    inner = waist_xz(0, ARM, R - 3, ARM_END_R - 3, y0 - 1, y1 + 1).cut(cyl_y(ARM, 0, 2 * (rc + 3), y0 - 2, y1 + 2))
     wall = outer.intersect(box(70, ARM, y0, y0 + 2, -R - 1, R + 1))
     return outer.cut(inner).fuse(wall)
+
+
+def link_plate(y0, y1):
+    """连杆的一片：变截面，中段开长圆形减重孔（两片一样，孔对齐，能看穿到后面的臂座）。"""
+    return waist_xz(0, ARM, ARM_ROOT_R, ARM_END_R, y0, y1).cut(prism_xz(shell.stadium_pts(55, 115, 7, 7), y0 - 1, y1 + 1))
 
 
 def leg_parts_FL():
@@ -248,13 +256,16 @@ def leg_parts_FL():
             cyl_y(0, 0, HUB["flange_d"], hub0 + HUB["boss_l"], hub0 + HUB["boss_l"] + HUB["flange_t"])), "alu"),
         ("臂根内板", stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R, root0, root1), "alu"),
         ("箱形臂座外壳", shell.soft(arm_box_solid(root1, my1), 1.5), "armor"),
-        ("摆臂外板", stadium_xz(0, ARM, ARM_END_R, my1, oy1), "anod"),
+        ("连杆内片", link_plate(my1, my1 + LINK_IN_T), "anod"),
+        ("连杆外片", link_plate(oy1 - LINK_OUT_T, oy1), "anod"),
         ("轮子电机GIM4310", cyl_y(ARM, 0, WHEEL_MOTOR_D, wy1, my1), "motor"),
         ("麦轮外包络", cyl_y(ARM, 0, WHEEL_D, wy0, wy1), "envelope"),      # 只用来查碰撞，不显示
         ("麦轮轮毂", cyl_y(ARM, 0, 60, wy0 - 1, wy1 + 1), "trim"),
         ("麦轮侧板内", cyl_y(ARM, 0, WHEEL_PLATE_D, wy0, wy0 + WHEEL_PLATE_T), "steel"),
         ("麦轮侧板外", cyl_y(ARM, 0, WHEEL_PLATE_D, wy1 - WHEEL_PLATE_T, wy1), "steel"),
     ]
+    for i, u in enumerate((14, 156, 30, 140)):                             # 两片之间的隔柱
+        P.append((f"连杆隔柱{i + 1}", cyl_y(u, 0, 8, my1 + LINK_IN_T, oy1 - LINK_OUT_T), "anod"))
     P += shell.arm_marks(oy1, root1, my1)
     for i, (u, v) in enumerate(ARM_STANDOFFS):
         P.append((f"臂根支柱{i + 1}", cyl_y(u, v, STANDOFF_HEX, root1, my1), "alu"))
