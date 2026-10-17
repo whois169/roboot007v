@@ -115,7 +115,7 @@ def body_shell():
             name = f"髋支座{'前' if hx > 0 else '后'}{tag}"
             P.append((name, soft(sup, 1.0), "anod"))
             for bx, bz in ((hx - 32, 21), (hx + 32, 21), (hx - 32, 57), (hx + 32, 57)):
-                yb = sorted((sy * (W2 + rw + 7), sy * (W2 + rw + 10)))
+                yb = sorted((sy * (W2 + rw + 7), sy * (W2 + rw + 8.5)))
                 P.append((f"外壳·{name}螺栓 x{bx:+.0f}z{bz}", cyl_y(bx, bz, BOLT_D, *yb), "silver"))
     # ---- 下层外壳：架在边梁上面（下沿 = 边梁上沿 + 缝），一整圈，四角 R16
     z0 = rz1 + FRAME_GAP
@@ -400,12 +400,9 @@ def waist_xz(x0, x1, r0, r1, y0, y1, k=LINK_WAIST):
     return poly.fuse(cyl_y(x0, 0, 2 * r0, y0, y1)).fuse(cyl_y(x1, 0, 2 * r1, y0, y1))
 
 
-def can(cx, y0, d=CAN_D, t=CAN_T, name="抱闸壳"):
-    """圆柱壳（轮端抱闸 / 髋端同款）：外圈三道散热纹、端面 4 颗小螺栓、中间六角（左前腿坐标，往 +Y 伸出去）。"""
+def can(cx, y0, d=CAN_D, t=CAN_T, name="电机后盖"):
+    """圆盖（轮端 = 电机后盖兼走线口，髋端 = 角度编码器罩）：端面 4 颗小螺栓、中间六角（左前腿坐标，往 +Y 伸出去）。"""
     P = [(name, soft(cyl_y(cx, 0, d, y0, y0 + t), 1.0), "anod")]
-    for i in range(3):
-        yy = y0 + 2 + i * 2.6
-        P.append((f"外壳·{name[:1]}纹{cx:.0f}-{i + 1}", ring_y(cx, 0, d + 2, d - 1, yy, yy + 1.2), "anod"))
     for i in range(4):
         a = math.pi / 4 + i * math.pi / 2
         P.append((f"外壳·{name[:1]}钉{cx:.0f}-{i + 1}", cyl_y(cx + 15 * math.cos(a), 15 * math.sin(a), 4, y0 + t, y0 + t + 0.8), "dark"))
@@ -415,18 +412,26 @@ def can(cx, y0, d=CAN_D, t=CAN_T, name="抱闸壳"):
 
 
 def arm_marks(oy1, root1, my1):
-    """摆臂外面（左前腿坐标，髋轴在原点，轮轴在 (ARM, 0)）：外片上的黄条、轮端抱闸壳 + 黄色手动释放拨杆、髋端同款圆柱壳、臂座上的黄色箍。"""
+    """摆臂外面（左前腿坐标，髋轴在原点，轮轴在 (ARM, 0)）：外片上的黄条、轮端电机后盖 + 青光圈、髋端编码器罩、
+    台阶测距（斜着往前下方看 30°：前腿看前面，后腿镜像过去就看后面）、臂座上的黄色箍。"""
     P = []
     for i, u in enumerate((34, 41, 48)):                                   # 髋边上三道斜黄条（保留）
         P.append((f"外壳·摆臂黄条{i + 1}", strip((u, -14), (u + 10, 14), 2.4, oy1, oy1 + 0.6), "amber"))
     P.append(("外壳·摆臂边黄线", strip((60, 17), (135, 18.5), 1.6, oy1, oy1 + 0.6), "amber"))
-    P += can(ARM, oy1, name="抱闸壳")
+    P += can(ARM, oy1, name="电机后盖")
     P.append(("外壳·轮端青光圈", ring_y(ARM, 0, 24, 18, oy1 + CAN_T + 1.5, oy1 + CAN_T + 2.1), "cyan"))
-    lever = strip((ARM + 6, 6), (ARM + 19, 19), 7, oy1 + CAN_T + 0.8, oy1 + CAN_T + 3.8)   # 手动释放拨杆（黄）：短而粗，压在端面上
-    P.append(("外壳·抱闸释放拨杆", lever.fuse(cyl_y(ARM + 19, 19, 9, oy1 + CAN_T + 0.8, oy1 + CAN_T + 4.8)), "amber"))
-    P += can(0, oy1, d=CAN_D, name="髋端壳")
-    for i, y in enumerate((root1 + 8, root1 + 16, root1 + 24, root1 + 32)):    # 臂座上的黄色箍（保留，跟着臂座收窄）
+    P += can(0, oy1, name="编码器罩")
+    # 台阶测距 VL53L1X：装在连杆外片靠轮子那头的上沿；站立时（摆臂往下 55°）正好朝前下方 30°
+    a = math.radians(25)
+    u, n = (math.cos(a), math.sin(a)), (-math.sin(a), math.cos(a))
+    c = (126, 13)
+    corner = lambda su, sn: (c[0] + u[0] * 9 * su + n[0] * 6 * sn, c[1] + u[1] * 9 * su + n[1] * 6 * sn)  # noqa: E731
+    P.append(("台阶测距", soft(prism_xz([corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], oy1, oy1 + 8), 0.8), "anod"))
+    f0 = (c[0] + u[0] * 9 - n[0] * 4, c[1] + u[1] * 9 - n[1] * 4)
+    f1 = (c[0] + u[0] * 9 + n[0] * 4, c[1] + u[1] * 9 + n[1] * 4)
+    P.append(("外壳·台阶测距窗", strip(f0, f1, 1.2, oy1 + 1.5, oy1 + 6.5, inward=(u[0] * 0.5, u[1] * 0.5)), "visor"))
+    for i, y in enumerate((root1 + 4, root1 + 10, root1 + 16)):                # 臂座上的黄色箍（保留，跟着臂座收窄）
         hoop = waist_xz(0, ARM, ARM_ROOT_R + 1.2, ARM_END_R + 1.2, y, y + 2.5).cut(waist_xz(0, ARM, ARM_ROOT_R - 0.5, ARM_END_R - 0.5, y - 1, y + 4))
-        hoop = hoop.intersect(box(-40, ARM_BOX_LEN, y - 1, y + 4, -40, 40))               # 只箍髋那一段
+        hoop = hoop.intersect(box(-40, ARM_BOX_LEN, y - 1, y + 4, -40, 40))
         P.append((f"外壳·臂座黄箍{i + 1}", hoop, "amber"))
     return P
