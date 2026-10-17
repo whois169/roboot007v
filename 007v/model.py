@@ -94,19 +94,21 @@ def body_parts():
     add("底板", box(-L2 + PLATE, L2 - PLATE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, 0, PLATE), "alu")
     add("前板", box(L2 - PLATE, L2, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H), "anod")
     add("后板", box(-L2, -L2 + PLATE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H), "anod")
-    dk = cq.Workplane("XY").box(BODY_L, BODY_W, PLATE, centered=(True, True, False)).edges("|Z").fillet(10).val().translate(V(0, 0, BODY_H))
+    dk = cq.Workplane("XY").box(BODY_L, BODY_W, PLATE, centered=(True, True, False)).edges("|Z").chamfer(2).val().translate(V(0, 0, BODY_H))
     add("甲板", shell.soft(dk, 1.2), "anod")
     # 顶面三块叠层板：头部平台盖（高）—— 货斗底板（低，货放这里）—— 后检修盖（高）；板边看得见 4 mm 厚，下面垫一圈缩进 3 mm 的垫条，像一块块装上去的
     def top_plate(x0, x1, raised):
+        """顶板：前后两头的板往外悬挑 TOP_OVER_X，两侧伸到 W2 + TOP_OVER_Y；垫条缩在机身里面，下面有阴影。"""
         t, st = TOP_PLATE_T, (TOP_STEP if raised else 0.0)
-        p = cq.Workplane("XY").box(x1 - x0, BODY_W - 2, t, centered=False).edges("|Z").fillet(8).val().translate(V(x0, -W2 + 1, DECK + st))
-        p = shell.soft(p, 1.0)
+        hw = W2 + TOP_OVER_Y
+        p = cq.Workplane("XY").box(x1 - x0, 2 * hw, t, centered=False).edges("|Z").chamfer(2).val().translate(V(x0, -hw, DECK + st))
+        p = shell.soft(p, 2.0)
         if raised:
-            p = p.fuse(box(x0 + 3, x1 - 3, -W2 + 4, W2 - 4, DECK, DECK + st + 0.5))
+            p = p.fuse(box(max(x0, -L2) + 3, min(x1, L2) - 3, -W2 + 4, W2 - 4, DECK, DECK + st + 0.5))
         return p
-    add("头部平台盖", top_plate(BED_X1 + 2, L2, True), "deck")
+    add("头部平台盖", top_plate(BED_X1 + SEAM, L2 + TOP_OVER_X, True), "deck")
     add("货斗底板", top_plate(BED_X0 - 1, BED_X1, False), "deck")
-    add("后检修盖", top_plate(-L2, BED_X0 - 4, True), "deck")
+    add("后检修盖", top_plate(-L2 - TOP_OVER_X, BED_X0 - 1 - SEAM, True), "deck")
     for x0 in (L2 - PLATE - PROFILE - 2, -L2 + PLATE + 2):            # 前后上下四根 2020 横梁
         for z0 in (PLATE, BODY_H - PROFILE):
             add(f"2020横梁 x{x0:+.0f} z{z0:.0f}", box(x0, x0 + PROFILE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, z0, z0 + PROFILE), "profile")

@@ -60,12 +60,11 @@ def chamfer_rect(x0, x1, z0, z1, c):
 
 
 def soft(s, r):
-    """把一个零件的棱边倒圆（半径 r）；倒不了就退成倒角，再不行原样返回。打印件也按这个出，所以实物也是圆边。"""
-    for fn in (lambda: cq.Workplane().add(s).edges().fillet(r).val(),
-               lambda: cq.Workplane().add(s).edges().chamfer(r * 0.8).val(),
-               lambda: cq.Workplane().add(s).edges().fillet(r * 0.5).val()):
+    """棱边倒小角（硬表面风格，2026-10-18 起不再倒大圆角）：r ≥ 2 倒 1.5 mm，否则 1 mm；倒不了退一半，再不行原样返回。"""
+    c = 1.5 if r >= 2 else 1.0
+    for k in (1.0, 0.5):
         try:
-            out = fn()
+            out = cq.Workplane().add(s).edges().chamfer(c * k).val()
             if out.isValid() and out.Volume() > 0.5 * s.Volume():
                 return out
         except Exception:
@@ -82,7 +81,7 @@ def rrect_ring(hx, hy, r, z0, z1, ix=None, iy=None):
     """圆角矩形外框（半长 hx、半宽 hy、圆角 r），挖掉中间的机身盒子（半长 ix、半宽 iy）。"""
     ix = BODY_L / 2 if ix is None else ix
     iy = BODY_W / 2 if iy is None else iy
-    o = cq.Workplane("XY").box(2 * hx, 2 * hy, z1 - z0, centered=(True, True, False)).edges("|Z").fillet(r).val().translate(V(0, 0, z0))
+    o = cq.Workplane("XY").box(2 * hx, 2 * hy, z1 - z0, centered=(True, True, False)).edges("|Z").chamfer(min(r, 2.0)).val().translate(V(0, 0, z0))
     return o.cut(box(-ix, ix, -iy, iy, z0 - 1, z1 + 1))
 
 
@@ -105,16 +104,16 @@ def body_shell():
     # 髋支座：独立的铝件，下面两颗螺栓拧在边梁上、上面两颗拧在侧板上；轴承座从中间的孔穿出来
     for hx in (-HIP_X, HIP_X):
         for sy, tag in ((1, "左"), (-1, "右")):
-            y0, y1 = sorted((sy * (W2 + rw), sy * (W2 + rw + 5)))
-            sup = prism_xz(chamfer_rect(hx - 34, hx + 34, 14, 66, 8), y0, y1).cut(cyl_y(hx, HIP_Z, 47, y0 - 1, y1 + 1))
+            y0, y1 = sorted((sy * (W2 + rw), sy * (W2 + rw + 7)))
+            sup = prism_xz(chamfer_rect(hx - 40, hx + 40, 12, 66, 8), y0, y1).cut(cyl_y(hx, HIP_Z, 47, y0 - 1, y1 + 1))
             name = f"髋支座{'前' if hx > 0 else '后'}{tag}"
             P.append((name, soft(sup, 1.0), "anod"))
-            for bx, bz in ((hx - 27, 21), (hx + 27, 21), (hx - 27, 58), (hx + 27, 58)):
-                yb = sorted((sy * (W2 + rw + 5), sy * (W2 + rw + 6.5)))
-                P.append((f"外壳·{name}螺栓 x{bx:+.0f}z{bz}", cyl_y(bx, bz, 6, *yb), "silver"))
+            for bx, bz in ((hx - 32, 21), (hx + 32, 21), (hx - 32, 57), (hx + 32, 57)):
+                yb = sorted((sy * (W2 + rw + 7), sy * (W2 + rw + 10)))
+                P.append((f"外壳·{name}螺栓 x{bx:+.0f}z{bz}", cyl_y(bx, bz, 12, *yb), "silver"))
     # ---- 下层外壳：架在边梁上面（下沿 = 边梁上沿 + 缝），一整圈，四角 R16
     z0 = rz1 + FRAME_GAP
-    tub = rrect_ring(L2 + 4, W2 + 6, 16, z0, TUB_TOP)
+    tub = rrect_ring(L2 + 2, W2 + TUB_OUT, 16, z0, TUB_TOP)
     for hx in (-HIP_X, HIP_X):
         tub = tub.cut(cyl_y(hx, HIP_Z, 70, -W2 - 8, W2 + 8))                    # 髋支座的位置让开
     dx, dy, dz = DEPTH_CAM
@@ -123,41 +122,41 @@ def body_shell():
     tub = tub.cut(cq.Solid.makeCylinder(9, 10, V(-L2 - 8, 55, 70), V(1, 0, 0)))    # 总开关
     tub = tub.cut(box(-L2 - 8, -L2 + 1, -71, -53, 59, 69))                         # 充电口
     for sy in (1, -1):                                                            # 侧挂板的位置：外壳开窗，挂板四周留 1 mm 缝
-        tub = tub.cut(box(-101, 101, *sorted((sy * (W2 - 1), sy * (W2 + 8))), z0 + 1, TUB_TOP - 1))
+        tub = tub.cut(box(-100 - SEAM, 100 + SEAM, *sorted((sy * (W2 - 1), sy * (W2 + 8))), z0 + 3 - SEAM, TUB_TOP - 3 + SEAM))
     P.append(("外壳·下层外壳", soft(tub, 1.5), "shell"))
     # ---- 黑腰：凹进去的一圈 + 两侧琥珀灯、前后青灯
-    P.append(("外壳·黑腰", rrect_ring(L2 + 1.5, W2 + 1.5, 13, TUB_TOP, WAIST_TOP), "dark"))
+    P.append(("外壳·黑腰", rrect_ring(L2 + WAIST_IN, W2 + WAIST_IN, 2, TUB_TOP, WAIST_TOP), "dark"))
     for sy in (1, -1):
         for x in (-130, 130):
-            P.append((f"外壳·腰线灯 y{sy} x{x}", box(x - 35, x + 35, *sorted((sy * (W2 + 1.5), sy * (W2 + 2.1))), 73.5, 76.5), "amber"))
+            P.append((f"外壳·腰线灯 y{sy} x{x}", box(x - 35, x + 35, *sorted((sy * (W2 + WAIST_IN), sy * (W2 + WAIST_IN + 0.6))), 73.5, 76.5), "amber"))
     for sx in (1, -1):
-        P.append((f"外壳·腰线青灯 x{sx}", box(*sorted((sx * (L2 + 1.5), sx * (L2 + 2.1))), -60, 60, 73.5, 76.5), "cyan"))
+        P.append((f"外壳·腰线青灯 x{sx}", box(*sorted((sx * (L2 + WAIST_IN), sx * (L2 + WAIST_IN + 0.6))), -60, 60, 73.5, 76.5), "cyan"))
     # ---- 上层甲板：薄皮（侧面只凸 1.5，上半截离折叠的轮子只有 5 mm）+ 前后大斜面
     # ---- 上层甲板：整块带前后两道斜面的外壳（侧面看就是效果图那种往回收的装甲板）；侧面只有 1.5 mm 皮
     prof = [(-L2 + 14, WAIST_TOP), (L2 - 14, WAIST_TOP), (L2 + 16, WAIST_TOP + 20), (L2 + 16, BODY_H - 20), (L2 + 1, BODY_H + 0.5),
             (-L2 - 1, BODY_H + 0.5), (-L2 - 16, BODY_H - 22), (-L2 - 16, WAIST_TOP + 22)]
-    wp = cq.Workplane("XY").polyline(prof).close().offset2D(-3, "arc").offset2D(3, "arc").extrude(BODY_W + 3)   # 侧面轮廓的转角先倒圆
-    slab = wp.val().rotate(V(0, 0, 0), V(1, 0, 0), 90).translate(V(0, W2 + 1.5, 0))
+    wp = cq.Workplane("XY").polyline(prof).close().extrude(BODY_W + 2 * SLAB_OUT)       # 硬表面：转角不倒圆
+    slab = wp.val().rotate(V(0, 0, 0), V(1, 0, 0), 90).translate(V(0, W2 + SLAB_OUT, 0))
     slab = slab.cut(box(-L2, L2, -W2, W2, WAIST_TOP - 1, BODY_H + PLATE + 1))
     P.append(("上层甲板壳", slab, "shell"))
     for sy, tag in ((1, "左"), (-1, "右")):
         out = []
         # 侧挂板：独立的一块，四角螺栓固定，和外壳之间一圈 1 mm 缝（拆下来就能看到里面的电池、驱动）
         z0 = FRAME_RAIL[2] + FRAME_GAP
-        out.append((f"侧挂板{tag}", soft(prism_xz(chamfer_rect(-100, 100, z0 + 2, TUB_TOP - 2, 5), W2 + 1, W2 + 9), 1.0), "dark"))
-        for x, z in ((-91, z0 + 7), (91, z0 + 7), (-91, TUB_TOP - 7), (91, TUB_TOP - 7)):
-            out.append((f"外壳·{tag}挂板螺栓 x{x}z{z:.0f}", cyl_y(x, z, 5, W2 + 9, W2 + 10.2), "silver"))
-        out.append((f"外壳·{tag}甲板边线", box(-170, 170, W2 + 1.5, W2 + 1.8, BODY_H - 6, BODY_H - 4), "silver"))
+        out.append((f"侧挂板{tag}", soft(prism_xz(chamfer_rect(-100, 100, z0 + 3, TUB_TOP - 3, 5), W2 + 0.5, W2 + 7.5), 1.0), "dark"))
+        for x, z in ((-88, z0 + 9.5), (88, z0 + 9.5), (-88, TUB_TOP - 9.5), (88, TUB_TOP - 9.5)):
+            out.append((f"外壳·{tag}挂板螺栓 x{x}z{z:.1f}", cyl_y(x, z, 10, W2 + 7.5, W2 + 9.5), "silver"))
+        out.append((f"外壳·{tag}甲板边线", box(-170, 170, W2 + SLAB_OUT, W2 + SLAB_OUT + 0.3, BODY_H - 6, BODY_H - 4), "silver"))
         for n, s_, c in out:
             P.append((n, s_ if sy > 0 else mirror_y(s_), c))
         txt = cq.Workplane("XZ").text("007V", 34, 0.6, halign="center", valign="center").val()
         small = cq.Workplane("XZ").text("CARGO 10KG  ·  MAX STEP 0.10M", 6, 0.4, halign="left", valign="center").val()
         if sy > 0:
-            txt = txt.translate(V(-40, 0, 0)).rotate(V(0, 0, 0), V(0, 0, 1), 180).translate(V(0, W2 + 1.5, 118))
-            small = small.rotate(V(0, 0, 0), V(0, 0, 1), 180).translate(V(5, W2 + 1.5, 122))
+            txt = txt.translate(V(-40, 0, 0)).rotate(V(0, 0, 0), V(0, 0, 1), 180).translate(V(0, W2 + SLAB_OUT, 118))
+            small = small.rotate(V(0, 0, 0), V(0, 0, 1), 180).translate(V(5, W2 + SLAB_OUT, 122))
         else:
-            txt = txt.translate(V(-40, -W2 - 1.5, 118))
-            small = small.translate(V(-5, -W2 - 1.5, 122))
+            txt = txt.translate(V(-40, -W2 - SLAB_OUT, 118))
+            small = small.translate(V(-5, -W2 - SLAB_OUT, 122))
         P.append((f"外壳·{tag}字样007V", txt, "silver"))
         P.append((f"外壳·{tag}小字", small, "silver"))
     # 前保险杠：上下斜切，中间给深度相机开窗；两边琥珀雾灯
