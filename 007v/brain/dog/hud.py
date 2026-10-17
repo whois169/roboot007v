@@ -23,7 +23,7 @@
   hold   这个模式至少保持几秒，期间来的模式切换先排队（唤醒默认 0.9 秒）
   face   表情（可省略，换模式时回到这个模式默认的）：normal 圆角方块 / happy 弯弯的 ∩ / angry 上沿往里斜（凶）
   status 上下两条显示的状态：temp 温度（sim=true 表示假数据，后面带 *）、bat 电量 %、spd 速度 m/s、load 背上载重 kg（null = 不知道）
-  log    往数据流里加一行（或一组行），最多 72 个字符，只能用字体里有的字符
+  log    往数据流里加一行（或一组行），最多 62 个字符，只能用字体里有的字符
 """
 import math
 import random
@@ -37,9 +37,10 @@ EYE_Y = CY - 22               # 眼睛中心的高度（比正中略高，下面
 OV_Y = CY + 96                # 眼睛下面那一行的中心
 GAZE_X, GAZE_Y = 60, 24       # gaze = ±1 时眼睛移动多少像素
 TOP, BOTTOM = 56, 384         # 中间区域（上下两条状态栏）
-LOG_MAX = 72                  # 数据流一行最多几个字
+LOG_MAX = 62                  # 数据流一行最多几个字（5×7 字体放大 2 倍，每字 12 像素宽）
 SS = 2                        # 数据流小字体放大倍数（每字 10 像素宽、10 像素高）
-LINE_H = 14                   # 数据流行高
+LS = 2                        # 数据流字体放大倍数（用 5×7 大字体，字高 14 像素，约 1.7 毫米）
+LINE_H = 20                   # 数据流行高
 FLOW_MIN = 12.0               # 数据流最慢的流速（像素/秒）
 LOG_X = 30
 
@@ -61,17 +62,17 @@ DEFAULT_HOLD = {"wake": 0.9}
 _E = dict(w=120, h=104, r=24, bright=0.85, fill=1, ret=0, cut=0, arc=0)
 STYLE = {
     "idle":    dict(_E, eyes=0, stream=1.0,  color=CYAN,  ov=None),
-    "wake":    dict(_E, bright=1.0, arc=1, eyes=1, stream=0.25, color=CYAN, ov="online"),
-    "listen":  dict(_E, bright=0.9, eyes=1, stream=0.2, color=CYAN, ov="bars"),
-    "think":   dict(_E, w=124, h=30, r=14, eyes=1, stream=0.3, color=CYAN, ov="think"),
-    "speak":   dict(_E, h=96, bright=0.9, eyes=1, stream=0.2, color=CYAN, ov="wave"),
-    "track":   dict(_E, w=110, h=110, r=22, bright=1.0, fill=0, ret=1, eyes=1, stream=0.2, color=CYAN, ov=None),
-    "scan":    dict(_E, eyes=0, stream=0.45, color=CYAN,  ov="scan"),
+    "wake":    dict(_E, bright=1.0, arc=1, eyes=1, stream=0.4, color=CYAN, ov="online"),
+    "listen":  dict(_E, bright=0.9, eyes=1, stream=0.4, color=CYAN, ov="bars"),
+    "think":   dict(_E, w=124, h=30, r=14, eyes=1, stream=0.45, color=CYAN, ov="think"),
+    "speak":   dict(_E, h=96, bright=0.9, eyes=1, stream=0.4, color=CYAN, ov="wave"),
+    "track":   dict(_E, w=110, h=110, r=22, bright=1.0, fill=0, ret=1, eyes=1, stream=0.4, color=CYAN, ov=None),
+    "scan":    dict(_E, eyes=0, stream=0.6, color=CYAN,  ov="scan"),
     "thermal": dict(_E, eyes=0, stream=0.0,  color=CYAN,  ov="thermal"),
-    "alert":   dict(_E, bright=1.0, cut=1, eyes=1, stream=0.5, color=AMBER, ov="alert"),
+    "alert":   dict(_E, bright=1.0, cut=1, eyes=1, stream=0.55, color=AMBER, ov="alert"),
     "error":   dict(_E, eyes=0, stream=0.5,  color=RED,   ov="error"),
     "sleep":   dict(_E, eyes=0, stream=0.0,  color=CYAN,  ov="sleep"),
-    "low_bat": dict(_E, eyes=0, stream=0.25, color=AMBER, ov="lowbat"),
+    "low_bat": dict(_E, eyes=0, stream=0.4, color=AMBER, ov="lowbat"),
 }
 FACES = {"normal": dict(cut=0, arc=0), "happy": dict(cut=0, arc=1), "angry": dict(cut=1, arc=0)}
 SHAPE = ("w", "h", "r", "bright", "fill", "ret", "cut", "arc", "stream")
@@ -221,6 +222,12 @@ class Gfx:
         for i, ch in enumerate(s):
             if ch != " ":
                 self.s.blit(self._glyph(SMALL, ch, c, scale), (int(x + i * 5 * scale), int(y)))
+        self.s.set_clip(None)
+
+    def text_clip(self, x, y, s, c, top, bottom, scale=LS):
+        """数据流用：5×7 字体，超出 top–bottom 的部分不画（流到顶上就被切掉）。"""
+        self.s.set_clip((0, int(top), W, int(bottom - top)))
+        self.text(x, y, s, c, scale)
         self.s.set_clip(None)
 
     def text(self, x, y, s, c, scale=1):
@@ -497,7 +504,7 @@ class HudRenderer:
 
     # ---- 数据流：细小的真实日志一直往上流
     def _stream(self, c, vis):
-        """数据流：细小的字往上流，越往上越暗，到顶淡出；最新一行最亮，带打字光标。"""
+        """数据流：字往上流，越往上越暗，到顶淡出；最新一行最亮，带打字光标。"""
         if vis < 0.02 or not self.lines:
             return
         g = self.g
@@ -506,16 +513,16 @@ class HudRenderer:
         for ln in self.lines:
             y = ln["y"]
             height = (y - TOP) / span                           # 0 = 顶上，1 = 底下
-            a = (0.12 + 0.5 * max(0.0, min(1.0, height)) ** 1.3) * vis
+            a = (0.32 + 0.5 * max(0.0, min(1.0, height)) ** 1.2) * vis
             if ln is last:
                 a = 0.95 * vis
             shown = ln["s"][:int(ln["typed"])]
             col = dim(c, a)
             if ln is last:                                      # 最新一行前面的小方块
-                g.fill_rect(LOG_X - 12, round(y) + 3, 4, 4, col)
-            g.text_small(LOG_X, round(y), shown, col, TOP, BOTTOM)
+                g.fill_rect(LOG_X - 14, round(y) + 4, 6, 6, col)
+            g.text_clip(LOG_X, round(y), shown, col, TOP, BOTTOM)
             if ln["typed"] < len(ln["s"]) and int(self.now * 10) % 2 == 0:
-                g.fill_rect(LOG_X + len(shown) * 5 * SS, round(y), 4 * SS, 5 * SS, col)   # 打字光标
+                g.fill_rect(LOG_X + len(shown) * 6 * LS, round(y), 5 * LS, 7 * LS, col)   # 打字光标
 
     def _breath(self):
         if self.mode in ("idle", "wake", "listen", "track"):
