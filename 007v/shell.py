@@ -21,6 +21,10 @@ def box(x0, x1, y0, y1, z0, z1):
     return cq.Solid.makeBox(x1 - x0, y1 - y0, z1 - z0, V(x0, y0, z0))
 
 
+def cyl_z(cx, cy, d, z0, z1):
+    return cq.Solid.makeCylinder(d / 2, z1 - z0, V(cx, cy, z0), V(0, 0, 1))
+
+
 def cyl_y(cx, cz, d, y0, y1):
     return cq.Solid.makeCylinder(d / 2, y1 - y0, V(cx, y0, cz), V(0, 1, 0))
 
@@ -123,6 +127,8 @@ def body_shell():
     tub = tub.cut(box(-L2 - 8, -L2 + 1, -71, -53, 59, 69))                         # 充电口
     for sy in (1, -1):                                                            # 侧挂板的位置：外壳开窗，挂板四周留 1 mm 缝
         tub = tub.cut(box(-100 - SEAM, 100 + SEAM, *sorted((sy * (W2 - 1), sy * (W2 + 8))), z0 + 3 - SEAM, TUB_TOP - 3 + SEAM))
+    for x in (L2 - 30, -(L2 - 30)):                                               # 拆成前、后、左、右几块面板，中间 2 mm 缝
+        tub = tub.cut(box(x - SEAM / 2, x + SEAM / 2, -W2 - 20, W2 + 20, z0 - 1, TUB_TOP + 1))
     P.append(("外壳·下层外壳", soft(tub, 1.5), "shell"))
     # ---- 黑腰：凹进去的一圈 + 两侧琥珀灯、前后青灯
     P.append(("外壳·黑腰", rrect_ring(L2 + WAIST_IN, W2 + WAIST_IN, 2, TUB_TOP, WAIST_TOP), "dark"))
@@ -138,6 +144,8 @@ def body_shell():
     wp = cq.Workplane("XY").polyline(prof).close().extrude(BODY_W + 2 * SLAB_OUT)       # 硬表面：转角不倒圆
     slab = wp.val().rotate(V(0, 0, 0), V(1, 0, 0), 90).translate(V(0, W2 + SLAB_OUT, 0))
     slab = slab.cut(box(-L2, L2, -W2, W2, WAIST_TOP - 1, BODY_H + PLATE + 1))
+    for x in (L2 - 30, -(L2 - 30)):                                               # 前鼻、后鼻、左右侧板分开，中间 2 mm 缝
+        slab = slab.cut(box(x - SEAM / 2, x + SEAM / 2, -W2 - 20, W2 + 20, WAIST_TOP - 1, BODY_H + 2))
     P.append(("上层甲板壳", slab, "shell"))
     for sy, tag in ((1, "左"), (-1, "右")):
         out = []
@@ -186,118 +194,78 @@ def body_shell():
     return P
 
 
-# ================================================================ 屏幕头（俯仰轴坐标）
+# ================================================================ 传感器头（俯仰轴坐标：原点在俯仰轴上，轴在头的底部）
 def head():
+    """紧凑的传感器头：空心壳 + 前脸一圈环绕的烟黑面罩（屏幕和传感器都在面罩后面）+ 两侧伸进耳轴座的短轴。"""
     hw = HEAD_W / 2
     wall = 2.5
     front = max(x for x, _ in HEAD_PROFILE)
     gw, gh = SCREEN_GLASS
     t, w, h = SCREEN_BOARD
     shell = prism_xz(HEAD_PROFILE, -hw, hw).cut(prism_xz(HEAD_PROFILE, -hw + wall, hw - wall, offset=-wall))
-    shell = shell.cut(box(front - wall - 1, front + 1, -gw / 2, gw / 2, SCREEN_Z - gh / 2, SCREEN_Z + gh / 2))     # 前脸开窗
-    shell = shell.cut(cyl_y(0, 0, 10, hw - wall - 1, hw + 1))                                                      # 左边：舵盘法兰穿出去
-    shell = shell.cut(cyl_y(0, 0, 8.2, -hw - 1, -hw + wall + 1))                                                   # 右边：俯仰轴销
-    # 下巴斜面：相机、测距、隐私灯开孔
-    c0, c1 = (56, -42), (84, -24)
-    L = math.hypot(c1[0] - c0[0], c1[1] - c0[1])
-    n = ((c1[1] - c0[1]) / L, -(c1[0] - c0[0]) / L)            # 朝外（朝前下）
-    mid = ((c0[0] + c1[0]) / 2, (c0[1] + c1[1]) / 2)
-    sensors = [("相机镜头", 0.0, 12.0, "black"), ("测距窗 VL53L5CX", -30.0, 8.0, "gloss"), ("隐私指示灯", 30.0, 4.0, "amber")]
-    for _, y, d, _ in sensors:
-        shell = shell.cut(cyl_dir((mid[0] - n[0] * 4, y, mid[1] - n[1] * 4), (n[0], 0, n[1]), d + 1, 8))
-    P = [("屏幕头", soft(shell, 4.0), "deck")]
+    shell = shell.cut(box(front - wall - 1, front + 1, -gw / 2, gw / 2, SCREEN_Z - gh / 2, SCREEN_Z + gh / 2))     # 屏幕窗
+    shell = shell.cut(cyl_y(0, 0, 10, hw - wall - 1, hw + 1))                                                      # 左：舵盘法兰
+    shell = shell.cut(cyl_y(0, 0, 8.2, -hw - 1, -hw + wall + 1))                                                   # 右：轴销
+    P = [("屏幕头", soft(shell, 2.0), "deck")]
     board_x0 = SCREEN_X - t
     P.append(("4.3寸屏板", box(board_x0, SCREEN_X, -w / 2, w / 2, SCREEN_Z - h / 2, SCREEN_Z + h / 2), "pcb"))
     P.append(("屏幕玻璃", box(front - 1.5, front + 0.5, -gw / 2, gw / 2, SCREEN_Z - gh / 2, SCREEN_Z + gh / 2), "glass"))
-    # 屏板卡槽：两侧各一条导轨（屏板从后面推进去顶住前墙），后面一根压条压住
     for sy in (1, -1):
         g = box(board_x0 - 4, SCREEN_X, w / 2 + 0.3, hw - wall, SCREEN_Z - h / 2, SCREEN_Z + h / 2)
         g = g.cut(box(board_x0 - 0.3, SCREEN_X + 0.3, w / 2 - 3, w / 2 + 0.6, SCREEN_Z - h / 2 - 0.3, SCREEN_Z + h / 2 + 0.3))
         P.append((f"屏板卡槽{'左' if sy > 0 else '右'}", g if sy > 0 else mirror_y(g), "printed"))
     P.append(("屏板压条", box(board_x0 - 4, board_x0, -w / 2 + 6, w / 2 - 6, SCREEN_Z - 6, SCREEN_Z + 6), "printed"))
-    # 左边舵盘法兰（接舵机，跟着头转）、右边轴销（插进右肩座的铜套）
-    P.append(("舵盘法兰", cyl_y(0, 0, 9.5, hw - wall - 2, POD_IN + POD_W / 2 - SERVO[1] / 2 - 0.5), "silver"))
-    P.append(("俯仰轴销", cyl_y(0, 0, 8.0, -POD_IN - 12, -hw + wall + 2), "steel"))
-    # 外面：银色屏框、深色眉、下巴传感器、脑后散热片
-    frame = box(front, front + 2, -gw / 2 - 6, gw / 2 + 6, SCREEN_Z - gh / 2 - 6, SCREEN_Z + gh / 2 + 6).cut(
-        box(front - 1, front + 3, -gw / 2, gw / 2, SCREEN_Z - gh / 2, SCREEN_Z + gh / 2))
-    P.append(("外壳·屏框", frame, "silver"))
-    b0, b1 = (72, 66), (84, 54)
-    P.append(("外壳·眉", prism_xz([b0, b1, (b1[0] + 1.8, b1[1] + 1.8), (b0[0] + 1.8, b0[1] + 1.8)], -hw + 2, hw - 2), "dark"))
-    for name, y, d, col in sensors:
-        P.append((f"外壳·{name}", cyl_dir((mid[0] - n[0] * 3, y, mid[1] - n[1] * 3), (n[0], 0, n[1]), d, 4.5), col))
-        if name == "相机镜头":
-            P.append(("外壳·镜头银圈", cyl_dir((mid[0] - n[0] * 0.5, y, mid[1] - n[1] * 0.5), (n[0], 0, n[1]), d + 4, 1.0), "silver"))
-    x_back = min(x for x, _ in HEAD_PROFILE)
-    for i in range(5):
-        y = -40 + i * 20
-        P.append((f"外壳·脑后散热片{i + 1}", box(x_back - 5, x_back + 0.5, y - 1.5, y + 1.5, -12, 36), "silver"))
+    # 两侧短轴：左边舵盘法兰插进左耳轴座里的舵机，右边钢轴销插进右耳轴座的铜套
+    P.append(("舵盘法兰", cyl_y(0, 0, 9.5, hw - wall - 2, (TRUNNION_Y0 + TRUNNION_Y1) / 2 - SERVO[1] / 2 - 0.5), "silver"))
+    P.append(("俯仰轴销", cyl_y(0, 0, 8.0, -TRUNNION_Y0 - 16, -hw + wall + 2), "steel"))
+    # 环绕面罩：前脸一整条 + 两侧各包回 30 mm，烟黑色，盖住屏幕窗和以后的传感器窗
+    z0, z1 = 6.0, 76.0
+    band = prism_xz(HEAD_PROFILE, -hw - 1.5, hw + 1.5, offset=1.5).cut(prism_xz(HEAD_PROFILE, -hw, hw))
+    band = band.intersect(box(front - 38, front + 3, -hw - 3, hw + 3, z0, z1))
+    P.append(("外壳·烟黑面罩", band, "visor"))
     return P
 
 
-# ================================================================ 两块肩座（脖子坐标：原点在甲板上表面、俯仰轴正下方）
-def shrink(pts, k, c=(16.0, PIVOT_UP)):
-    return [(c[0] + (x - c[0]) * k, c[1] + (z - c[1]) * k) for x, z in pts]
-
-
-def pods():
+def neck():
+    """固定颈座（脖子坐标：原点在头部平台盖上表面、俯仰轴正下方）：
+    后横梁 + 两边立板，立板顶上是两个圆柱形耳轴座（左边装舵机、右边装铜套），端盖带螺栓——一看就知道头只能上下点；
+    左耳轴座上立一根短桅杆，顶上是激光雷达（固定，不跟头动）。"""
     P = []
-    hexp = [(x, z) for x, z in POD_HEX]
-    y_in, y_out = POD_IN, POD_IN + POD_W            # 72 … 120
+    d, y0, y1 = TRUNNION_D, TRUNNION_Y0, TRUNNION_Y1
+    r = d / 2
+    xa, xb = YOKE_X
+    yc = (y0 + y1) / 2
+    beam = box(-44, -26, -y1, y1, 0, 16)
+    for sy in (1, -1):
+        cheek = prism_xz([(xa, 0), (xb, 0), (xb, PIVOT_UP), (xa, PIVOT_UP)], *sorted((sy * (y0 + 2), sy * y1)))
+        beam = beam.fuse(cheek)
+    beam = beam.cut(cyl_y(0, PIVOT_UP, d + 0.6, -y1 - 1, y1 + 1))            # 立板顶上挖出圆弧，耳轴座坐进去
+    P.append(("颈座", soft(beam, 2.0), "anod"))
     sx, sw, sh = SERVO
-    yc = (y_in + y_out) / 2
-    up0, up1 = (78, 62), (50, 122)                   # 上前斜边
-    lo0, lo1 = (48, 16), (78, 62)                    # 下前斜边
-    lerp = lambda a, b, t: (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)  # noqa: E731
     for sy, tag in ((1, "左"), (-1, "右")):
         out = []
-        seal = prism_xz(hexp, y_in, y_in + 2).cut(cyl_y(0, PIVOT_UP, 14 if sy > 0 else 10, y_in - 1, y_in + 3))
-        out.append((f"{tag}肩座封板", soft(seal, 0.8), "shell"))
-        core = prism_xz(hexp, y_in + 2, y_out - 14)
-        if sy > 0:   # 左：舵机仓 + 舵盘过孔 + 往下的走线孔
-            core = core.cut(box(-sx / 2 - 0.5, sx / 2 + 0.5, yc - sw / 2 - 0.5, y_out - 13, PIVOT_UP - sh / 2 - 0.5, PIVOT_UP + sh / 2 + 0.5))
-            core = core.cut(cyl_y(0, PIVOT_UP, 14, y_in, yc))
-            core = core.cut(cq.Solid.makeCylinder(6, PIVOT_UP, V(CABLE_X, yc, 0)))
-        else:        # 右：轴销铜套孔 + 传感器小板仓
-            core = core.cut(cyl_y(0, PIVOT_UP, 10, y_in, y_in + 20))
-            core = core.cut(box(30, 62, y_in + 6, y_out - 15, 70, 104))
-        out.append((f"{tag}肩座骨架", soft(core, 4.0), "dark"))
-        armor = prism_xz(shrink(hexp, 0.86), y_out - 10, y_out - 4).cut(cyl_y(0, PIVOT_UP, 38, y_out - 11, y_out - 3))
-        out.append((f"{tag}肩座外装甲", soft(armor, 2.8), "deck"))
-        for i, (x, z) in enumerate(((50, 30), (42, 106), (-30, 62))):
-            out.append((f"外壳·{tag}肩座支柱{i + 1}", cyl_y(x, z, 6, y_out - 14, y_out - 10), "silver"))
-        out.append((f"外壳·{tag}电机端盖", cyl_y(0, PIVOT_UP, 24, y_out - 14, y_out - 6), "silver"))
-        out.append((f"外壳·{tag}端盖六角", cyl_y(0, PIVOT_UP, 9, y_out - 6, y_out - 5), "dark"))
-        out.append((f"外壳·{tag}端盖青光圈", ring_y(0, PIVOT_UP, 40, 38, y_out - 4, y_out - 3.4), "cyan"))
-        for i in range(8):
-            a = 2 * math.pi * i / 8
-            out.append((f"外壳·{tag}端盖螺栓{i + 1}", cyl_y(25 * math.cos(a), PIVOT_UP + 25 * math.sin(a), 3.2, y_out - 4, y_out - 3), "silver"))
-        out.append((f"外壳·{tag}肩座分缝", strip((8.3, 80.5), (-32.3, 109.5), 1.4, y_out - 4, y_out - 3.5), "seam"))
-        a0, a1 = shrink([lerp(up0, up1, 0.18), lerp(up0, up1, 0.82)], 0.86)
-        out.append((f"外壳·{tag}肩座光槽", strip(a0, a1, 2.2, y_out - 4, y_out - 3.5, inward=(-3.5, -1.6)), "cyan"))
-        for p0, p1 in ((lerp(lo0, lo1, 0.1), lerp(lo0, lo1, 0.95)), (lerp(up0, up1, 0.05), lerp(up0, up1, 0.9))):
-            out.append((f"外壳·{tag}缝灯 {p0[1]:.0f}", strip(p0, p1, 2.6, y_in - 0.5, y_in, inward=(-2.0, 0.0)), "cyan"))
-        lamp0, lamp1 = lerp(lo0, lo1, 0.35), lerp(lo0, lo1, 0.65)
-        out.append((f"外壳·{tag}肩座琥珀灯", strip(lamp0, lamp1, 3.0, yc - 5, yc + 5, inward=(1.4, -0.9)), "amber"))
-        if sy < 0:   # 右肩座：热成像窗、两颗红外管、短天线
-            Ln = math.hypot(up1[0] - up0[0], up1[1] - up0[1])
-            nrm = ((up1[1] - up0[1]) / Ln, -(up1[0] - up0[0]) / Ln)      # 上前斜面朝外
-            k = 18 / Ln
-            out.append(("外壳·热成像窗 MLX90640", strip(lerp(up0, up1, 0.22), lerp(up0, up1, 0.22 + k), 2.0, yc - 9, yc + 9,
-                                                       inward=(nrm[0] * 0.5, nrm[1] * 0.5)), "gloss"))
-            out.append(("外壳·热成像银框", strip(lerp(up0, up1, 0.22 - 2 / Ln), lerp(up0, up1, 0.22 + k + 2 / Ln), 1.0, yc - 11, yc + 11,
-                                              inward=(nrm[0] * 0.2, nrm[1] * 0.2)), "silver"))
-            for dy in (-8, 8):
-                p = lerp(up0, up1, 0.72)
-                out.append((f"外壳·红外管{'甲' if dy < 0 else '乙'}", cyl_dir((p[0] - nrm[0] * 2, yc + dy, p[1] - nrm[1] * 2), (nrm[0], 0, nrm[1]), 5, 3.5), "black"))
-            top = max(z for _, z in POD_HEX)
-            out.append(("外壳·天线", box(-4, 1, yc - 5, yc + 5, top, top + 30), "dark"))
-            out.append(("外壳·天线灯", box(-4.5, 1.5, yc - 5.5, yc + 5.5, top + 30, top + 35), "amber"))
-        for n, s, col in out:
-            P.append((n, s if sy > 0 else mirror_y(s), col))
-    # 头部俯仰舵机（左肩座里），右肩座里一个铜套
+        tr = cyl_y(0, PIVOT_UP, d, y0, y1)
+        if sy > 0:   # 左：舵机仓 + 舵盘过孔
+            tr = tr.cut(box(-sx / 2 - 0.5, sx / 2 + 0.5, yc - sw / 2 - 0.5, yc + sw / 2 + 0.5, PIVOT_UP - sh / 2 - 0.5, PIVOT_UP + sh / 2 + 0.5))
+            tr = tr.cut(cyl_y(0, PIVOT_UP, 14, y0 - 1, yc))
+        else:        # 右：铜套孔
+            tr = tr.cut(cyl_y(0, PIVOT_UP, 10, y0 - 1, y0 + 20))
+        out.append((f"{tag}耳轴座", soft(tr, 2.0), "anod"))
+        out.append((f"{tag}耳轴端盖", cyl_y(0, PIVOT_UP, d - 18, y1, y1 + 4), "anod"))
+        out.append((f"外壳·{tag}端盖六角", prism_xz([(9 * math.cos(math.pi / 6 + k * math.pi / 3), PIVOT_UP + 9 * math.sin(math.pi / 6 + k * math.pi / 3))
+                                                   for k in range(6)], y1 + 4, y1 + 8), "silver"))
+        for i in range(6):
+            a = 2 * math.pi * i / 6 + math.pi / 6
+            out.append((f"外壳·{tag}耳轴螺栓{i + 1}", cyl_y((r - 4) * math.cos(a), PIVOT_UP + (r - 4) * math.sin(a), 6, y1, y1 + 2.5), "silver"))
+        for n, s_, c in out:
+            P.append((n, s_ if sy > 0 else mirror_y(s_), c))
     P.append(("俯仰舵机", box(-sx / 2, sx / 2, yc - sw / 2, yc + sw / 2, PIVOT_UP - sh / 2, PIVOT_UP + sh / 2), "motor"))
-    P.append(("俯仰铜套", ring_y(0, PIVOT_UP, 10, 8.1, -y_in - 20, -y_in - 2), "trim"))
+    P.append(("俯仰铜套", ring_y(0, PIVOT_UP, 10, 8.1, -y0 - 20, -y0 + 1), "trim"))
+    # 雷达桅杆：从左耳轴座顶上立起来，顶上一块安装板
+    top = PIVOT_UP + LIDAR_UP
+    my = min(LIDAR_Y, y1 - 9)
+    P.append(("雷达桅杆", cyl_z(0, my, 18, PIVOT_UP + r + 0.2, top - 4), "anod"))
+    P.append(("雷达底座", box(-29, 29, LIDAR_Y - LD19["ear_d"] / 2, LIDAR_Y + LD19["ear_d"] / 2, top - 4, top), "trim"))
     return P
 
 

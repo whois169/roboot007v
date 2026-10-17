@@ -125,7 +125,7 @@ def main():
     head_parts = [p for p in parts if p.g == "head"]
     mh, ch, Ih = inertial([(p.m, p.s) for p in head_parts], (0, 0, 0))
     meshes("head", head_parts, (0, 0, 0))
-    pivot = np.array([NECK_X, 0, M.DECK + PIVOT_UP]) / 1000
+    pivot = np.array([NECK_X, 0, M.NECK_Z + PIVOT_UP]) / 1000
 
     # ---- 腿
     legs_xml = []

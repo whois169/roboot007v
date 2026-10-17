@@ -3,7 +3,7 @@
 COL = dict(armor="#4b5159", alu="#b9bfc7", profile="#9ea5ad", black="#1b1d20", motor="#2c3035", steel="#d3d7db",
            trim="#c8cdd3", pcb="#1f6b48", battery="#2f5c9e", printed="#6e747b", glass="#0c1a22", wheel="#26292d",
            shell="#353b40", deck="#4a5258", dark="#1f2327", silver="#cdd2d6", gloss="#06080a", seam="#050607",
-           amber="#ffb000", cyan="#00e5ff", anod="#3b4147")   # anod = 深灰阳极氧化铝
+           amber="#ffb000", cyan="#00e5ff", anod="#3b4147", visor="#0b1014")   # anod = 深灰阳极氧化铝
 EMISSIVE = dict(glass=(0.0, 0.35, 0.45), amber=(1.0, 0.63, 0.0), cyan=(0.0, 0.85, 1.0))
 METAL = ("alu", "steel", "trim", "profile", "silver", "anod")
 

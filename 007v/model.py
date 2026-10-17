@@ -210,19 +210,9 @@ def ld19():
 
 
 def neck_parts():
-    """脖子坐标：原点在甲板上表面、俯仰轴正下方。"""
-    P = []
-    nx, nh, ny = NECK_BASE
-    yc = POD_IN + POD_W / 2
-    u = box(-nx / 2, nx / 2, -ny / 2, ny / 2, 0, nh).cut(box(-nx / 2 + 30, nx / 2 + 1, -POD_IN, POD_IN, -1, nh + 1))
-    for sy in (1, -1):
-        u = u.cut(cyl_z(CABLE_X, sy * yc, 12, -1, nh + 1))       # 肩座走线孔往下穿过底座
-    P.append(("脖子底座", u, "dark"))                       # U 形：后面一根横梁 + 两条垫在肩座下面，屏幕头下面挖空
-    P += shell.pods()
-    top = max(z for _, z in POD_HEX)
-    top_x = sum(x for x, z in POD_HEX if z == top) / 2
-    P.append(("雷达LD19", ld19().translate(V(top_x, yc, top + 3)), "black"))
-    P.append(("雷达底座", box(top_x - 29, top_x + 29, POD_IN, POD_IN + POD_W, top, top + 3), "trim"))   # 和肩座顶一样宽，不往外伸
+    """脖子坐标：原点在头部平台盖上表面、俯仰轴正下方。固定颈座 + 耳轴座 + 雷达桅杆 + 雷达。"""
+    P = shell.neck()
+    P.append(("雷达LD19", ld19().translate(V(0, LIDAR_Y, PIVOT_UP + LIDAR_UP)), "black"))
     return P
 
 
