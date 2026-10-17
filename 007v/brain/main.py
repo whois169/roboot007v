@@ -93,8 +93,8 @@ async def eyes_demo(cfg):
     eyes = eyes_mod.make(cfg.get("eyes", {}), cfg["persona"]["name"])
     eyes.on_quit = bye
     await eyes.start()
-    eyes.status(temp=22.1, sim=True, bat=87)
-    extra = {"alert": {"text": "DOOR OPEN"}, "error": {"text": "E-NET"}}
+    eyes.status(temp=22.1, sim=True, bat=87, spd=0.0, load=6.5)
+    extra = {"alert": {"text": "DOOR OPEN"}, "error": {"text": "E-NET"}, "speak": {"face": "happy"}}
     print("HUD 演示中：每个模式 3 秒，循环播放。Ctrl+C 或关掉窗口退出")
     while True:
         for m in hud.MODES:
