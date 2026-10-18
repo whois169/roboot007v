@@ -136,9 +136,9 @@ def body_shell():
     P.append(("外壳·黑腰", rrect_ring(L2 + WAIST_IN, W2 + WAIST_IN, 2, TUB_TOP, WAIST_TOP), "dark"))
     for sy in (1, -1):
         for x in (-130, 130):
-            P.append((f"外壳·腰线灯 y{sy} x{x}", box(x - 35, x + 35, *sorted((sy * (W2 + WAIST_IN), sy * (W2 + WAIST_IN + 0.6))), 73.5, 76.5), "amber"))
+            P.append((f"外壳·腰线灯 y{sy} x{x}", box(x - 35, x + 35, *sorted((sy * (W2 + WAIST_IN), sy * (W2 + WAIST_IN + 0.6))), 73.5, 76.5), "cyan"))
     for sx in (1, -1):
-        P.append((f"外壳·腰线青灯 x{sx}", box(*sorted((sx * (L2 + WAIST_IN), sx * (L2 + WAIST_IN + 0.6))), -60, 60, 73.5, 76.5), "cyan"))
+        P.append((f"外壳·腰线端头 x{sx}", box(*sorted((sx * (L2 + WAIST_IN), sx * (L2 + WAIST_IN + 0.6))), -60, 60, 73.5, 76.5), "dark"))
     # ---- 上层甲板：薄皮（侧面只凸 1.5，上半截离折叠的轮子只有 5 mm）+ 前后大斜面
     # ---- 上层甲板：整块带前后两道斜面的外壳（侧面看就是效果图那种往回收的装甲板）；侧面只有 1.5 mm 皮
     prof = [(-L2 + 14, WAIST_TOP), (L2 - 14, WAIST_TOP), (L2 + 16, WAIST_TOP + 20), (L2 + 16, BODY_H - 20), (L2 + 1, BODY_H + 0.5),
@@ -169,7 +169,7 @@ def body_shell():
             small = small.translate(V(-5, -W2 - SLAB_OUT, 122))
         P.append((f"外壳·{tag}字样007V", txt, "silver"))
         P.append((f"外壳·{tag}小字", small, "silver"))
-    # 前保险杠：上下斜切，中间给深度相机开窗；两边琥珀雾灯
+    # 前保险杠：上下斜切，中间给深度相机开窗；两边白色方形照明灯（给深度相机补光、夜里照路）
     L2 = BODY_L / 2
     bump = prism_xz([(L2, 15), (L2 + 12, 21), (L2 + 12, 59), (L2, 65)], -100, 100)
     dx, dy, dz = DEPTH_CAM
@@ -177,22 +177,22 @@ def body_shell():
     P.append(("前保险杠", soft(bump, 3.0), "dark"))
     P.append(("外壳·深度相机窗", box(L2 + 9, L2 + 10.5, -dy / 2, dy / 2, 25, 24 + dz + 1), "gloss"))
     for sy in (1, -1):
-        P.append((f"外壳·雾灯{'左' if sy > 0 else '右'}", box(L2 + 12, L2 + 13.5, *sorted((sy * 64, sy * 88)), 36, 44), "amber"))
-    # 尾部：散热格栅 + 6 片银色鳍 + 两条琥珀尾灯
+        P.append((f"外壳·照明灯{'左' if sy > 0 else '右'}", box(L2 + 12, L2 + 13.5, *sorted((sy * 64, sy * 88)), 36, 44), "lamp_w"))
+    # 尾部：散热格栅 + 6 片银色鳍 + 两盏红色尾灯
     P.append(("后格栅", box(-L2 - 8, -L2, -80, 80, 18, 52), "black"))
     for i in range(6):
         y = -60 + i * 24
         P.append((f"外壳·格栅鳍{i + 1}", box(-L2 - 10, -L2 - 8, y - 1, y + 1, 20, 50), "silver"))
     for sy in (1, -1):
-        P.append((f"外壳·尾灯{'左' if sy > 0 else '右'}", box(-L2 - 16.6, -L2 - 15.9, *sorted((sy * 40, sy * 100)), 114, 122), "amber"))
-    # 底光（青色，夜里照地面）
+        P.append((f"外壳·尾灯{'左' if sy > 0 else '右'}", box(-L2 - 16.6, -L2 - 15.9, *sorted((sy * 40, sy * 100)), 114, 122), "lamp_r"))
+    # 底部灯槽（不点亮）
     for sy in (1, -1):
-        P.append((f"外壳·底光{'左' if sy > 0 else '右'}", box(-140, 140, *sorted((sy * 30, sy * 36)), -1.5, 0), "cyan"))
-    # 栏板顶边的琥珀反光条
+        P.append((f"外壳·底部灯槽{'左' if sy > 0 else '右'}", box(-140, 140, *sorted((sy * 30, sy * 36)), -1.5, 0), "dark"))
+    # 栏板顶边的压条（比栏板深一级的灰）
     rail_top = deck + TOP_PLATE_T + PROFILE
     ftop = rail_top - FENCE_INSERT + FENCE_H
     for sy in (1, -1):
-        P.append((f"外壳·栏板反光条{'左' if sy > 0 else '右'}", box(BED_X0 + 15, BED_X1 - 15, sy * RAIL_Y - 3.5, sy * RAIL_Y + 3.5, ftop - 6, ftop + 0.5), "amber"))
+        P.append((f"外壳·栏板压条{'左' if sy > 0 else '右'}", box(BED_X0 + 15, BED_X1 - 15, sy * RAIL_Y - 3.5, sy * RAIL_Y + 3.5, ftop - 6, ftop + 0.5), "shell_dk"))
     return P
 
 
@@ -222,7 +222,7 @@ def head():
     L = math.hypot(c1[0] - c0[0], c1[1] - c0[1])
     n = ((c1[1] - c0[1]) / L, -(c1[0] - c0[0]) / L)
     mid = ((c0[0] + c1[0]) / 2, (c0[1] + c1[1]) / 2)
-    sensors = [("相机镜头", 0.0, 12.0, "black"), ("测距窗 VL53L5CX", -30.0, 8.0, "gloss"), ("隐私指示灯", 30.0, 4.0, "amber")]
+    sensors = [("相机镜头", 0.0, 12.0, "black"), ("测距窗 VL53L5CX", -30.0, 8.0, "gloss"), ("隐私指示灯", 30.0, 4.0, "visor")]
     for _, y, d, _ in sensors:
         shell = shell.cut(cyl_dir((mid[0] - n[0] * 4, y, mid[1] - n[1] * 4), (n[0], 0, n[1]), d + 1, 8))
     s2 = SEAM_HEAD / 2
@@ -432,24 +432,24 @@ def leg_skin(op0, ly0, ly1, hub0, ly_out):
     rc = WHEEL_D / 2 + ARM_WHEEL_CLEAR                                       # 腿末端给轮子挖的圆弧缺口
     notch = lambda y0, y1: cyl_y(ARM, 0, 2 * rc, y0 - 1, y1 + 1)  # noqa: E731
     oy = ly_out
-    # 外盖板（深色，2 mm）+ 长槽 + 三道斜黄条 + 边上一条黄线
+    # 外盖板（深色，2 mm）+ 长槽 + 三道斜纹 + 边上一条线（比盖板深一级的灰）
     cover = prism_xz(stadium_pts(0, ARM, ARM_ROOT_R - 1, ARM_END_R - 1), oy - 2, oy).cut(notch(oy - 2, oy))
     cover = cover.cut(prism_xz(stadium_pts(42, 98, 5, 5), oy - 3, oy + 1))
     P.append(("摆臂外盖板", soft(cover, 1.0), "dark"))
     P.append(("外壳·长槽底", prism_xz(stadium_pts(42, 98, 5, 5), oy - 2, oy - 1.2), "black"))
     for i, u in enumerate((20, 27, 34)):
-        P.append((f"外壳·摆臂黄条{i + 1}", strip((u, -14), (u + 10, 14), 2.4, oy, oy + 0.6), "amber"))
-    P.append(("外壳·摆臂边黄线", strip((48, 16), (104, 18), 1.6, oy, oy + 0.6), "amber"))
-    # 髋部大圆盖（里面是角度编码器 AS5600）+ 黄圈 + 银色六角
+        P.append((f"外壳·摆臂斜纹{i + 1}", strip((u, -14), (u + 10, 14), 2.4, oy, oy + 0.6), "skel_dk"))
+    P.append(("外壳·摆臂边线", strip((48, 16), (104, 18), 1.6, oy, oy + 0.6), "skel_dk"))
+    # 髋部大圆盖（里面是角度编码器 AS5600）+ 深灰圈 + 银色六角
     P.append(("髋部大圆盖", soft(cyl_y(0, 0, 46, oy, oy + 2.5), 1.0), "dark"))
-    P.append(("外壳·髋盖黄圈", ring_y(0, 0, 46, 37, oy + 2.5, oy + 3.1), "amber"))
+    P.append(("外壳·髋盖圈", ring_y(0, 0, 46, 37, oy + 2.5, oy + 3.1), "skel_dk"))
     P.append(("外壳·髋盖六角", prism_xz([(9 * math.cos(math.pi / 6 + k * math.pi / 3), 9 * math.sin(math.pi / 6 + k * math.pi / 3)) for k in range(6)],
                                          oy + 2.5, oy + 4), "silver"))
     # 臂座上的黄色箍（像减震弹簧）
     for i, y in enumerate((hub0 + 6, hub0 + 14, hub0 + 22, hub0 + 30)):
         hoop = prism_xz(stadium_pts(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R + 1.2, ARM_ROOT_R + 1.2), y, y + 2.5).cut(
             prism_xz(stadium_pts(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R - 0.5, ARM_ROOT_R - 0.5), y - 1, y + 4))
-        P.append((f"外壳·臂座黄箍{i + 1}", hoop, "amber"))
+        P.append((f"外壳·臂座箍{i + 1}", hoop, "shell_dk"))
     # 麦轮外侧：轮毂盖 + 青光环（跟着轮子转），和腿外侧面齐平
     P.append(("外壳·麦轮轮毂盖", cyl_y(ARM, 0, 32, oy - 1.5, oy), "dark"))
     P.append(("外壳·麦轮青光环", ring_y(ARM, 0, 22, 16, oy - 0.2, oy), "cyan"))
