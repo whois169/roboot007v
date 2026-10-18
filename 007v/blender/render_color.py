@@ -146,8 +146,8 @@ M = dict(shell=paint("外壳·喷涂", PAL["shell"]), shell_dk=paint("外壳·�
 # 琥珀件在哪个部件上 → 改成那个部件深一级的灰
 AMBER_TO = [("臂座黄箍", "shell_dk"), ("栏板反光条", None), ("摆臂黄条", "skel_dk"), ("摆臂边黄线", "skel_dk"),
             ("髋盖黄圈", "skel_dk"), ("隐私指示灯", "glass")]
-NAME_RULES = [("屏幕玻璃", "hud"), ("腰线青灯", "skel"), ("腰线灯", "band"), ("雾灯", "white"), ("尾灯", "red"),
-              ("底光", "skel")]
+NAME_RULES = [("屏幕玻璃", "hud"), ("腰线端头", "skel"), ("腰线灯", "band"), ("照明灯", "white"), ("尾灯", "red"),
+              ("底部灯槽", "skel")]
 
 
 def key_of(o):
@@ -155,7 +155,7 @@ def key_of(o):
     return ks[0] if ks else ""
 
 
-fence_key = next((key_of(o) for o in bpy.data.objects if o.type == "MESH" and "栏板" in o.name and "反光条" not in o.name), "shell")
+fence_key = next((key_of(o) for o in bpy.data.objects if o.type == "MESH" and "栏板" in o.name and "压条" not in o.name), "shell")
 fence_dk = "shell_dk" if fence_key in SHELL_KEYS else "skel_dk"
 
 
@@ -172,6 +172,8 @@ def pick(o):
         return "shell_dk"
     if k == "cyan":
         return "cyan"
+    if k in ("shell_dk", "skel_dk"):
+        return k
     for keys, tgt in ((SHELL_KEYS, "shell"), (SKEL_KEYS, "skel"), (METAL_KEYS, "metal"), (RUBBER_KEYS, "rubber"),
                       (GLASS_KEYS, "glass"), (("seam",), "seam")):
         if k in keys:
@@ -264,7 +266,7 @@ scene.frame_set(5)
 
 if NIGHT:                                                    # 白灯真的往前照路：在两盏灯的位置放两盏聚光灯
     for o in bpy.data.objects:
-        if "雾灯" in o.name and o.type == "MESH":
+        if "照明灯" in o.name and o.type == "MESH":
             c = o.matrix_world @ (sum((Vector(v) for v in o.bound_box), Vector()) / 8)
             add_light(o.name + "·光束", "SPOT", 2.5, (0, -1, -0.75), loc=c + Vector((0, -0.01, 0)),
                       spot_size=math.radians(55), spot_blend=0.7, shadow_soft_size=0.01, color=(1.0, 0.97, 0.92))

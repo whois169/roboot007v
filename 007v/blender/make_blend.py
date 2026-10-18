@@ -274,7 +274,7 @@ print(f"零件 {len(D['parts']) - missing} 个挂好（缺 {missing}），{D['fr
 # ---------------------------------------------------------------- 栏板单独一个集合，默认隐藏（和效果图一样，要看就在大纲里点眼睛）
 C_FENCE = collection("栏板（可拆，默认隐藏）")
 for o in list(bpy.data.objects):
-    if o.type == "MESH" and ("栏板" in o.name) and "反光条" not in o.name or o.name.startswith("外壳·栏板反光条"):
+    if o.type == "MESH" and ("栏板" in o.name) and "压条" not in o.name or o.name.startswith("外壳·栏板压条"):
         for c in list(o.users_collection):
             c.objects.unlink(o)
         C_FENCE.objects.link(o)
@@ -358,8 +358,8 @@ if glass is not None:
     hud = screen_material()
     glass.data.materials.clear()
     glass.data.materials.append(hud)
-for m in bpy.data.materials:                                  # 琥珀、青色灯带亮一点
-    if m.name.split(".")[0] in ("amber", "cyan") and m.node_tree:
+for m in bpy.data.materials:                                  # 青色光环 / 灯带、白色照明灯、红色尾灯
+    if m.name.split(".")[0] in ("cyan", "lamp_w", "lamp_r") and m.node_tree:
         b = m.node_tree.nodes.get("Principled BSDF")
         if b:
             b.inputs["Emission Strength"].default_value = 2.2

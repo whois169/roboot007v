@@ -384,7 +384,7 @@ if __name__ == "__main__":
 
 
     # ---------------------------------------------------------------- GLB（各刚体组在自己的局部坐标里，按 组|颜色 分节点）+ rig.json
-    from look import COL, EMISSIVE, METAL, gl, lin
+    from look import ANOD, COL, EMISSIVE, METAL, gl, lin
 
 
     def node_of(p):
@@ -411,8 +411,8 @@ if __name__ == "__main__":
             mesh = trimesh.util.concatenate(ms)
             rgb = [lin(int(COL[c][i:i + 2], 16)) for i in (1, 3, 5)]          # glTF 的颜色是线性空间
             mesh.visual = trimesh.visual.TextureVisuals(material=trimesh.visual.material.PBRMaterial(
-                name=c, baseColorFactor=rgb + [255], metallicFactor=0.85 if c in METAL else (0.4 if c == "motor" else 0.05),
-                roughnessFactor=0.35 if c in METAL else (0.1 if c == "glass" else 0.7),
+                name=c, baseColorFactor=rgb + [255], metallicFactor=0.85 if c in METAL else (0.5 if c in ANOD else 0.05),
+                roughnessFactor=0.35 if c in METAL else (0.42 if c in ANOD else (0.06 if c in ("glass", "gloss", "visor") else (0.88 if c in ("wheel", "black") else 0.72))),
                 emissiveFactor=list(EMISSIVE.get(c, (0, 0, 0)))))
             scene.add_geometry(mesh, node_name=f"{g}|{c}", geom_name=f"{g}|{c}")
     scene.export(os.path.join(OUT, "007v.glb"))

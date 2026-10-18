@@ -17,7 +17,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
 import build as B  # noqa: E402
 from config import *  # noqa: E402,F401,F403
-from look import COL, EMISSIVE, METAL, lin  # noqa: E402
+from look import ANOD, COL, EMISSIVE, METAL, lin  # noqa: E402
 
 OUT = os.path.join(ROOT, "out", "blender")
 FPS = 25
@@ -52,8 +52,8 @@ def export_glb():
         rgb = [lin(int(COL[p.c][k:k + 2], 16)) for k in (1, 3, 5)]
         mesh.visual = trimesh.visual.TextureVisuals(material=trimesh.visual.material.PBRMaterial(
             name=p.c, baseColorFactor=rgb + [255],
-            metallicFactor=0.5 if p.c == "anod" else (0.85 if p.c in METAL else (0.4 if p.c == "motor" else 0.05)),
-            roughnessFactor=0.55 if p.c == "anod" else (0.35 if p.c in METAL else (0.1 if p.c == "glass" else 0.6)), emissiveFactor=list(EMISSIVE.get(p.c, (0, 0, 0)))))
+            metallicFactor=0.5 if p.c in ANOD else (0.85 if p.c in METAL else 0.05),
+            roughnessFactor=0.42 if p.c in ANOD else (0.35 if p.c in METAL else (0.06 if p.c in ("glass", "gloss", "visor") else (0.88 if p.c in ("wheel", "black") else 0.72))), emissiveFactor=list(EMISSIVE.get(p.c, (0, 0, 0)))))
         node = f"P{i:03d}"
         scene.add_geometry(mesh, node_name=node, geom_name=node)
         cen = to_b([p.cen - off])[0]

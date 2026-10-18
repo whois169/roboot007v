@@ -1,0 +1,29 @@
+00:01.813  blend            | Read blend: "C:\Users\67309\Desktop\RoboDog_本地工程\robodog\007v\out\blender\机械狗007v.blend"
+C:\Users\67309\Desktop\RoboDog_本地工程\robodog\007v\blender\render_color.py:56: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  m.use_nodes = True
+C:\Users\67309\Desktop\RoboDog_本地工程\robodog\007v\blender\render_color.py:219: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+00:01.985  cycles           | WARNING HIPEW initialization failed: Error opening HIP dynamic library
+00:20.578  render           | Saved: 'C:\Users\67309\Desktop\RoboDog_本地工程\robodog\007v\out\blender\配色\方案B_正面.png'
+00:39.610  render           | Saved: 'C:\Users\67309\Desktop\RoboDog_本地工程\robodog\007v\out\blender\配色\方案B_侧面.png'
+01:03.547  render           | Saved: 'C:\Users\67309\Desktop\RoboDog_本地工程\robodog\007v\out\blender\配色\方案B_前45度.png'
+01:27.688  render           | Saved: 'C:\Users\67309\Desktop\RoboDog_本地工程\robodog\007v\out\blender\配色\方案B_后45度.png'
+材质分配： {'skel': 186, 'shell': 24, 'metal': 89, 'rubber': 67, 'glass': 8, 'skel_dk': 20, 'cyan': 9, 'shell_dk': 18, 'floor': 1, 'red': 2, 'white': 2, 'band': 4}
+用显卡渲染：CUDA
+配色渲染完成： C:\Users\67309\Desktop\RoboDog_本地工程\robodog\007v\out\blender\配色
+Blender 5.2.2 LTS (hash d13f752e3b9c built 2026-09-15 01:37:04)
+
+Blender quit
+00:01.829  blend            | Read blend: "C:\Users\67309\Desktop\RoboDog_本地工程\robodog\007v\out\blender\机械狗007v.blend"
+C:\Users\67309\Desktop\RoboDog_本地工程\robodog\007v\blender\render_color.py:56: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  m.use_nodes = True
+C:\Users\67309\Desktop\RoboDog_本地工程\robodog\007v\blender\render_color.py:219: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+00:02.000  cycles           | WARNING HIPEW initialization failed: Error opening HIP dynamic library
+00:24.188  render           | Saved: 'C:\Users\67309\Desktop\RoboDog_本地工程\robodog\007v\out\blender\配色\方案B_夜间_前45度.png'
+材质分配： {'skel': 186, 'shell': 24, 'metal': 89, 'rubber': 67, 'glass': 8, 'skel_dk': 20, 'cyan': 9, 'shell_dk': 18, 'floor': 1, 'red': 2, 'white': 2, 'band': 4}
+用显卡渲染：CUDA
+配色渲染完成： C:\Users\67309\Desktop\RoboDog_本地工程\robodog\007v\out\blender\配色
+Blender 5.2.2 LTS (hash d13f752e3b9c built 2026-09-15 01:37:04)
+
+Blender quit

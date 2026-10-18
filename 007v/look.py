@@ -1,11 +1,15 @@
 """零件颜色、材质和坐标换算：3D 查看页（build.py）、SolidWorks 导出、Blender 导出共用一套。"""
 
-COL = dict(armor="#4b5159", alu="#b9bfc7", profile="#9ea5ad", black="#1b1d20", motor="#2c3035", steel="#d3d7db",
-           trim="#c8cdd3", pcb="#1f6b48", battery="#2f5c9e", printed="#6e747b", glass="#0c1a22", wheel="#26292d",
-           shell="#353b40", deck="#4a5258", dark="#1f2327", silver="#cdd2d6", gloss="#06080a", seam="#050607",
-           amber="#ffb000", cyan="#00e5ff", anod="#3b4147", visor="#0b1014")   # anod = 深灰阳极氧化铝
-EMISSIVE = dict(glass=(0.0, 0.35, 0.45), amber=(1.0, 0.63, 0.0), cyan=(0.0, 0.85, 1.0))
-METAL = ("alu", "steel", "trim", "profile", "silver", "anod")
+# 2026-10-18 配色定方案 B（浅色版）：外壳浅灰白，骨架 / 连杆 / 电机深灰，青色灯光；全车不用金色
+COL = dict(armor="#d9dbdd", alu="#9aa0a6", profile="#3d4247", black="#141516", motor="#3d4247", steel="#a3a9af",
+           trim="#9aa0a6", pcb="#1f6b48", battery="#2f5c9e", printed="#d9dbdd", glass="#0a0d10", wheel="#141516",
+           shell="#d9dbdd", deck="#d9dbdd", dark="#3d4247", silver="#a3a9af", gloss="#0a0d10", seam="#050607",
+           cyan="#00bfff", anod="#3d4247", visor="#0a0d10",
+           shell_dk="#a6aaae", skel_dk="#25282c",             # 比所在部件深一级的灰（原来的金色线条 / 金色件）
+           lamp_w="#fff7eb", lamp_r="#ff1a10")                # 白色照明灯、红色尾灯
+EMISSIVE = dict(glass=(0.0, 0.35, 0.45), cyan=(0.0, 0.75, 1.0), lamp_w=(1.0, 0.97, 0.92), lamp_r=(1.0, 0.05, 0.03))
+METAL = ("alu", "steel", "trim", "silver")                   # 拉丝金属：螺栓、轴承座、轴毂、轮子侧板
+ANOD = ("anod", "profile", "dark", "motor")                   # 深色阳极氧化：骨架、连杆、电机护罩（轻微金属光泽）
 
 
 def lin(v):
