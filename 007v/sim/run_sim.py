@@ -50,7 +50,7 @@ WHEEL_RPM_RATED, WHEEL_RPM_FREE = 150.0, 228.0
 WHEEL_STALL = WHEEL_RATED / (1 - WHEEL_RPM_RATED / WHEEL_RPM_FREE)   # 电压限制线外推到 0 转速
 HEAD_LIMIT = 1.9
 HIP_SPEED = 80.0
-V_TOP = 1.1                                             # 最高速度：110 轮 + GIM4310-10 带载约 1.1 m/s（2026-10-17 轮子改小后）
+V_TOP = 1.0                                             # 最高速度：110 轮 + GIM4310-10 带载约 1.1 m/s（2026-10-17 轮子改小后）
 HIP_ACC = 300.0                                         # °/s²，髋从 0 加到 80°/秒 约 0.27 秒
 
 KP_H, KD_H = 1500.0, 30.0
@@ -347,7 +347,7 @@ def standup(r, slow=True):
     """从折叠站起来、再趴下。返回 (站起来那段的标签, 趴下那段的标签, 站起来后的机身高度)。"""
     tg = math.degrees(math.asin((SKID_H - WHEEL_D / 2 + HIP_Z) / ARM))
     up, dn = "展开、站起来", "趴下、折叠"
-    r.set_pose([-110.0] * 4, SKID_H / 1000 + 0.0005, HEAD_PITCH["fold"])
+    r.set_pose([FOLD_THETA] * 4, SKID_H / 1000 + 0.0005, HEAD_PITCH["fold"])
     r.mode = "free"
     r.run(0.6, "折叠趴着")
     zone = (tg - TOUCH_SLOW, tg + TOUCH_SLOW, 20.0) if slow else None
@@ -356,7 +356,7 @@ def standup(r, slow=True):
     r.run(1.2, "站稳")
     z_up = r.d.qpos[2]
     r.mode = "free"
-    r.move(-110.0, dn, head_deg=HEAD_PITCH["fold"], slow=zone)
+    r.move(FOLD_THETA, dn, head_deg=HEAD_PITCH["fold"], slow=zone)
     r.run(0.8, "折叠趴着 ")
     return up, dn, z_up
 

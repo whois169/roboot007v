@@ -31,11 +31,11 @@ R = WHEEL_D / 2000
 LEG_FX = (1, 1, -1, -1)                     # 前左 前右 后左 后右
 S_ROLL = (-1, 1, 1, -1)                     # 麦轮滚子方向（和仿真 export_mujoco.SIGN_S 一样）
 YW = tuple(sy * WHEEL_YC / 1000 for sy in (1, -1, 1, -1))
-FOLD_DEG = -110.0
+FOLD_DEG = 0.0                              # 趴平（2026-10-18 不再往上折叠）
 TOUCH_DEG = math.degrees(math.asin((SKID_H - WHEEL_D / 2 + HIP_Z) / ARM))   # 轮子刚碰到地的摆臂角（约 -3.4°）
 
 # ---- 限制
-V_MAX, VY_MAX, WZ_MAX = 1.1, 0.5, math.radians(90)
+V_MAX, VY_MAX, WZ_MAX = 1.0, 0.5, math.radians(90)       # Φ97 麦轮 + GIM4310-10 带载约 1.0 m/s
 A_ACC, A_BRAKE, A_Y, A_W = 0.5, 1.0, 0.5, math.radians(180)
 A_ESTOP, ESTOP_RAMP = 4.0, 0.1                 # 急停减速度 0.1 秒内从 1 加到 4（一下子到 4，车会往前一栽，后轮瞬间失重）
 W_MAX = V_MAX / R                           # 轮子最快转速（rad/s）
@@ -259,7 +259,7 @@ class Controller:
             self.v_tgt = [0.0, 0.0, 0.0]
             self.mode = "stop"
         if self.mode == "pose":
-            self._pose_step(dt)
+            self._pose_step(dt, hips)
         self._shape(dt)
         self._stall_check(hips, dt)
         self._load_step(s, dt)
@@ -307,13 +307,15 @@ class Controller:
             self.mode = "idle"
             self._finish(True)
 
-    def _pose_step(self, dt):
+    def _pose_step(self, dt, hips):
         """站起来 / 趴下：四个髋一起转，限速 80°/秒、加速度 300°/秒²，轮子接地前后 ±8° 放慢到 20°/秒。"""
         goal, cur = self.hip_goal, self.hip_ref[0]
         d = goal - cur
         if abs(d) < 0.05:
             self.hip_ref = [goal] * 4
             self.hip_vel = 0.0
+            if max(abs(h - goal) for h in hips) > 3.0:                # 指令走完了，但髋实际还没到：等它（卡住了由 _stall_check 报故障）
+                return
             self.state = "standing" if goal == STANCE_DEG else "folded"
             self.mode = "idle"
             self._finish(True)

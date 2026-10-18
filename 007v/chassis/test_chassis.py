@@ -14,7 +14,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 from chassis import protocol  # noqa: E402
-from chassis.controller import STANCE_DEG, Controller  # noqa: E402
+from chassis.controller import FOLD_DEG, STANCE_DEG, V_MAX, Controller  # noqa: E402
 from chassis.virtual import VirtualChassis  # noqa: E402
 import run_sim as S  # noqa: E402
 
@@ -108,7 +108,10 @@ def t_stand_fold():
     check("站起来：做完回 done，状态 standing", ok and b.events("done", id=2)[0]["ok"] and b.status()["st"] == "standing")
     b.run(1.0)
     z = b.vc.plant.d.qpos[2] * 1000
-    check("站起来后机身离地约 134 mm", abs(z - 134) < 6, f"{z:.0f} mm，用时约 {t_up:.1f} 秒")
+    import math as _m
+    from config import ARM, HIP_Z, WHEEL_D
+    z_exp = WHEEL_D / 2 - HIP_Z + ARM * _m.sin(_m.radians(STANCE_DEG))
+    check(f"站起来后机身离地约 {z_exp:.0f} mm", abs(z - z_exp) < 6, f"{z:.0f} mm，用时约 {t_up:.1f} 秒")
     check("站起来时髋扭矩没超额定 20.7 N·m（接地前后放慢起作用）", b.hip_peak < 20.7, f"最大 {b.hip_peak:.1f}")
     for _ in range(3):
         b.cmd({"drive": [0.5, 0, 0]})
@@ -162,10 +165,10 @@ def t_drive():
     b = Bench()
     b.run(0.3)
     for _ in range(10):
-        b.cmd({"drive": [1.1, 0, 0]})
+        b.cmd({"drive": [V_MAX, 0, 0]})
         b.run(0.4)
     v = b.speed()[0]
-    check("最高速 1.1 m/s 跟得上", v > 1.04, f"{v:.2f} m/s")
+    check(f"最高速 {V_MAX} m/s 跟得上", v > V_MAX * 0.95, f"{v:.2f} m/s")
     b.cmd({"limit": {"v": 0.3}})
     for _ in range(8):
         b.cmd({"drive": [1.1, 0, 0]})
@@ -229,10 +232,10 @@ def t_estop():
 
 def t_stall():
     section("髋卡住（故障）：用假传感器测")
-    c = Controller([-110.0] * 4)
+    c = Controller([FOLD_DEG - 5] * 4)
     c.command({"pose": "stand", "id": 1})
     for _ in range(600):                                       # 3 秒，髋一直不动
-        c.update(0.005, dict(hip=[-110.0] * 4, wv=[0.0] * 4, estop=False, vbat=24.0))
+        c.update(0.005, dict(hip=[FOLD_DEG - 5] * 4, wv=[0.0] * 4, estop=False, vbat=24.0))
     check("髋跟不上超过 1 秒：报 HIP_STALL，站起来那条回 done ok=false why=FAULT，原地不动",
           any(e.get("code") == "HIP_STALL" for e in c.out) and any(e.get("ev") == "done" and e.get("why") == "FAULT" for e in c.out)
           and c.state == "fault")

@@ -31,7 +31,7 @@ os.makedirs(OUT, exist_ok=True)
 R = WHEEL_D / 2
 LEGS = {"FL": (1, 1, "前左"), "FR": (1, -1, "前右"), "RL": (-1, 1, "后左"), "RR": (-1, -1, "后右")}
 PIVOT_Z = M.NECK_Z + PIVOT_UP
-THETA_FOLD = -(180.0 - FOLD_DEG)                                      # 摆臂角：正 = 往下；-110 = 往上往里翻 70°
+THETA_FOLD = FOLD_THETA                                               # 摆臂角：正 = 往下；0 = 趴平（2026-10-18 不再往上折叠）
 THETA_GROUND = math.degrees(math.asin((SKID_H - R + HIP_Z) / ARM))   # 机身刚好坐到滑撬上、轮子还着地的角度
 t0 = time.time()
 
@@ -371,7 +371,7 @@ if __name__ == "__main__":
     rep("")
 
     rep("【整机宽度】")
-    rep(f"  机身 {BODY_W:.0f} + 两边各（间隙 {WHEEL_GAP:.0f} + 电机 {WHEEL_MOTOR_W:.0f} + 腿板 {sum(LEG_PLATE_T):.0f} + 轴承座 {AXLE_BOSS:.0f} + 轮宽 {WHEEL_W:.0f}（外侧和腿外侧齐平）+ 髋盖 4）"
+    rep(f"  机身 {BODY_W:.0f} + 两边各（髋轴承座 18 + 轴毂 17 + 腿板 6 + 轴承座 {AXLE_BOSS:.0f} + 轮宽 {WHEEL_W:.0f}（外侧和腿外侧齐平）+ 髋盖 4；电机在腿板内侧、露在机身下方）"
         f"= {2 * M.half_width():.0f} mm")
     rep("")
 

@@ -446,34 +446,34 @@ def leg_skin(op0, ly0, ly1, hub0, ly_out):
     P.append(("外壳·髋盖六角", prism_xz([(9 * math.cos(math.pi / 6 + k * math.pi / 3), 9 * math.sin(math.pi / 6 + k * math.pi / 3)) for k in range(6)],
                                          oy + 2.5, oy + 4), "silver"))
     # 臂座上的黄色箍（像减震弹簧）
-    for i, y in enumerate((hub0 + 10, hub0 + 20, hub0 + 30, hub0 + 40)):
+    for i, y in enumerate((hub0 + 6, hub0 + 14, hub0 + 22, hub0 + 30)):
         hoop = prism_xz(stadium_pts(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R + 1.2, ARM_ROOT_R + 1.2), y, y + 2.5).cut(
             prism_xz(stadium_pts(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R - 0.5, ARM_ROOT_R - 0.5), y - 1, y + 4))
         P.append((f"外壳·臂座黄箍{i + 1}", hoop, "amber"))
     # 麦轮外侧：轮毂盖 + 青光环（跟着轮子转），和腿外侧面齐平
-    P.append(("外壳·麦轮轮毂盖", cyl_y(ARM, 0, 36, oy - 1.5, oy), "dark"))
-    P.append(("外壳·麦轮青光环", ring_y(ARM, 0, 24, 18, oy - 0.2, oy), "cyan"))
+    P.append(("外壳·麦轮轮毂盖", cyl_y(ARM, 0, 32, oy - 1.5, oy), "dark"))
+    P.append(("外壳·麦轮青光环", ring_y(ARM, 0, 22, 16, oy - 0.2, oy), "cyan"))
     # 电机护罩（“靴子”）：从腿末端长出来——浅色臂座在轮子前收成一道 R59 的弧，深色护罩从 R58 接着往下包住电机（1 mm 分缝）；
     # 切角八边形，背面封住拧在腿板上，朝机身那头敞开露出电机端面；底面 4 道散热槽，两侧各两颗沉头螺栓；后上方出线口，线沿臂座上沿走到髋
     def oct_w(h, ch):
         return [(-h + ch, -h), (h - ch, -h), (h, -h + ch), (h, h - ch), (h - ch, h), (-h + ch, h), (-h, h - ch), (-h, -h + ch)]
-    tail = [(ARM - 75, 24), (ARM, 31), (ARM, -31), (ARM - 75, -22)]
+    tail = [(ARM - 75, 24), (ARM, 30), (ARM, -30), (ARM - 75, -22)]
     gy0, gy1 = ly0 + 2, ly1
 
     def boot(k, y0, y1):
-        body = wprism(oct_w(31 - k, 10 - k * 0.4), y0, y1)
+        body = wprism(oct_w(30 - k, 10 - k * 0.4), y0, y1)
         pts = [(x + (k if x < ARM else 0), v - math.copysign(k, v)) for x, v in tail]
         t = prism_xz(pts, y0, y1).intersect(cyl_y(ARM, 0, 2 * (58 - k), y0 - 1, y1 + 1))
         return body.fuse(t)
     guard = boot(0, gy0, gy1).cut(boot(3, gy0 - 1, gy1 - 3))                       # 3 mm 壳，靠腿板那面封住
     guard = guard.cut(cyl_y(ARM, 0, WHEEL_MOTOR_D + 1, gy1 - 4, gy1 + 1))           # 封住那面中间开孔，电机从这里拧到腿板上
     for X in (-12, -4, 4, 12):                                                      # 底面散热槽
-        guard = guard.cut(wprism([(X - 1, -31.5), (X + 1, -31.5), (X + 1, -30), (X - 1, -30)], gy0 + 4, gy1 - 5))
+        guard = guard.cut(wprism([(X - 1, -30.5), (X + 1, -30.5), (X + 1, -29), (X - 1, -29)], gy0 + 4, gy1 - 5))
     P.append(("电机护罩", soft(guard, 0.8), "anod"))
     c55, s55 = math.cos(math.radians(STANCE_DEG)), math.sin(math.radians(STANCE_DEG))
     for X in (-31, 31):
         for yb in (gy0 + 9, gy1 - 9):
-            u, v = w2a(X, -14)
+            u, v = w2a(X * 30 / 31, -14)
             sg = math.copysign(1, X)
             P.append((f"外壳·护罩螺栓{X:+d}y{yb:.0f}", cyl_dir((u, yb, v), (sg * c55, 0, sg * s55), BOLT_D, 0.6), "dark"))
     P.append(("外壳·电机端面青光环", ring_y(ARM, 0, 40, 36, ly0 - 0.6, ly0), "cyan"))

@@ -252,25 +252,22 @@ def leg_parts_FL():
     root1 = root0 + ARM_ROOT_PLATE_T
     rc = WHEEL_D / 2 + ARM_WHEEL_CLEAR
     op1 = LEG_Y1 - 2                                         # 外板外侧（外面再贴 2 mm 盖板，盖板外侧 = 麦轮外侧）
-    op0 = op1 - 6
+    op0 = op1 - 4
+    lp1 = LP0 + 6
     P = [
         ("臂座轴毂", cyl_y(0, 0, HUB["boss_d"], hub0, hub0 + HUB["boss_l"]).fuse(
             cyl_y(0, 0, HUB["flange_d"], hub0 + HUB["boss_l"], hub0 + HUB["boss_l"] + HUB["flange_t"])), "alu"),
-        ("臂根内板", stadium_xz(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R - 4, root0, root1), "alu"),
-        ("箱形臂座外壳", shell.soft(arm_box_solid(hub0 + 1, op0), 1.5), "armor"),            # 浅色臂座，轮子那头挖圆弧缺口
-        ("腿板内层", cyl_y(ARM, 0, 2 * ARM_END_R, lp0, lp1).fuse(                             # 腿里面的承力板：电机和轴承座拧在它上面
-            stadium_xz(0, ARM, ARM_END_R - 4, lp0, lp1)), "anod"),
+        ("腿板内层", stadium_xz(0, ARM, ARM_ROOT_R - 2, LP0, lp1).fuse(cyl_y(ARM, 0, 2 * ARM_END_R, LP0, lp1)), "anod"),   # 承力板：髋端拧轴毂法兰，轮端装轴承和电机
+        ("箱形臂座外壳", shell.soft(arm_box_solid(lp1, op0), 1.5), "armor"),               # 浅色臂座包在承力板外面，轮子那头挖圆弧缺口
         ("摆臂外板", prism_xz(shell.stadium_pts(0, ARM, ARM_ROOT_R, ARM_END_R), op0, op1).cut(cyl_y(ARM, 0, 2 * rc, op0 - 1, op1 + 1)), "anod"),
-        ("轮子电机GIM4310", cyl_y(ARM, 0, WHEEL_MOTOR_D, M0, LP0), "motor"),          # 在腿内侧露出来，联轴器穿过腿板驱动轮轴
-        ("轮轴支座内", cyl_y(ARM, 0, 30, lp1, lp1 + 4), "anod"),                         # 腿板上的轴承座
+        ("轮子电机GIM4310", cyl_y(ARM, 0, WHEEL_MOTOR_D, M0, LP0), "motor"),          # 在腿板内侧，轮子那头露在机身下方
+        ("轮轴支座内", cyl_y(ARM, 0, 26, lp1, lp1 + AXLE_BOSS), "anod"),
         ("麦轮外包络", cyl_y(ARM, 0, WHEEL_D, wy0, wy1), "envelope"),      # 只用来查碰撞，不显示
-        ("麦轮轮毂", cyl_y(ARM, 0, 60, wy0 - 1, wy1 - 1.5), "trim"),
+        ("麦轮轮毂", cyl_y(ARM, 0, 52, wy0 - 1, wy1 - 1.5), "trim"),
         ("麦轮侧板内", cyl_y(ARM, 0, WHEEL_PLATE_D, wy0, wy0 + WHEEL_PLATE_T), "steel"),
         ("麦轮侧板外", cyl_y(ARM, 0, WHEEL_PLATE_D, wy1 - WHEEL_PLATE_T, wy1 - 1.5), "steel"),
     ]
-    P += shell.leg_skin(op0, M0, LP0, hub0, LEG_Y1)
-    for i, (u, v) in enumerate(ARM_STANDOFFS):
-        P.append((f"臂根支柱{i + 1}", cyl_y(u, v, STANDOFF_HEX, root1, lp0), "alu"))
+    P += shell.leg_skin(op0, M0, LP0, lp1, LEG_Y1)
     yc = (wy0 + wy1) / 2
     barrel = roller_solid()
     for k in range(ROLLERS):
