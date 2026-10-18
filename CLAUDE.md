@@ -4,7 +4,7 @@
 做外观相关的零件前，先读 `../旧版/旧文档/外观设计规范.md`（深灰壳板 + 银色件 + 黑色传感器窗 + 琥珀橙状态灯；缝线 0.8 宽 × 0.6 深；外观件不承力、能平放打印）。
 
 ## 2026-10-16 起改版为机械狗007v
-外观推翻重做：轮足运输机器人（4 个髋 + 4 个麦轮，背上驮 5–10 kg，可折叠），外观效果图 `docs/机械狗007v/外观效果图_v10.html`（外观定稿-v2：110 轮、118×50 宽屏、最高 1.1 m/s）。树莓派 5、头部 ESP32-S3、大脑程序、语音服务、传感器清单不变。
+外观推翻重做：轮足运输机器人（4 个髋 + 4 个麦轮，背上驮 5–10 kg，可折叠），外观效果图 `docs/机械狗007v/外观效果图_v10.html`；**当前外观定稿 v4（git tag 外观定稿-v4）**：底盘框架外露 + 叠层顶板、原版头 + 工业细节、Φ97 麦轮在腿外侧齐平、电机在腿内侧机身下方带护罩（兼支架）、轮轴单边两个 6801、不往上折叠（最多趴平）、最高 1.0 m/s；白模渲染 `blender/render_white.py`。树莓派 5、头部 ESP32-S3、大脑程序、语音服务、传感器清单不变。
 新结构在 `007v/`：`config.py` 所有尺寸 → `model.py` 零件 → `build.py` 摆姿态 + 干涉检查 + 折叠轨迹检查 + 重心 + 导出；选型计算 `sizing.py` 和 `docs/机械狗007v/选型计算书.md`。改完跑 `python 007v/build.py`，`007v/out/report.txt` 里 4 个姿态都要 0 处、折叠全程不撞；3D 查看页 `007v/viewer.html`（用 `007v/out/007v_data.js`，Artifact https://claude.ai/artifact/Hr9vptZPw8y4d6ifZNE8aL）。
 第 4 步出图：`python 007v/mfg.py`（加工件 DXF / STEP / STL + 尺寸图，输出 `007v/out/mfg/`）、`python 007v/bom.py`（零件清单 → `docs/机械狗007v/零件清单.md`、`采购清单.xlsx`）、`python 007v/wiring.py`（接线图 → `docs/机械狗007v/接线图.md`），再 `python 007v/pack.py` 打包给图纸网页 `007v/drawings.html`（Artifact https://claude.ai/artifact/Kaue9H9hpVhFuuNNoapkRt）。接口尺寸都在 `config.py` 的“制造件的接口”一节，标 ★ 的是网上查不到、等卖家图纸或到货实测的。
 给人看 / 拆散 / 做动画：`python 007v/export_sw.py`（SolidWorks 装配体，按运动部件分组，带铰链标记）、`python 007v/blender/export_parts.py` 再用 Blender 5.2 跑 `007v/blender/make_blend.py`（生成 `007v/out/blender/机械狗007v.blend`，带动画和拆散滑块），说明见 `docs/机械狗007v/SolidWorks和Blender使用说明.md`。这台电脑只有 eDrawings，SolidWorks 主程序没装。

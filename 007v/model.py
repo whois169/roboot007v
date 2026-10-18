@@ -260,7 +260,10 @@ def leg_parts_FL():
         ("腿板内层", stadium_xz(0, ARM, ARM_ROOT_R - 2, LP0, lp1).fuse(cyl_y(ARM, 0, 2 * ARM_END_R, LP0, lp1)), "anod"),   # 承力板：髋端拧轴毂法兰，轮端装轴承和电机
         ("箱形臂座外壳", shell.soft(arm_box_solid(lp1, op0), 1.5), "armor"),               # 浅色臂座包在承力板外面，轮子那头挖圆弧缺口
         ("摆臂外板", prism_xz(shell.stadium_pts(0, ARM, ARM_ROOT_R, ARM_END_R), op0, op1).cut(cyl_y(ARM, 0, 2 * rc, op0 - 1, op1 + 1)), "anod"),
-        ("轮子电机GIM4310", cyl_y(ARM, 0, WHEEL_MOTOR_D, M0, LP0), "motor"),          # 在腿板内侧，轮子那头露在机身下方
+        ("轮子电机GIM4310", cyl_y(ARM, 0, WHEEL_MOTOR_D, M0, M0 + WHEEL_MOTOR_W), "motor"),   # 在轴承座里侧，轮子那头露在机身下方
+        ("轮轴承座", cyl_y(ARM, 0, 40, LP0 - AXLE_HOUSING_L, LP0), "alu"),                      # 两个 6801，拧在腿板上
+        ("麦轮轮轴", cyl_y(ARM, 0, 30, LP0 - AXLE_HOUSING_L - AXLE_FLANGE_T, LP0 - AXLE_HOUSING_L).fuse(
+            cyl_y(ARM, 0, 12, LP0 - AXLE_HOUSING_L, wy1 - 6)), "steel"),                         # 法兰拧在电机输出盘上，轴穿过轴承进麦轮
         ("轮轴支座内", cyl_y(ARM, 0, 26, lp1, lp1 + AXLE_BOSS), "anod"),
         ("麦轮外包络", cyl_y(ARM, 0, WHEEL_D, wy0, wy1), "envelope"),      # 只用来查碰撞，不显示
         ("麦轮轮毂", cyl_y(ARM, 0, 52, wy0 - 1, wy1 - 1.5), "trim"),

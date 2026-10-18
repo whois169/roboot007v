@@ -120,32 +120,32 @@
  },
  "mass": {
   "空车": {
-   "mass": 16.1,
+   "mass": 16.5,
    "com": [
     13,
     1,
-    170
+    166
    ],
-   "tip_side": 47,
-   "tip_fwd": 54,
+   "tip_side": 48,
+   "tip_fwd": 55,
    "tip_back": 57,
    "lift_margin": {
-    "前左": -9,
+    "前左": -8,
     "前右": -7,
     "后左": 7,
-    "后右": 9
+    "后右": 8
    }
   },
   "满载 10 kg": {
-   "mass": 26.1,
+   "mass": 26.5,
    "com": [
     -12,
     1,
-    251
+    247
    ],
-   "tip_side": 36,
+   "tip_side": 37,
    "tip_fwd": 46,
-   "tip_back": 43,
+   "tip_back": 44,
    "lift_margin": {
     "前左": 7,
     "前右": 8,
