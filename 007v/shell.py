@@ -426,44 +426,33 @@ def fork_plate(y0, y1, k=0.0):
     return wprism(poly, y0, y1).fuse(cyl_y(ARM, 0, 2 * r, y0, y1))              # 实心（用户 2026-10-18：不要镂空）
 
 
-def leg_skin(oy, ly0, ly1, fy0, hub0):
-    """腿和叉的外观件（左前腿坐标）。oy = 腿板外表面；ly0 / ly1 = 电机两端；fy0 = 叉板内侧；hub0 = 臂座外壳内侧。"""
+def leg_skin(op0, ly0, ly1, hub0, ly_out):
+    """腿的外观件（左前腿坐标，方案 A 的样子）。op0 = 外板内侧；ly0 / ly1 = 电机两端；hub0 = 臂座外壳内侧；ly_out = 腿外侧面（= 麦轮外侧面）。"""
     P = []
-    # 臂座上的黄色箍（截图那版的样子，跟着臂座收窄）+ 腿板外面髋边上三道斜黄条
-    for i, y in enumerate((hub0 + 5, hub0 + 11, hub0 + 17)):
-        hoop = waist_xz(0, ARM, ARM_ROOT_R + 1.2, ARM_END_R + 1.2, y, y + 2.5).cut(waist_xz(0, ARM, ARM_ROOT_R - 0.5, ARM_END_R - 0.5, y - 1, y + 4))
-        P.append((f"外壳·臂座黄箍{i + 1}", hoop.intersect(box(-40, ARM_BOX_LEN, y - 1, y + 4, -40, 40)), "amber"))
-    for i, u in enumerate((34, 41, 48)):
-        P.append((f"外壳·腿板黄条{i + 1}", strip((u, -14), (u + 10, 14), 2.4, oy, oy + 0.6), "amber"))
-    f1 = fy0 + sum(FORK_PLATE_T)
-    # 挡泥横梁：轮子上方一段圆弧，把腿板和叉板连成 U 形叉；顶上一道凹槽线，两头各一道 1.5 mm 分缝
-    r0, r1 = FENDER_R
-    band = arc_pts(r1, 35, 145) + arc_pts(r0, 145, 35)
-    fender = wprism(band, oy, fy0)
-    groove = wprism([(r1 * math.cos(math.radians(a)), r1 * math.sin(math.radians(a))) for a in (89.3, 90.7)] +
-                    [((r1 - 1) * math.cos(math.radians(a)), (r1 - 1) * math.sin(math.radians(a))) for a in (90.7, 89.3)], oy - 1, fy0 + 4)
-    fender = fender.cut(groove)
-    for yy in (oy + 3, fy0 - 3):
-        fender = fender.cut(wprism(arc_pts(r1 + 1, 30, 150) + arc_pts(r1 - 1, 150, 30), yy - 0.75, yy + 0.75))
-    P.append(("挡泥横梁", soft(fender, 1.0), "deck"))
-    # 叉板两层：内层深、外层浅（缩进 2.5，露出台阶）
-    P.append(("叉板内层", soft(fork_plate(fy0, fy0 + FORK_PLATE_T[0]), 0.8), "anod"))
-    P.append(("叉板外层", soft(fork_plate(fy0 + FORK_PLATE_T[0], f1, PLATE_INSET), 0.8), "deck"))
-    # 叉板端盖：盖住轮轴外端，一圈 6 颗螺栓 + 青色光环（半径不超过 15，不低于轴下 15）
-    P.append(("叉板端盖", soft(cyl_y(ARM, 0, 26, f1, f1 + 4), 0.8), "anod"))
-    for i in range(6):
-        a = math.pi / 6 + i * math.pi / 3
-        P.append((f"外壳·端盖钉{i + 1}", cyl_y(ARM + 9 * math.cos(a), 9 * math.sin(a), 3, f1 + 4, f1 + 4.6), "dark"))
-    P.append(("外壳·端盖青光环", ring_y(ARM, 0, 29, 26, f1 + 0.5, f1 + 2.0), "cyan"))
-    P.append(("外壳·端盖六角", prism_xz([(ARM + 4 * math.cos(math.pi / 6 + k * math.pi / 3), 4 * math.sin(math.pi / 6 + k * math.pi / 3)) for k in range(6)],
-                                         f1 + 4, f1 + 5.2), "dark"))
-    # 叉板顶上两颗沉头螺栓（和横梁拧在一起）
-    for X in (-15, 15):
-        u, v = w2a(X, FENDER_R[1] - 9)
-        P.append((f"外壳·叉板螺栓{X:+d}", cyl_y(u, v, BOLT_D, f1, f1 + 0.6), "dark"))
-    # 金线：叉板一条（从横梁走到端盖），腿板一条（从髋关节走到轴心）
-    P.append(("外壳·叉板金线", strip(w2a(15, 58), w2a(12, 17), 1.6, f1, f1 + 0.6), "amber"))
-    P.append(("外壳·腿板金线", strip((62, 16), (ARM - 30, 17.5), 1.6, oy, oy + 0.6), "amber"))
+    rc = WHEEL_D / 2 + ARM_WHEEL_CLEAR                                       # 腿末端给轮子挖的圆弧缺口
+    notch = lambda y0, y1: cyl_y(ARM, 0, 2 * rc, y0 - 1, y1 + 1)  # noqa: E731
+    oy = ly_out
+    # 外盖板（深色，2 mm）+ 长槽 + 三道斜黄条 + 边上一条黄线
+    cover = prism_xz(stadium_pts(0, ARM, ARM_ROOT_R - 1, ARM_END_R - 1), oy - 2, oy).cut(notch(oy - 2, oy))
+    cover = cover.cut(prism_xz(stadium_pts(42, 98, 5, 5), oy - 3, oy + 1))
+    P.append(("摆臂外盖板", soft(cover, 1.0), "dark"))
+    P.append(("外壳·长槽底", prism_xz(stadium_pts(42, 98, 5, 5), oy - 2, oy - 1.2), "black"))
+    for i, u in enumerate((20, 27, 34)):
+        P.append((f"外壳·摆臂黄条{i + 1}", strip((u, -14), (u + 10, 14), 2.4, oy, oy + 0.6), "amber"))
+    P.append(("外壳·摆臂边黄线", strip((48, 16), (104, 18), 1.6, oy, oy + 0.6), "amber"))
+    # 髋部大圆盖（里面是角度编码器 AS5600）+ 黄圈 + 银色六角
+    P.append(("髋部大圆盖", soft(cyl_y(0, 0, 46, oy, oy + 2.5), 1.0), "dark"))
+    P.append(("外壳·髋盖黄圈", ring_y(0, 0, 46, 37, oy + 2.5, oy + 3.1), "amber"))
+    P.append(("外壳·髋盖六角", prism_xz([(9 * math.cos(math.pi / 6 + k * math.pi / 3), 9 * math.sin(math.pi / 6 + k * math.pi / 3)) for k in range(6)],
+                                         oy + 2.5, oy + 4), "silver"))
+    # 臂座上的黄色箍（像减震弹簧）
+    for i, y in enumerate((hub0 + 10, hub0 + 20, hub0 + 30, hub0 + 40)):
+        hoop = prism_xz(stadium_pts(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R + 1.2, ARM_ROOT_R + 1.2), y, y + 2.5).cut(
+            prism_xz(stadium_pts(0, ARM_BOX_LEN - ARM_ROOT_R, ARM_ROOT_R - 0.5, ARM_ROOT_R - 0.5), y - 1, y + 4))
+        P.append((f"外壳·臂座黄箍{i + 1}", hoop, "amber"))
+    # 麦轮外侧：轮毂盖 + 青光环（跟着轮子转），和腿外侧面齐平
+    P.append(("外壳·麦轮轮毂盖", cyl_y(ARM, 0, 36, oy - 1.5, oy), "dark"))
+    P.append(("外壳·麦轮青光环", ring_y(ARM, 0, 24, 18, oy - 0.2, oy), "cyan"))
     # 电机护罩（“靴子”）：从腿末端长出来——浅色臂座在轮子前收成一道 R59 的弧，深色护罩从 R58 接着往下包住电机（1 mm 分缝）；
     # 切角八边形，背面封住拧在腿板上，朝机身那头敞开露出电机端面；底面 4 道散热槽，两侧各两颗沉头螺栓；后上方出线口，线沿臂座上沿走到髋
     def oct_w(h, ch):
@@ -489,7 +478,7 @@ def leg_skin(oy, ly0, ly1, fy0, hub0):
             P.append((f"外壳·护罩螺栓{X:+d}y{yb:.0f}", cyl_dir((u, yb, v), (sg * c55, 0, sg * s55), BOLT_D, 0.6), "dark"))
     P.append(("外壳·电机端面青光环", ring_y(ARM, 0, 40, 36, ly0 - 0.6, ly0), "cyan"))
     # 出线口（线缆接头）+ 电机线缆：沿臂座上沿走到髋，三个小线夹
-    yy = oy - sum(LEG_PLATE_T) - 5
+    yy = LP0 - 5
     P.append(("外壳·出线口", cyl_dir((ARM - 46, yy, 25), (0, 0, 1), 10, 5), "dark"))
     pts = [(ARM - 46, 30), (ARM - 62, 30), (95, 27), (45, 29)]
     cab = None
@@ -501,25 +490,15 @@ def leg_skin(oy, ly0, ly1, fy0, hub0):
     P.append(("外壳·电机线缆", cab, "black"))
     for i, (u, v) in enumerate(((ARM - 62, 30), (95, 27), (60, 28.5))):
         P.append((f"外壳·线夹{i + 1}", box(u - 3, u + 3, yy - 4.5, yy + 4.5, v - 4.5, v + 4.5), "dark"))
-    # 髋端编码器罩（AS5600）
-    P.append(("编码器罩", soft(cyl_y(0, 0, 44, oy, oy + 4), 1.0), "anod"))
-    for i in range(4):
-        a = math.pi / 4 + i * math.pi / 2
-        P.append((f"外壳·编码器罩钉{i + 1}", cyl_y(15 * math.cos(a), 15 * math.sin(a), 4, oy + 4, oy + 4.8), "dark"))
-    P.append(("外壳·编码器罩六角", prism_xz([(6 * math.cos(math.pi / 6 + k * math.pi / 3), 6 * math.sin(math.pi / 6 + k * math.pi / 3)) for k in range(6)],
-                                         oy + 4, oy + 5.5), "dark"))
-    # 腿板沉头螺栓：髋那头两颗、靠轮那头两颗
-    for u, v in ((24, 17), (24, -17), (ARM - 100, 17), (ARM - 100, -17)):
-        P.append((f"外壳·腿板螺栓 u{u}v{v}", cyl_y(u, v, BOLT_D, oy, oy + 0.6), "dark"))
-    # 台阶测距（站立时朝前下方 30°）
+    # 台阶测距（外盖板上，站立时朝前下方 30°）
     a = math.radians(25)
     u_, n_ = (math.cos(a), math.sin(a)), (-math.sin(a), math.cos(a))
-    c = (ARM - 80, 13)
+    c = (ARM - 72, 13)
     corner = lambda su, sn: (c[0] + u_[0] * 9 * su + n_[0] * 6 * sn, c[1] + u_[1] * 9 * su + n_[1] * 6 * sn)  # noqa: E731
-    P.append(("台阶测距", soft(prism_xz([corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], oy, oy + 8), 0.8), "anod"))
+    P.append(("台阶测距", soft(prism_xz([corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], oy, oy + 6), 0.8), "anod"))
     f0_ = (c[0] + u_[0] * 9 - n_[0] * 4, c[1] + u_[1] * 9 - n_[1] * 4)
     f1_ = (c[0] + u_[0] * 9 + n_[0] * 4, c[1] + u_[1] * 9 + n_[1] * 4)
-    P.append(("外壳·台阶测距窗", strip(f0_, f1_, 1.2, oy + 1.5, oy + 6.5, inward=(u_[0] * 0.5, u_[1] * 0.5)), "visor"))
+    P.append(("外壳·台阶测距窗", strip(f0_, f1_, 1.2, oy + 1.2, oy + 4.8, inward=(u_[0] * 0.5, u_[1] * 0.5)), "visor"))
     return P
 
 
