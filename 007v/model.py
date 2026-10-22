@@ -130,10 +130,13 @@ def body_parts():
     bx, by, bz = BATTERY
     add("电池6S2P", box(-bx / 2, bx / 2, -by / 2, by / 2, PLATE, PLATE + bz), "battery")
     add("电池保护板", box(-BMS[0] / 2, BMS[0] / 2, -BMS[1] / 2, BMS[1] / 2, PLATE + bz, PLATE + bz + BMS[2]), "pcb")
-    add("电子托板", box(-140, 140, -66, 66, TRAY_Z, TRAY_Z + 2), "printed")
-    t = TRAY_Z + 2
-    for name, (x0, y0), (sx, sy, sz) in ELECTRONICS:
+    import body_electronics as BE
+    add("电子托板", box(-140, 140, -66, 66, TRAY_Z, TRAY_Z + BE.T), "printed")
+    t = TRAY_Z + BE.T + BE.STANDOFF                                        # 小板垫 6 mm 尼龙柱
+    for name, x0, y0, sx, sy, sz, _ in BE.TRAY:
         add(name, box(x0, x0 + sx, y0, y0 + sy, t, t + sz), "pcb")
+    for name, x0, y0, sx, sy, sz, _ in BE.BASE:
+        add(name, box(x0, x0 + sx, y0, y0 + sy, PLATE, PLATE + sz), "black")
     dx, dy, dz = DEPTH_CAM
     add("深度相机", box(L2 - PLATE - dx, L2 - PLATE, -dy / 2, dy / 2, 25, 25 + dz), "black")
 
@@ -181,7 +184,24 @@ def hip_drive_FL():
     belt = prism_xz(outer, by0, by0 + BELT_W).cut(prism_xz(inner, by0 - 1, by0 + BELT_W + 1))
     P.append(("同步带", belt, "black"))
     P.append(("髋轴", cyl_y(hx, hz, HIP_SHAFT_D, py0 - 6, W2 + BEARING_HOUSING_W + 16), "steel"))   # 穿过侧板，插进臂座
-    P.append(("磁编码器AS5600", box(hx - AS5600[0] / 2, hx + AS5600[0] / 2, py0 - 12, py0 - 8, hz - AS5600[2] / 2, hz + AS5600[2] / 2), "pcb"))
+    # 磁编码器：Adafruit AS5600（官方 .brd：25.4 × 17.78，4 × M2.5 孔距 20.32 × 12.7，芯片在正面正中）正对髋轴端头的 Φ6×2.5 磁铁，间隙 1 mm
+    se = py0 - 6                                   # 髋轴里端
+    chip = se - 2.5 - 1.0                          # 芯片表面
+    bd0, bd1 = chip - 1.5 - 1.6, chip - 1.5        # 板子（芯片高 1.5）
+    P.append(("磁编码器AS5600", box(hx - 12.7, hx + 12.7, bd0, bd1, hz - 8.89, hz + 8.89)
+              .fuse(box(hx - 2.5, hx + 2.5, bd1, chip, hz - 2.5, hz + 2.5)), "pcb"))
+    P.append(("编码器磁铁", cyl_y(hx, hz, 6, se - 2.5, se), "steel"))
+    # 编码器支架（打印 D32）：竖板托住编码器板 → 从大带轮上面绕过去 → 2 颗 M3 拧在侧板上
+    pl0 = bd0 - 3.0
+    br = box(hx - 14, hx + 14, pl0, bd0, hz - 11, hz + 40)
+    br = br.fuse(box(hx - 14, hx + 14, pl0, yin - 0.05, hz + 34, hz + 40))
+    br = br.fuse(box(hx - 14, hx + 14, yin - 4.05, yin - 0.05, hz + 28, hz + 40))
+    for dx in (-10.16, 10.16):
+        for dz in (-6.35, 6.35):
+            br = br.cut(cyl_y(hx + dx, hz + dz, 2.1, pl0 - 1, bd0 + 0.1))
+    for dx in (-9, 9):
+        br = br.cut(cyl_y(hx + dx, hz + 34, 4.0, yin - 6.0, yin + 0.1))      # M3 热熔螺母，螺丝从侧板外面沉头拧进来
+    P.append(("编码器支架", br, "printed"))
     P.append(("轴承座", cyl_y(hx, hz, BEARING_HOUSING_D, W2, W2 + BEARING_HOUSING_W), "trim"))
     return P
 

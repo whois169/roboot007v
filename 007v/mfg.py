@@ -325,6 +325,8 @@ def side_plate():
             H.append(slot(gx + sx * u, gz + v, WORM_FACE["d"], sx * e[0] / el * WORM_FACE["slot"], e[1] / el * WORM_FACE["slot"],
                           "蜗轮箱 M4 六角柱（长 16）；长孔用来调皮带松紧", star=True))
         H.append(hole(hx, HIP_Z + 40, 12.0, "轮子电机线过线孔（装橡胶护线圈）"))
+        for dx in (-9.0, 9.0):
+            H.append(hole(hx + dx, HIP_Z + 34, 3.4, "编码器支架 D32：M3×8 沉头从外面拧（外面要沉头孔）"))
         for z in (13.0, 140.0):
             H.append(hole(sx * 185.0, z, 5.5, "2020 横梁端面 M5"))
     for x in DECK_FIX_X:
@@ -379,6 +381,8 @@ def bottom():
     for x in (-130.0, -60.0, 60.0, 130.0):
         for sy in (1, -1):
             H.append(hole(x, sy * 56.0, 3.4, "电子托板 M3×65 铜柱"))
+    import body_electronics as BE
+    H += be_holes(BE.BASE)
     cut = []
     for sx in (1, -1):
         for sy in (1, -1):
@@ -452,31 +456,33 @@ def root_plate():
                  "原点：髋轴中心；X 沿摆臂指向轮子")
 
 
+def be_holes(items):
+    """body_electronics 里的零件 → 激光切割孔：圆孔 / 沿 x 长孔（±3）/ 扎带孔（3 × 7）。"""
+    import body_electronics as BE  # noqa: F401
+    H = []
+    for name, x0, y0, sx, sy, sz, hs in items:
+        for hx, hy, d, kind in hs:
+            x, y = x0 + hx, y0 + hy
+            if kind == "hole":
+                H.append(hole(x, y, d, f"{name}（官方孔位）"))
+            elif kind == "slotx":
+                H.append(slot(x, y, d, 3.0, 0.0, f"{name}（通用件，长孔 ±3）"))
+            else:
+                H.append(slot(x, y, 3.0, 2.0, 0.0, f"{name} 扎带孔"))
+    return H
+
+
 def tray():
+    import body_electronics as BE
     H = []
     for x in (-130.0, -60.0, 60.0, 130.0):
         for sy in (1, -1):
             H.append(hole(x, sy * 56.0, 3.4, "铜柱 M3"))
-    px0, py0 = M.ELECTRONICS[4][1]
-    e = PI5_HOLES["edge"]
-    for dx in (0, PI5_HOLES["dx"]):
-        for dy in (0, PI5_HOLES["dy"]):
-            H.append(hole(px0 + e + dx, py0 + e + dy, PI5_HOLES["d"], "树莓派 5 M2.5 铜柱"))
-    for name, (x0, y0), (sx, sy, _) in M.ELECTRONICS[:4]:
-        cx, cy = x0 + sx / 2, y0 + sy / 2
-        for ux in (-1, 1):
-            for uy in (-1, 1):
-                H.append(hole(cx + ux * DRIVER_HOLES["dx"] / 2, cy + uy * DRIVER_HOLES["dy"] / 2, DRIVER_HOLES["d"], name + " M3", star=True))
-    for name, (x0, y0), (sx, sy, _) in M.ELECTRONICS[5:]:
-        if "ESP32" in name:
-            for xx in (x0 + 4, x0 + sx - 4):
-                H.append(slot(xx, y0 + sy / 2, 3.0, 0, sy / 2 + 2, name + " 扎带孔"))
-        else:
-            for ux, uy in ((-1, -1), (1, 1)):
-                H.append(hole(x0 + sx / 2 + ux * (sx / 2 - 2.5), y0 + sy / 2 + uy * (sy / 2 - 2.5), 2.2, name + " M2", star=True))
+    H += be_holes(BE.TRAY)
     cut = [(-140.0 + 4, -10.0, -140.0 + 12, 10.0, "后侧过线口"), (128.0, -10.0, 136.0, 10.0, "前侧过线口")]
     return Plate("C01", "电子托板", 1, "黑色亚克力 3 mm", "激光切割", 3.0, rect_pts(-140, -66, 140, 66, 4.0), H,
-                 ["8 根 M3×65 铜柱立在底板上", "★ 驱动板、DC-DC、CAN 小板的孔位到货实测；也可以先用扎带固定"],
+                 ["8 根 M3×65 铜柱立在底板上；小板下面垫 6 mm 尼龙柱（M2 / M2.5 / M3）",
+                  "树莓派、ESP32、CAN Pal、TCA9548A、两块 Pololu 按官方孔位；BTS7960、12V 降压、INA226 是通用件，开长孔"],
                  "原点：机身中心（和底板同一个原点）；X 向前，Y 向左", cut)
 
 
@@ -644,6 +650,8 @@ def all_parts():
          from_model("D29", "电机护罩（兼电机支架）", 4, "PA12-CF 尼龙碳纤（或 PETG-CF）", "电机护罩",
                     ["切角八边形“靴子”，背面 4 颗 M4 拧在腿板上，电机背面 4 颗 M3 拧在护罩里（它是电机的支架，要扛电机反扭矩，别用普通 PLA）",
                      "朝机身那头敞开露出电机端面；底面 4 道散热槽；后上方出线口"], "leg"),
+         from_model("D32", "编码器支架", 4, "PETG", "前左编码器支架", ["托住 Adafruit AS5600 板（4 × M2.5 自攻），板上芯片正对髋轴端头的磁铁（间隙 1 mm）",
+                                                                   "从大带轮上面绕过去，2 颗 M3 拧在侧板上（热熔螺母）；左右腿镜像打印"], "body"),
          from_model("D30", "台阶测距外壳", 4, "PETG（深灰）", "台阶测距", ["装 VL53L1X 小板；前面一块烟黑亚克力窗；贴在外盖板上，站立时朝前下方 30°"], "leg")]
     return P
 
