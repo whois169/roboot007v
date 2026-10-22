@@ -168,6 +168,11 @@ def legs():
         g = g.fuse(cyl_y(u, v, 9.0, LP0 - 8.0, LP0 - 0.5))
         g = g.cut(insert_hole((u, LP0, v), (0, -1, 0), "M4"))              # 腿板 A07 的 4 颗 M4 从外面拧进来
     out["guard"] = g
+    # 轮毂盖：外观上轮子中间那个圆盖（Φ32），做成杯子，从轮子外面扣在 goBILDA 轮毂上（盖住 4 颗 M4），杯口 1 mm 圈用 VHB 贴
+    import model as _m
+    hub_out = _m.HUB_IN + 12.0
+    cap = cyl_y(ARM, 0, 32, hub_out, LEG_Y1).cut(cyl_y(ARM, 0, 30, hub_out - 1, LEG_Y1 - 1.5))
+    out["hub_cap"] = cap
     out["arm_cover"] = P["摆臂外盖板"]
     out["hip_cap"] = P["髋部大圆盖"]
     return out
@@ -204,6 +209,7 @@ PRINT = {   # key: (编号, 名字, 数量, 材料, 打印时朝下的面)
     "guard": ("L02", "电机护罩", 4, "PA12-CF / PETG-CF", (0, 1, 0)),
     "arm_cover": ("L03", "摆臂外盖板", 4, "ASA 深灰", (0, -1, 0)),
     "hip_cap": ("L04", "髋部大圆盖", 4, "ASA 深灰", (0, -1, 0)),
+    "hub_cap": ("L05", "轮毂盖（扣在 goBILDA 轮毂上）", 4, "PETG 深灰", (0, -1, 0)),
 }
 
 

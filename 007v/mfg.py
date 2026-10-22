@@ -323,7 +323,7 @@ def side_plate():
         el = math.hypot(*e)
         for u, v in WORM_FACE["holes"]:
             H.append(slot(gx + sx * u, gz + v, WORM_FACE["d"], sx * e[0] / el * WORM_FACE["slot"], e[1] / el * WORM_FACE["slot"],
-                          "蜗轮箱 M4 六角柱（长 16）；长孔用来调皮带松紧", star=True))
+                          "蜗轮箱 M4 六角柱（长 16）；NFP-5840 厂家孔位，电机朝上装；长孔用来调皮带松紧", star=True))
         H.append(hole(hx, HIP_Z + 40, 12.0, "轮子电机线过线孔（装橡胶护线圈）"))
         for dx in (-9.0, 9.0):
             H.append(hole(hx + dx, HIP_Z + 34, 3.4, "编码器支架 P26：M3×8 沉头从外面拧（外面要沉头孔）"))
@@ -338,7 +338,7 @@ def side_plate():
         H.append(hole(x, 10.0, 4.5, "下边角码 M4（和底板对齐）"))
     return Plate("A01", "机身侧板", 2, "6061-T6 铝板 4 mm", "激光切割（或 CNC）", PLATE_SIDE,
                  rect_pts(-BODY_L / 2, 0, BODY_L / 2, BODY_H, 5.0), H,
-                 ["左右两块一样（翻过来用）", "★ 蜗轮箱 4 个孔按卖家图纸改 config.py 的 WORM_FACE", "长孔方向沿着皮带：往外推电机就是张紧"],
+                 ["左右两块一样（翻过来用）", "蜗轮箱 4 个孔按 NFP-5840-31ZY 厂家图纸（孔距 28 × 40）", "长孔方向沿着皮带：往外推电机就是张紧"],
                  "原点：板底边中点（机身中心正下方）；X 向前，Y 向上")
 
 
@@ -388,7 +388,8 @@ def bottom():
     cut = []
     for sx in (1, -1):
         for sy in (1, -1):
-            cut.append((sx * 20 - 13, sy * 67 - 2, sx * 20 + 13, sy * 67 + 2, "电池绑带孔 26 × 4"))
+            yb = BATTERY[1] / 2 + 4.0
+            cut.append((sx * 20 - 13, sy * yb - 2, sx * 20 + 13, sy * yb + 2, "电池绑带孔 26 × 4（电池 75 × 135 × 47 两边各让 2）"))
     return Plate("A03", "底板", 1, "6061-T6 铝板 3 mm", "激光切割", PLATE, rect_pts(-L2, -YIN, L2, YIN, 3.0), H,
                  ["夹在两块侧板中间，用角码和下横梁固定", "电池用两根魔术贴绑带穿过绑带孔"], "原点：板中心；X 向前，Y 向左", cut)
 
@@ -531,13 +532,22 @@ def axle_housing():
 
 
 def axle():
-    L = WHEEL_Y0 + WHEEL_W - 6 - (LP0 - AXLE_HOUSING_L + 1 + AXLE_FLANGE_T)
+    L = M.HUB_IN + 6 - (LP0 - AXLE_HOUSING_L + 1 + AXLE_FLANGE_T)
     o = WHEEL_MOTOR_OUT
-    return Turned("B08", "轮轴（带法兰）", 4, "45# 钢 Φ38（调质）", "数控车 + 铣扁", [(34.0, AXLE_FLANGE_T), (12.0, L)],
+    return Turned("B08", "轮轴（带法兰）", 4, "45# 钢 Φ38（调质）", "数控车 + 铣双 D", [(34.0, AXLE_FLANGE_T), (12.0, L)],
                   [], [("A", o["n"], o["pcd"], o["d"], "M3×6 沉头：从轴那面沉头，拧进 GIM4310 输出盘（螺纹深 4）", True)],
                   ["A 端法兰贴电机输出盘，在 B07 的 Φ37.1 孔里转；3 颗 M3 沉头分布圆 27（官方图纸）",
-                   f"Φ12 段总长 {L:g}；轴承段 Φ12 k6；伸进轮毂那段按麦轮轮毂做（★ 键槽或 D 型扁，看卖家图纸）",
-                   "轴端 M4 螺纹孔深 10 + Φ14 垫片压住轮毂；轴承外侧一道 GB894 挡圈 12 的槽"])
+                   f"Φ12 段总长 {L:g}；轴承段 Φ12 k6，轴承外侧一道 GB894 挡圈 12 的槽",
+                   "B 端最后 13 mm 铣双 D（两边各铣到 10，对边 10），插进 B09 轮毂法兰传扭矩；端面 M5 螺纹孔深 10，M5×12 + 垫片压住 B09"])
+
+
+def hub_adapter():
+    h = WHEEL_HUB
+    return Turned("B09", "轮毂法兰（接 goBILDA 麦轮）", 4, "45# 钢 Φ35", "数控车 + 线切割双 D 孔 + 攻丝", [(32.0, 7.0), (13.95, 6.0)],
+                  [(12.0, 0.0, 13.0)],
+                  [("A", h["n"], h["pcd"], 3.3, "M4 螺纹孔（底孔 3.3）：goBILDA 轮毂 16 mm 孔型（±8, ±8），M4×16 低头螺丝从轮子外面拧进来", False, 7.0)],
+                  ["孔是双 D（对边 10，和 B08 轴端配合，H7 / g6）；Φ13.95 凸台插进 goBILDA 轮毂的 Φ14 孔定心",
+                   "按 goBILDA 96 mm 麦轮（3213-3606-0002）官方 3D 模型：轮毂厚 12、在轮子正中、中心孔 Φ14、16 mm 孔型 4 × M4"])
 
 
 def shaft():
@@ -630,7 +640,7 @@ def from_model(code, name, qty, material, key, notes, group="neck"):
 
 def all_parts():
     P = [side_plate(), deck(), bottom(), end_plate(True), end_plate(False), outer_arm(), root_plate(), tray(),
-         housing(), hub(), axle_housing(), axle(), shaft(),
+         housing(), hub(), axle_housing(), axle(), hub_adapter(), shaft(),
          spacer("B05", "隔圈A", 5.0, "带轮和轴承内圈之间，穿过侧板 Φ22 孔"),
          spacer("B06", "隔圈B", 3.0, "轴承内圈和轴毂之间"),
          arm_shell(), *fences(), skid(),

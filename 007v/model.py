@@ -175,8 +175,10 @@ def hip_drive_FL():
     yin = W2 - PLATE_SIDE                          # 侧板内表面
     bl, bt, bh = WORM_BOX
     gy1 = yin - PULLEY_W - 2                       # 减速箱外侧（带轮离侧板 1 mm，减速箱在带轮里面，中间 16 长的六角柱）
-    P.append(("蜗轮减速箱", box(wx - bl / 2, wx + bl / 2, gy1 - bt, gy1, wz - bh / 2, wz + bh / 2), "motor"))
-    P.append(("蜗轮电机", cyl_x(gy1 - bt / 2, wz, WORM_MOTOR_D, wx - bl / 2 - WORM_MOTOR_L, wx - bl / 2), "motor"))
+    # 5840 竖着装：输出轴离减速箱下端 20，电机朝上（厂家图）
+    z_lo, z_hi = wz - WORM_SHAFT_FROM_END, wz - WORM_SHAFT_FROM_END + bl
+    P.append(("蜗轮减速箱", box(wx - bh / 2, wx + bh / 2, gy1 - bt, gy1, z_lo, z_hi), "motor"))
+    P.append(("蜗轮电机", cyl_z(wx, gy1 - bt / 2, WORM_MOTOR_D, z_hi, z_hi + WORM_MOTOR_L), "motor"))
     py0, py1 = yin - PULLEY_W - 1, yin - 1          # 带轮离侧板内面 1 mm（中间隔圈穿过侧板顶住轴承内圈）
     P.append(("小带轮15T", cyl_y(wx, wz, PULLEY_SMALL_PD + 6, py0, py1), "steel"))
     P.append(("大带轮45T", cyl_y(hx, hz, PULLEY_BIG_PD + 5, py0, py1), "steel"))
@@ -264,6 +266,9 @@ def leg_plate(y0, y1, k=0.0):
     return waist_xz(0, ARM, ARM_ROOT_R - k, ARM_END_R - k, y0, y1)
 
 
+HUB_IN = WHEEL_Y0 + (WHEEL_W - 12.0) / 2           # goBILDA 轮毂里侧面（轮毂 12 厚、在轮子正中）
+
+
 def leg_parts_FL():
     """左前腿（摆臂水平朝前，髋轴原点，轮轴在 (ARM, 0)）：从里往外 电机 → 腿板 → 轴承座 → 麦轮 → 轴承座 → 叉板 → 端盖。"""
     W2 = BODY_W / 2
@@ -287,10 +292,11 @@ def leg_parts_FL():
         ("轮轴承座", cyl_y(ARM, 0, 53, LP0 - AXLE_HOUSING_L, LP0 - AXLE_HOUSING_L + 5.5).fuse(
             cyl_y(ARM, 0, 40, LP0 - AXLE_HOUSING_L + 5.5, LP0)).cut(cyl_y(ARM, 0, 37.1, LP0 - AXLE_HOUSING_L - 1, LP0 - AXLE_HOUSING_L + 5.5)), "alu"),   # B07：电机法兰 + 两个 6801
         ("麦轮轮轴", cyl_y(ARM, 0, 34, LP0 - AXLE_HOUSING_L + 1, LP0 - AXLE_HOUSING_L + 1 + AXLE_FLANGE_T).fuse(
-            cyl_y(ARM, 0, 12, LP0 - AXLE_HOUSING_L + 1 + AXLE_FLANGE_T, wy1 - 6)), "steel"),   # B08：法兰拧在电机输出盘上，轴穿过轴承进麦轮
+            cyl_y(ARM, 0, 12, LP0 - AXLE_HOUSING_L + 1 + AXLE_FLANGE_T, HUB_IN + 6)), "steel"),   # B08：法兰拧在电机输出盘上，轴穿过轴承、双 D 端插进 B09
+        ("轮毂法兰", cyl_y(ARM, 0, 32, HUB_IN - 7, HUB_IN).fuse(cyl_y(ARM, 0, 13.95, HUB_IN, HUB_IN + 6)), "steel"),   # B09：4 颗 M4 拧 goBILDA 轮毂，Φ14 凸台定心
         ("轮轴支座内", cyl_y(ARM, 0, 26, lp1, lp1 + AXLE_BOSS), "anod"),
         ("麦轮外包络", cyl_y(ARM, 0, WHEEL_D, wy0, wy1), "envelope"),      # 只用来查碰撞，不显示
-        ("麦轮轮毂", cyl_y(ARM, 0, 52, wy0 - 1, wy1 - 1.5), "trim"),
+        ("麦轮轮毂", cyl_y(ARM, 0, 53, HUB_IN, HUB_IN + WHEEL_HUB["hub_t"]).cut(cyl_y(ARM, 0, 14, HUB_IN - 1, HUB_IN + 13)), "trim"),
         ("麦轮侧板内", cyl_y(ARM, 0, WHEEL_PLATE_D, wy0, wy0 + WHEEL_PLATE_T), "steel"),
         ("麦轮侧板外", cyl_y(ARM, 0, WHEEL_PLATE_D, wy1 - WHEEL_PLATE_T, wy1 - 1.5), "steel"),
     ]
