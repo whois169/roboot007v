@@ -142,6 +142,8 @@ def body_parts():
 
     for n, s, c in shell.body_shell():
         add(n, s, c)
+    for i, (S, d) in enumerate(shell.step_sensors()):
+        add(f"台阶测距板{'前' if S[0] > 0 else '后'}{'左' if S[1] > 0 else '右'}", shell.step_board(S, d), "pcb")
     # 脖子底座 + 两块肩座 + 舵机 + 雷达（都在脖子坐标里画，再挪到机身上）
     for n, s, c in neck_parts():
         add(n, s.translate(V(NECK_X, 0, NECK_Z)), c)

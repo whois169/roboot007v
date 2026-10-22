@@ -94,6 +94,42 @@ def rrect_ring(hx, hy, r, z0, z1, ix=None, iy=None):
 TUB_TOP, WAIST_TOP = 67.0, 83.0          # 照效果图比例：下层底盘 67、黑腰 16、上层甲板 67（机身 153 高）
 
 
+# ================================================================ 台阶测距（Pololu VL53L1X 3415：12.7 × 17.78，2 × Φ2.18 孔距 12.7，离边 2.54）
+STEP_TILT = 30.0                        # 往下斜 30°：站立时看前（后）轮外面约 12 cm 的地面
+
+
+def step_sensors():
+    """[(传感器芯片中心, 朝向)]：前保险杠 y ±62（照明灯下面、相机窗两边），后格栅 y ±48（两片鳍中间）。"""
+    L2 = BODY_L / 2
+    c, s_ = math.cos(math.radians(STEP_TILT)), math.sin(math.radians(STEP_TILT))
+    out = []
+    for sy in (1, -1):
+        out.append(((L2 + 7.5, sy * 62.0, 28.0), (c, 0.0, -s_)))
+        out.append(((-L2 - 6.5, sy * 48.0, 30.0), (-c, 0.0, -s_)))
+    return out
+
+
+def _orient(sol, S, d):
+    """把“x 朝前”画的实体转到朝向 d、放到 S。"""
+    ang = math.degrees(math.atan2(-d[2], abs(d[0])))
+    sol = sol.rotate(V(0, 0, 0), V(0, 1, 0), ang)
+    if d[0] < 0:
+        sol = sol.rotate(V(0, 0, 0), V(0, 0, 1), 180)
+    return sol.translate(V(*S))
+
+
+def step_board(S, d):
+    """板子（背面朝里）+ 芯片，板宽 17.78 沿 y、12.7 沿斜面。"""
+    b = box(-2.6, -1.0, -8.89, 8.89, -6.35, 6.35).fuse(box(-1.0, 0.0, -2.5, 2.5, -1.25, 1.25))
+    return _orient(b, S, d)
+
+
+def step_pocket(S, d):
+    """仓：板子 + 0.3 余量，往后一直开到保险杠 / 格栅背面（从后面装板子）；两根 Φ2 定位柱留在仓里（烫头固定）。"""
+    pk = box(-14.0, 0.3, -9.2, 9.2, -6.7, 6.7)
+    return _orient(pk, S, d)
+
+
 def body_shell():
     P = []
     W2, L2 = BODY_W / 2, BODY_L / 2
@@ -174,12 +210,19 @@ def body_shell():
     bump = prism_xz([(L2, 15), (L2 + 12, 21), (L2 + 12, 59), (L2, 65)], -100, 100)
     dx, dy, dz = DEPTH_CAM
     bump = bump.cut(box(L2 - 1, L2 + 13, -dy / 2 - 1, dy / 2 + 1, 24, 24 + dz + 2))
+    for S, d in step_sensors():
+        if S[0] > 0:
+            bump = bump.cut(step_pocket(S, d)).cut(cyl_dir(S, d, 8.0, 12.0))
     P.append(("前保险杠", soft(bump, 3.0), "dark"))
     P.append(("外壳·深度相机窗", box(L2 + 9, L2 + 10.5, -dy / 2, dy / 2, 25, 24 + dz + 1), "gloss"))
     for sy in (1, -1):
         P.append((f"外壳·照明灯{'左' if sy > 0 else '右'}", box(L2 + 12, L2 + 13.5, *sorted((sy * 64, sy * 88)), 36, 44), "lamp_w"))
     # 尾部：散热格栅 + 6 片银色鳍 + 两盏红色尾灯
-    P.append(("后格栅", box(-L2 - 8, -L2, -80, 80, 18, 52), "black"))
+    grille = box(-L2 - 8, -L2, -80, 80, 18, 52)
+    for S, d in step_sensors():
+        if S[0] < 0:
+            grille = grille.cut(step_pocket(S, d)).cut(cyl_dir(S, d, 8.0, 12.0))
+    P.append(("后格栅", grille, "black"))
     for i in range(6):
         y = -60 + i * 24
         P.append((f"外壳·格栅鳍{i + 1}", box(-L2 - 10, -L2 - 8, y - 1, y + 1, 20, 50), "silver"))
@@ -490,15 +533,7 @@ def leg_skin(op0, ly0, ly1, hub0, ly_out):
     P.append(("外壳·电机线缆", cab, "black"))
     for i, (u, v) in enumerate(((ARM - 62, 30), (95, 27), (60, 28.5))):
         P.append((f"外壳·线夹{i + 1}", box(u - 3, u + 3, yy - 4.5, yy + 4.5, v - 4.5, v + 4.5), "dark"))
-    # 台阶测距（外盖板上，站立时朝前下方 30°）
-    a = math.radians(25)
-    u_, n_ = (math.cos(a), math.sin(a)), (-math.sin(a), math.cos(a))
-    c = (ARM - 72, 13)
-    corner = lambda su, sn: (c[0] + u_[0] * 9 * su + n_[0] * 6 * sn, c[1] + u_[1] * 9 * su + n_[1] * 6 * sn)  # noqa: E731
-    P.append(("台阶测距", soft(prism_xz([corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], oy, oy + 6), 0.8), "anod"))
-    f0_ = (c[0] + u_[0] * 9 - n_[0] * 4, c[1] + u_[1] * 9 - n_[1] * 4)
-    f1_ = (c[0] + u_[0] * 9 + n_[0] * 4, c[1] + u_[1] * 9 + n_[1] * 4)
-    P.append(("外壳·台阶测距窗", strip(f0_, f1_, 1.2, oy + 1.2, oy + 4.8, inward=(u_[0] * 0.5, u_[1] * 0.5)), "visor"))
+    # 台阶测距 2026-10-22 挪到机身前后（前保险杠、后格栅里），腿上不装
     return P
 
 
