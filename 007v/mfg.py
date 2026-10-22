@@ -326,7 +326,11 @@ def side_plate():
                           "蜗轮箱 M4 六角柱（长 16）；长孔用来调皮带松紧", star=True))
         H.append(hole(hx, HIP_Z + 40, 12.0, "轮子电机线过线孔（装橡胶护线圈）"))
         for dx in (-9.0, 9.0):
-            H.append(hole(hx + dx, HIP_Z + 34, 3.4, "编码器支架 D32：M3×8 沉头从外面拧（外面要沉头孔）"))
+            H.append(hole(hx + dx, HIP_Z + 34, 3.4, "编码器支架 P26：M3×8 沉头从外面拧（外面要沉头孔）"))
+    zp = FRAME_RAIL[2] + FRAME_GAP
+    for x in (-88.0, 88.0):
+        for z in (zp + 9.5, 67.0 - 9.5):
+            H.append(hole(x, z, 4.2, "侧挂板 M5 螺纹孔（底孔 4.2 攻 M5）"))
         for z in (13.0, 140.0):
             H.append(hole(sx * 185.0, z, 5.5, "2020 横梁端面 M5"))
     for x in DECK_FIX_X:
@@ -351,11 +355,9 @@ def deck():
         H.append(hole(185.0, y, 5.5, "前上横梁 M5 + T 型螺母（从上往下）"))
     for y in (-30.0, 30.0):
         H.append(hole(-185.0, y, 5.5, "后上横梁 M5 + T 型螺母（后导轨正好压在后横梁上，螺丝错开）"))
-    for x in (66.0, 174.0):
+    for x in (NECK_X - 42.0, NECK_X + 55.0):
         for sy in (1, -1):
-            H.append(hole(x, sy * 96.0, 4.5, "脖子底座 M4（热熔螺母）"))
-    for y in (-40.0, 0.0, 40.0):
-        H.append(hole(NECK_X - 50.0, y, 4.5, "脖子底座后横梁 M4"))
+            H.append(hole(x, sy * 96.0, 5.5, "脖子底座 M5 沉头（从上往下穿过头部平台盖，下面 M5 防松螺母）"))
     for sy in (1, -1):
         H.append(hole(NECK_X + CABLE_X, sy * (POD_IN + POD_W / 2), 16.0, "过线孔：对着肩座走线孔（左：头部 USB + 供电、雷达；右：热成像、红外）"))
     ax, ay = ARM_PORT_XY
@@ -400,10 +402,20 @@ def end_plate(front):
     if front:
         dx, dy, dz = DEPTH_CAM
         cut.append((-dy / 2 - 1, 24.0, dy / 2 + 1, 24.0 + dz + 2, "深度相机窗口"))
+        for y in (-88.0, 88.0):
+            for z in (25.0, 55.0):
+                H.append(hole(y, z, 3.4, "前保险杠 M3×10（从里面拧进保险杠的热熔螺母）"))
+        for y in (-62.0, 62.0):
+            H.append(hole(y, 32.0, 8.0, "台阶测距过线孔"))
     else:
         cut.append((-70.0, 60.0, -54.0, 68.0, "XT60 充电口（面板座）"))
         H.append(hole(0.0, 70.0, 22.0, "急停按钮 Φ22"))
         H.append(hole(55.0, 70.0, 16.0, "总开关 Φ16（带灯自锁）"))
+        for y in (-70.0, 70.0):
+            for z in (24.0, 46.0):
+                H.append(hole(y, z, 3.4, "后格栅 M3×10（从里面拧进格栅的热熔螺母）"))
+        for y in (-48.0, 48.0):
+            H.append(hole(y, 33.0, 8.0, "台阶测距过线孔"))
     return Plate("A04" if front else "A05", "前板" if front else "后板", 1, "6061-T6 铝板 3 mm", "激光切割", PLATE,
                  rect_pts(-YIN, PLATE, YIN, BODY_H, 3.0), H,
                  ["外面以后还要盖打印外壳"], "原点：机身中线 × 机身底面；X 向左，Y 向上", cut)
