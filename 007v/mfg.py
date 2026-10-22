@@ -324,7 +324,7 @@ def side_plate():
         for u, v in WORM_FACE["holes"]:
             H.append(slot(gx + sx * u, gz + v, WORM_FACE["d"], sx * e[0] / el * WORM_FACE["slot"], e[1] / el * WORM_FACE["slot"],
                           "蜗轮箱 M4 六角柱（长 16）；NFP-5840 厂家孔位，电机朝上装；长孔用来调皮带松紧", star=True))
-        H.append(hole(hx, HIP_Z + 40, 12.0, "轮子电机线过线孔（装橡胶护线圈）"))
+        H.append(hole(hx + sx * 25.0, 75.0, 12.0, "轮子电机线过线孔（装 Φ12 橡胶护线圈；在黑腰铝带上，避开灯带）"))
         for dx in (-9.0, 9.0):
             H.append(hole(hx + dx, HIP_Z + 34, 3.4, "编码器支架 P26：M3×8 沉头从外面拧（外面要沉头孔）"))
     zp = FRAME_RAIL[2] + FRAME_GAP

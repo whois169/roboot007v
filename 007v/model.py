@@ -143,6 +143,14 @@ def body_parts():
 
     for n, s, c in shell.body_shell():
         add(n, s, c)
+    for fx in (1, -1):                                          # 轮子电机线：从腿里侧穿过侧板上的护线圈进机身
+        for sy in (1, -1):
+            hx = fx * (HIP_X + shell.CABLE_HOLE_DX)
+            y_in, y_out = sy * (BODY_W / 2 - PLATE_SIDE - 8), sy * (LP0 - 5)
+            stub = cyl_y(hx, shell.CABLE_HOLE_Z, 7, *sorted((y_in, y_out)))
+            tag = ("前" if fx > 0 else "后") + ("左" if sy > 0 else "右")
+            add(f"外壳·电机线缆进机身{tag}", stub, "black")
+            add(f"外壳·护线圈{tag}", shell.ring_y(hx, shell.CABLE_HOLE_Z, 14, 7, *sorted((sy * (BODY_W / 2), sy * (BODY_W / 2 + 2)))), "black")
     for i, (S, d) in enumerate(shell.step_sensors()):
         add(f"台阶测距板{'前' if S[0] > 0 else '后'}{'左' if S[1] > 0 else '右'}", shell.step_board(S, d), "pcb")
     # 脖子底座 + 两块肩座 + 舵机 + 雷达（都在脖子坐标里画，再挪到机身上）

@@ -150,7 +150,7 @@ def leg_items():
     # 打印件
     for code, off, lbl, col in (("L01", (0, 40, 0), "L01 箱形臂座外壳", "print"), ("L02", (0, -150, -110), "L02 电机护罩", "print_dk"),
                                 ("L03", (0, 115, 0), "L03 摆臂外盖板", "print_dk"), ("L04", (0, 150, 0), "L04 髋部大圆盖", "print_dk"),
-                                ("L05", (0, 235, 0), "L05 轮毂盖", "print_dk")):
+                                ("L05", (0, 235, 0), "L05 轮毂盖", "print_dk"), ("L06", (0, -205, -110), "L06 护罩端圈", "print_dk")):
         s, nm = step(code)
         items.append((code, s, col, off, lbl, True))
     return items

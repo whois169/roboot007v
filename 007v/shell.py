@@ -469,6 +469,14 @@ def fork_plate(y0, y1, k=0.0):
     return wprism(poly, y0, y1).fuse(cyl_y(ARM, 0, 2 * r, y0, y1))              # 实心（用户 2026-10-18：不要镂空）
 
 
+# 轮子电机线进机身的地方：侧板上 x = 髋 ± 25、z = 75（黑腰那条铝带上，避开灯带），装橡胶护线圈；
+# 站立时线从腿里侧（y = LP0 - 5）走到髋轴旁边的 (u, v)，正好对着这个孔
+CABLE_HOLE_DX, CABLE_HOLE_Z = 25.0, 75.0
+_c, _s = math.cos(math.radians(STANCE_DEG)), math.sin(math.radians(STANCE_DEG))
+CABLE_HIP_U = CABLE_HOLE_DX * _c - (CABLE_HOLE_Z - HIP_Z) * _s
+CABLE_HIP_V = CABLE_HOLE_DX * _s + (CABLE_HOLE_Z - HIP_Z) * _c
+
+
 def leg_skin(op0, ly0, ly1, hub0, ly_out):
     """腿的外观件（左前腿坐标，方案 A 的样子）。op0 = 外板内侧；ly0 / ly1 = 电机两端；hub0 = 臂座外壳内侧；ly_out = 腿外侧面（= 麦轮外侧面）。"""
     P = []
@@ -513,6 +521,9 @@ def leg_skin(op0, ly0, ly1, hub0, ly_out):
     for X in (-12, -4, 4, 12):                                                      # 底面散热槽
         guard = guard.cut(wprism([(X - 1, -30.5), (X + 1, -30.5), (X + 1, -29), (X - 1, -29)], gy0 + 4, gy1 - 5))
     P.append(("电机护罩", soft(guard, 0.8), "anod"))
+    # 护罩端圈（单独打印）：护罩套好、拧上腿板以后，从敞开那头扣进去，封住护罩和电机之间那圈空腔，只露电机端面和青色光环
+    ring = boot(0, gy0 - 2, gy0).fuse(boot(3.2, gy0 - 0.1, gy0 + 4)).cut(cyl_y(ARM, 0, 41, gy0 - 3, gy0 + 5))
+    P.append(("电机护罩端圈", soft(ring, 0.8), "anod"))
     c55, s55 = math.cos(math.radians(STANCE_DEG)), math.sin(math.radians(STANCE_DEG))
     for X in (-31, 31):
         for yb in (gy0 + 9, gy1 - 9):
@@ -523,7 +534,7 @@ def leg_skin(op0, ly0, ly1, hub0, ly_out):
     # 出线口（线缆接头）+ 电机线缆：沿臂座上沿走到髋，三个小线夹
     yy = LP0 - 5
     P.append(("外壳·出线口", cyl_dir((ARM - 46, yy, 25), (0, 0, 1), 10, 5), "dark"))
-    pts = [(ARM - 46, 30), (ARM - 62, 30), (95, 27), (45, 29)]
+    pts = [(ARM - 46, 30), (ARM - 62, 30), (95, 27), (45, 29), (CABLE_HIP_U, CABLE_HIP_V)]   # 一直走到髋轴旁边，在这里留一段余量进机身
     cab = None
     for (p0, p1) in zip(pts, pts[1:]):
         d = V(p1[0] - p0[0], 0, p1[1] - p0[1])
@@ -531,7 +542,7 @@ def leg_skin(op0, ly0, ly1, hub0, ly_out):
         cab = seg if cab is None else cab.fuse(seg)
         cab = cab.fuse(cq.Solid.makeSphere(3.5, V(p1[0], yy, p1[1])))
     P.append(("外壳·电机线缆", cab, "black"))
-    for i, (u, v) in enumerate(((ARM - 62, 30), (95, 27), (60, 28.5))):
+    for i, (u, v) in enumerate(((ARM - 62, 30), (95, 27), (60, 28.5), (22, 29))):
         P.append((f"外壳·线夹{i + 1}", box(u - 3, u + 3, yy - 4.5, yy + 4.5, v - 4.5, v + 4.5), "dark"))
     # 台阶测距 2026-10-22 挪到机身前后（前保险杠、后格栅里），腿上不装
     return P
