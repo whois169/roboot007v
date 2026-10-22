@@ -16,7 +16,8 @@ scene = bpy.context.scene
 
 # 脖子坐标（x 前、y 左、z 上，mm）→ Blender（x 左、y 后、z 上，m）
 COL = dict(shell=(0.69, 0.70, 0.72), dark=(0.045, 0.05, 0.055), black=(0.012, 0.012, 0.014), petg=(0.30, 0.33, 0.36),
-           clear=(0.55, 0.85, 0.95), pcb=(0.05, 0.25, 0.55), servo=(0.03, 0.03, 0.035), glass=(0.01, 0.012, 0.015))
+           clear=(0.55, 0.85, 0.95), pcb=(0.05, 0.25, 0.55), servo=(0.03, 0.03, 0.035), glass=(0.01, 0.012, 0.015),
+           pcb2=(0.55, 0.05, 0.08), red=(0.8, 0.02, 0.02), steel=(0.6, 0.62, 0.65), brass=(0.75, 0.55, 0.2))
 PARTS = {   # 名字: (颜色, 爆炸方向 mm)
     "tub": ("shell", (0, 0, 0)), "cap": ("shell", (0, 0, 95)), "retainer": ("petg", (-75, 0, 0)), "tray": ("petg", (0, 0, -55)),
     "frame": ("dark", (70, 0, 0)), "b_acrylic": ("glass", (50, 0, 0)), "b_board": ("pcb", (-38, 0, 0)),
@@ -25,7 +26,15 @@ PARTS = {   # 名字: (颜色, 爆炸方向 mm)
     "core_R": ("shell", (0, -75, 0)), "mid_R": ("shell", (0, -120, 0)), "outer_R": ("shell", (0, -160, 0)), "hub_R": ("dark", (0, -38, 0)),
     "window": ("black", (35, -75, 25)),
     "flange": ("dark", (0, 75, 45)), "b_lidar": ("black", (0, 75, 85)), "lidar_ring": ("dark", (0, 75, 130)),
-    "neck": ("dark", (0, 0, -95)),
+    "neck": ("dark", (0, 0, -95)), "bezel": ("black", (95, 0, -35)), "b_pin": ("steel", (0, -38, 0)), "b_bush": ("brass", (0, -60, 0)),
+    "b_speaker": ("black", (0, -45, -10)),
+    # 电子件：跟着装它的零件走，再往外多拉一点
+    "b_camlens": ("black", (75, 0, -30)), "b_tof": ("pcb2", (75, 0, -30)), "b_led": ("red", (75, 0, -30)),
+    "b_mic1": ("pcb", (0, 40, 0)), "b_mic2": ("pcb", (0, 40, 0)), "b_bh1750": ("pcb", (0, 40, 0)),
+    "b_ld2410": ("pcb2", (0, 0, 130)),
+    "b_esp32": ("pcb", (0, 0, -30)), "b_camboard": ("pcb", (0, 0, -30)), "b_max": ("pcb", (0, 0, -30)),
+    "b_mlx": ("pcb", (40, -110, 20)), "b_irtx": ("black", (40, -110, 20)), "b_irrx": ("black", (40, -110, 20)),
+    "b_sht40": ("pcb", (0, -105, 0)),
 }
 
 
@@ -126,7 +135,19 @@ def shot(name, explode, lift, cam_loc, aim_loc, lens):
         bpy.ops.render.render(write_still=True)
 
 
-shot("头部打印件_爆炸图", 1.0, 110, (0.62, 0.50, 0.42), (0.0, 0.01, 0.19), 30)
+shot("头部打印件_爆炸图", 1.0, 110, (0.50, 0.40, 0.36), (0.0, 0.0, 0.17), 30)
+# 每个零件在爆炸图上的屏幕位置，给后面加中文标注用
+import json
+from bpy_extras.object_utils import world_to_camera_view
+bpy.context.view_layer.update()
+lab = {}
+for k, (o, off) in objs.items():
+    if o.hide_render:
+        continue
+    c = sum((o.matrix_world @ Vector(v) for v in o.bound_box), Vector()) / 8
+    p = world_to_camera_view(scene, cam, c)
+    lab[k] = (p.x, 1 - p.y)
+json.dump(lab, open(os.path.join(OUT, "爆炸图标注.json"), "w"))
 for k in ("cap", "frame", "b_acrylic"):                                   # 拿掉顶盖看里面
     if k in objs:
         objs[k][0].hide_render = True
@@ -135,4 +156,10 @@ for k in ("cap", "frame", "b_acrylic"):
     if k in objs:
         objs[k][0].hide_render = False
 shot("头部打印件_装好", 0.0, 0, (0.55, 0.48, 0.38), (0.0, 0.0, 0.09), 50)
+HIDE = ("tub", "cap", "frame", "b_acrylic", "core_R", "mid_R", "outer_R", "hub_R", "window", "outer_L", "mid_L", "bezel")
+for k in HIDE:                                                            # 拿掉外壳：只看电子件放在哪
+    if k in objs:
+        objs[k][0].hide_render = True
+shot("头部电子件布置", 0.0, 0, (0.42, -0.10, 0.36), (0.0, 0.03, 0.08), 45)
+shot("头部电子件布置_前下方", 0.0, 0, (0.30, 0.45, 0.02), (0.0, 0.02, 0.07), 45)
 print("完成：", OUT)

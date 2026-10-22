@@ -19,6 +19,7 @@ import cadquery as cq
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import head_electronics as HE  # noqa: E402
 import shell  # noqa: E402
 from config import (HEAD_PROFILE, HEAD_W, LD19, PIVOT_UP, POD_HEX, POD_IN, POD_W, SCREEN_GLASS, SCREEN_X,  # noqa: E402
                     SCREEN_Z)
@@ -153,16 +154,17 @@ def screen_module():
     for x in (-12.0, 48.0):                                                                        # 电子托板螺丝柱
         for y in (-38.0, 38.0):
             add.append(cyl_z(x, y, 8, -40.5, -35.0))
-    tub = fuse_all(tub, add)
+    EM = HE.head_mounts()
+    tub = fuse_all(tub, add + EM["tub_add"])
 
-    cut = []
+    cut = list(EM["tub_cut"])
     cut.append(cyl_y(0, 0, 6.0, HW - WALL - 3, HORN_FACE + 1))                                     # 中心孔：从头里伸螺丝刀拧舵盘中心螺丝
     cut.append(cyl_y(0, 0, 7.6, HORN_FACE - 1.8, HORN_FACE + 1))                                  # 让开舵盘中心螺丝头
     for dx in (-4.95, 4.95):
         for dz in (-4.95, 4.95):
             cut.append(cyl_y(dx, dz, 1.8, HORN_FACE - 6, HORN_FACE + 1))                           # M2 自攻进舵盘：先打底孔
             cut.append(cyl_y(dx, dz, 4.2, HW - WALL - 3, HORN_FACE - 3.5))                         # 沉孔：螺丝头在头壳里面
-    cut.append(cyl_y(0, 0, 7.9, -HW + WALL - 0.7, -HW + WALL + 7.5))                               # 轴销压入孔（盲孔；外壁上原来就有 Φ8.2 过孔）
+    cut.append(cyl_y(0, 0, 7.9, -HW + WALL - 0.7, -HW + WALL + 8.5))                               # 空心轴销压入孔（打通：右耳传感器的线从轴销里穿进头）
     cut.append(cyl_x(49, 22, 10, -36, -22))                                                        # 背面出线孔（编织线从这里进头）
     for sy in (1, -1):
         p = (-21.0, sy * HW, 35.0)
@@ -183,7 +185,7 @@ def screen_module():
         cadd.append(my(box(-25, -15, 49.5, HW - WALL - 0.2, 28.5, SPLIT_Z + 0.5)))
         cadd.append(my(box(-25, -15, 49.5, HW - WALL + 0.3, SPLIT_Z, 70)).intersect(env))
         cadd.append(my(box(64.0, SPLIT_X, 53.5, HW - WALL + 0.3, 46, 56)))
-    cap = fuse_all(cap, cadd)
+    cap = fuse_all(cap, cadd + EM["cap_add"])
     for sy in (1, -1):
         cap = cap.cut(insert_hole((-21.0, sy * (HW - WALL - 0.2), 35.0), (0, -sy, 0), "M5"))
         cap = cap.cut(cyl_x(sy * 57.0, 51.0, 6.2, 66.8, SPLIT_X + 0.01))
@@ -216,13 +218,14 @@ def screen_module():
     for x in (-2, 22, 38):                                                                         # 扎带槽
         for y0 in (-44.0, 40.0):
             tray = tray.cut(box(x - 2, x + 2, y0, y0 + 4, -36, -30))
+    tray = cut_all(fuse_all(tray, EM["tray_add"]), EM["tray_cut"], "托板")
 
     frame = H["外壳·屏框"]
     for n_, s_ in H.items():
         if n_.startswith("外壳·前框螺栓"):
             c = s_.Center()
             frame = frame.cut(cyl_x(c.y, c.z, 10.8, FRONT - 0.1, FRONT + 0.8))                     # 屏框背面让开装饰螺栓
-    return dict(tub=tub, cap=cap, retainer=retainer, tray=tray, frame=frame)
+    return dict(tub=tub, cap=cap, retainer=retainer, tray=tray, frame=frame, bezel=EM["bezel"])
 
 
 # ================================================================ 耳朵（脖子坐标，先按 +Y 那只画，-Y 那只最后镜像）
@@ -245,21 +248,11 @@ def ear_core(servo):
             cut.append(insert_hole((x, y, TOP_Z), (0, 0, -1), "M3"))
     else:
         cut.append(cyl_y(0, PIVOT_UP, 9.95, YI - 1, YI + 18))                                       # 铜套 Φ10×18 压入
-        up0, up1 = (78.0, 62.0), (50.0, 122.0)
-        Ln = math.hypot(up1[0] - up0[0], up1[1] - up0[1])
-        n = ((up1[1] - up0[1]) / Ln, -(up1[0] - up0[0]) / Ln)
-        pt = lambda t, d=0.0: (up0[0] + (up1[0] - up0[0]) * t - n[0] * d, up0[1] + (up1[1] - up0[1]) * t - n[1] * d)  # noqa: E731
-        pocket = [pt(0.20, 3.0), pt(0.64, 3.0), pt(0.64, 31.0), pt(0.20, 31.0)]
-        cut.append(prism_xz(pocket, YI + 4, CORE1 + 1))                                              # 传感器仓：离斜面只剩 3 mm
         cut.append(cyl_z(30, CH_Y, 10, 15, 88))
-        for (s, y, kind) in WIN_HOLES:
-            t = 0.42 + s / Ln
-            p = pt(t, -0.5)
-            d = (-n[0], 0, -n[1])
-            if kind == "rect":
-                cut.append(strip(pt(t - 3.25 / Ln, -0.5), pt(t + 3.25 / Ln, -0.5), 9, y - 4, y + 4))
-            else:
-                cut.append(cyl_dir((p[0], y, p[1]), d, kind, 6))
+        rc, ra = HE.ear_R_core()
+        core = cut_all(core, rc[:2], "耳骨架仓")                                                     # 先挖仓，再加柱子和座，最后打孔
+        core = fuse_all(core, ra)
+        cut += rc[2:]
     for x, z in EAR_M5:
         cut.append(insert_hole((x, CORE1, z), (0, -1, 0), "M5"))
     for i in range(6):
@@ -275,8 +268,7 @@ def ear_core(servo):
     return core
 
 
-# 方窗里的开孔：(沿斜面的位置 mm, y, 直径或 "rect")
-WIN_HOLES = [(-6.5, 89.0, 10.4), (6.5, 84.0, 5.4), (6.5, 94.0, "rect"), (0.8, 84.0, 3.2)]
+WIN_HOLES = HE.WIN_HOLES     # 方窗里的开孔：(沿斜面的位置 mm, y, 直径或 "rect")
 
 
 def ear_mid(servo):
@@ -284,6 +276,9 @@ def ear_mid(servo):
     if servo:
         m = m.cut(box(SV_L0 - 0.25, SV_L1 + 0.25, CORE1 - 1, MID1 + 1, PIVOT_UP - SV_H / 2 - 0.2, PIVOT_UP + SV_H / 2 + 0.2))
         m = m.cut(box(SV_L1, SV_L1 + 5.3, CORE1 - 1, MID1 + 1, 54, PIVOT_UP + SV_H / 2))
+    else:
+        mc, ma = HE.ear_R_mid()
+        m = cut_all(fuse_all(m, ma), mc, "中板")
     for x, z in EAR_M5:
         m = m.cut(cyl_y(x, z, CLR["M5"], CORE1 - 1, MID1 + 1))
     return m
@@ -342,8 +337,7 @@ def ears_and_neck():
         t = 0.42 + s / Ln
         p = (up0[0] + (up1[0] - up0[0]) * t + n[0] * 3, up0[1] + (up1[1] - up0[1]) * t + n[1] * 3)
         if kind == "rect":
-            win = win.cut(strip((p[0] - (up1[0] - up0[0]) / Ln * 3.25, p[1] - (up1[1] - up0[1]) / Ln * 3.25),
-                                (p[0] + (up1[0] - up0[0]) / Ln * 3.25, p[1] + (up1[1] - up0[1]) / Ln * 3.25), 12, y - 4, y + 4))
+            win = win.cut((HE.ebox(s - HE.RECT[0], s + HE.RECT[0], y - HE.RECT[1], y + HE.RECT[1], -8, 4)))
         else:
             win = win.cut(cyl_dir((p[0], y, p[1]), (-n[0], 0, -n[1]), kind, 8))
     P["window"] = mirror_y(win)
@@ -393,13 +387,17 @@ def bought():
     """装配位置的外购件：(名字, 实体, 坐标系 'head' 俯仰轴 / 'neck' 脖子)。"""
     gw, gh = SCREEN_GLASS
     B = [("亚克力窗 117.6×49.6×3", box(81.0, 84.0, -58.8, 58.8, SCREEN_Z - 24.8, SCREEN_Z + 24.8), "head"),
-         ("轴销 Φ8×35", cyl_y(0, 0, 8, -88, -53), "head"),
+         ("空心轴销 Φ8×Φ5×35", cyl_y(0, 0, 8, -88, -53).cut(cyl_y(0, 0, 5, -90, -50)), "head"),
          ("喇叭 Φ28", cyl_y(41, -21, 28, -60.3, -55), "head")]
     for i, b in enumerate(board_solids()):
         B.append((f"屏幕板{i}", b, "head"))
     B.append(("舵机 STS3215", servo_solid(), "neck"))
     B.append(("铜套 Φ10×18", cyl_y(0, PIVOT_UP, 10, -YI - 18, -YI), "neck"))
     B.append(("雷达 LD19", __import__("model").ld19().translate(V(TOP_X, 96, FL_Z)), "neck"))
+    for n_, s_ in HE.head_parts():
+        B.append((n_, s_, "head"))
+    for n_, s_ in HE.ear_R_parts():
+        B.append((n_, mirror_y(s_), "neck"))
     return B
 
 
@@ -423,6 +421,7 @@ PRINT = {   # 编号, 名字, 数量, 材料, 坐标系, 打印时朝下的面�
     "flange": ("H16", "雷达法兰", 1, "PETG 深灰（或铝）", "neck", (0, 0, -1)),
     "lidar_ring": ("H17", "雷达护环（带 4 根柱）", 1, "PETG 深灰", "neck", (0, 0, 1)),
     "neck": ("H18", "脖子底座", 1, "PETG 深灰（或铝）", "neck", (0, 0, -1)),
+    "bezel": ("H19", "相机镜头圈（黑）", 1, "PETG 黑", "head", (HE.N_OUT[0], 0, HE.N_OUT[1])),
 }
 
 
