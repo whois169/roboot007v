@@ -8,6 +8,7 @@
 摆臂和轮子先按“左前腿、摆臂水平朝前”画，build.py 再旋转、镜像到四条腿。
 """
 import math
+import os
 
 import cadquery as cq
 
@@ -163,7 +164,7 @@ def body_parts():
     ax, at, ay = ARM_PORT
     cx, cy = ARM_PORT_XY
     add("机械臂接口板", box(cx - ax / 2, cx + ax / 2, cy - ay / 2, cy + ay / 2, BED_Z, BED_Z + at), "alu")
-    return P
+    return _eng_body(P)
 
 
 def hip_drive_FL():
@@ -237,12 +238,12 @@ def neck_parts():
     """脖子坐标：原点在头部平台盖上表面、俯仰轴正下方。脖子底座 + 两只耳朵 + 电机耳顶上的雷达。"""
     P, (lx, ly, lz) = shell.neck()
     P.append(("雷达LD19", ld19().translate(V(lx, ly, lz)), "black"))
-    return P
+    return _eng_neck(P)
 
 
 def head_parts():
     """中间屏幕头，画在“俯仰轴坐标”里：原点在俯仰轴上。build.py 绕 Y 轴转，再挪到 PIVOT。"""
-    return shell.head() + [("编织线缆", shell.cable(), "black")]   # 屏幕模块 + 到传感塔的线缆
+    return _eng_head(shell.head() + [("编织线缆", shell.cable(), "black")])   # 屏幕模块 + 到传感塔的线缆
 
 
 # ---------------------------------------------------------------- 摆臂 + 轮子（左前腿，摆臂水平朝前；原点在髋轴上）
@@ -311,7 +312,7 @@ def leg_parts_FL():
         if ang > 1e-6:
             s = s.rotate(V(0, 0, 0), V(*ax), ang)
         P.append((f"麦轮滚子{k + 1:02d}", s.translate(V(ARM + p[0], yc + p[1], p[2])), "wheel"))
-    return P
+    return _eng_leg(P)
 
 
 def roller_axis(k, s):
@@ -337,3 +338,96 @@ def roller_solid():
 def half_width():
     """整机半宽（到髋部大圆盖外侧；麦轮外侧和腿外侧齐平）。"""
     return LEG_Y1 + 4
+
+
+# ================================================================ 工程版（2026-10-22）：整机模型里换成能装的打印件
+# 打开后（build.py / export_sw.py 会打开），头部、耳朵、脖子底座、外壳、腿部打印件都用 head_print.py / body_print.py 生成的工程版 STEP，
+# 再加上头里、右耳里的电子件；生成工程版的程序自己用外观版（ENGINEERED = False），不会套圈。
+ENGINEERED = False
+_HP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out", "head_print")
+_BP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out", "body_print")
+_cache = {}
+
+
+def _step(folder, code, dz=0.0):
+    import glob
+    key = (folder, code, dz)
+    if key not in _cache:
+        f = glob.glob(os.path.join(folder, f"{code}_*.step"))
+        if not f:
+            raise FileNotFoundError(f"没有工程版文件 {code}：先跑 head_print.py / body_print.py")
+        s = cq.importers.importStep(f[0]).val()
+        _cache[key] = s.translate(V(0, 0, dz)) if dz else s
+    return _cache[key]
+
+
+def _drop(P, pred):
+    return [p for p in P if not pred(p[0])]
+
+
+def _eng_head(P):
+    if not ENGINEERED:
+        return P
+    import head_electronics as HE
+    up = -PIVOT_UP                                             # head_print 存的是脖子坐标，转回俯仰轴坐标
+    P = _drop(P, lambda n: n in ("屏幕头", "屏板卡槽左", "屏板卡槽右", "屏板压条", "舵盘法兰", "外壳·屏框", "外壳·屏幕模块小字", "4.3寸屏板", "俯仰轴销")
+              or n.startswith(("外壳·相机镜头", "外壳·测距窗", "外壳·隐私指示灯")))      # 螺栓头、小字留着（实物是螺丝头 / 喷漆，模型里单独上色）
+    P += [("屏幕头·主壳", _step(_HP, "H01", up), "deck"), ("屏幕头·顶盖", _step(_HP, "H02", up), "deck"),
+          ("屏板压框", _step(_HP, "H03", up), "printed"), ("屏幕头·电子托板", _step(_HP, "H04", up), "printed"),
+          ("外壳·屏框", _step(_HP, "H05", up), "dark"), ("外壳·相机镜头圈", _step(_HP, "H19", up), "black")]
+    P += [(f"屏幕头·{n}", s, "pcb") for n, s in HE.head_parts()]
+    # 屏幕板按厂家 3D 模型简化：玻璃 + 屏 + PCB + 接线端子（俯仰轴坐标）
+    zc = SCREEN_Z + 1.94
+    brd = box(SCREEN_X - 4.8, SCREEN_X, -56.2, 56.2, SCREEN_Z - 37.55, SCREEN_Z + 37.55)
+    brd = brd.fuse(box(SCREEN_X - 9.1, SCREEN_X - 4.8, -52.0, 52.0, zc - 25.0, zc + 31.0))
+    brd = brd.fuse(box(SCREEN_X - 17.4, SCREEN_X - 9.1, -28.6, 27.6, zc - 37.3, zc - 18.2))
+    P.append(("4.3寸屏板", brd, "pcb"))
+    P.append(("俯仰轴销", cyl_y(0, 0, 8, -88, -53).cut(cyl_y(0, 0, 5, -90, -50)), "steel"))       # 空心轴销 Φ8 / Φ5 × 35
+    return P
+
+
+def _eng_neck(P):
+    if not ENGINEERED:
+        return P
+    import head_electronics as HE
+    import head_print as HPm
+    P = _drop(P, lambda n: n in ("左耳骨架", "右耳骨架", "左耳中板", "右耳中板", "左耳外板", "右耳外板", "左转轴壳", "右转轴壳",
+                                 "外壳·左转轴法兰", "外壳·右转轴法兰", "外壳·转轴青光环", "外壳·方窗（热成像 / 红外）", "外壳·方窗边框",
+                                 "雷达法兰", "雷达护环", "脖子底座", "俯仰舵机") or n.startswith("外壳·护环支柱"))
+    for code, name, col in (("H06", "左耳骨架", "shell"), ("H07", "右耳骨架", "shell"), ("H08", "左耳中板", "shell"), ("H09", "右耳中板", "shell"),
+                            ("H10", "左耳外板", "shell"), ("H11", "右耳外板", "shell"), ("H12", "左转轴壳", "anod"), ("H13", "右转轴壳", "anod"),
+                            ("H14", "外壳·转轴青光环", "cyan"), ("H15", "外壳·方窗面板", "visor"), ("H16", "雷达法兰", "anod"),
+                            ("H17", "雷达护环", "anod"), ("H18", "脖子底座", "anod")):
+        P.append((name, _step(_HP, code), col))
+    P.append(("俯仰舵机", HPm.servo_solid(), "motor"))
+    P += [(f"右耳·{n}", mirror_y(s), "pcb") for n, s in HE.ear_R_parts()]
+    return P
+
+
+def _eng_body(P):
+    if not ENGINEERED:
+        return P
+    P = _drop(P, lambda n: n in ("外壳·下层外壳", "外壳·黑腰", "上层甲板壳",
+                                 "侧挂板左", "侧挂板右", "前保险杠", "后格栅", "头部平台盖", "货斗底板", "后检修盖", "滑撬左", "滑撬右",
+                                 "左栏板", "右栏板", "后栏板", "前栏板"))
+    names = {"P01": ("外壳·下层外壳·前", "shell"), "P02": ("外壳·下层外壳·后", "shell"), "P03": ("外壳·下层外壳·左前", "shell"),
+             "P04": ("外壳·下层外壳·左后", "shell"), "P05": ("外壳·下层外壳·右前", "shell"), "P06": ("外壳·下层外壳·右后", "shell"),
+             "P07": ("上层甲板壳·前鼻", "shell"), "P08": ("上层甲板壳·后鼻", "shell"), "P09": ("上层甲板壳·左前", "shell"),
+             "P10": ("上层甲板壳·左后", "shell"), "P11": ("上层甲板壳·右前", "shell"), "P12": ("上层甲板壳·右后", "shell"),
+             "P13": ("侧挂板左", "dark"), "P14": ("侧挂板右", "dark"), "P15": ("前保险杠", "dark"), "P16": ("后格栅", "black"),
+             "P17": ("头部平台盖", "deck"), "P18": ("货斗底板", "deck"), "P19": ("后检修盖", "deck"), "P20": ("滑撬左", "black"),
+             "P21": ("滑撬右", "black"), "P22": ("左栏板", "shell"), "P23": ("右栏板", "shell"), "P24": ("后栏板", "shell"), "P25": ("前栏板", "shell")}
+    for code, (n, c) in names.items():
+        P.append((n, _step(_BP, code), c))
+    return P
+
+
+def _eng_leg(P):
+    if not ENGINEERED:
+        return P
+    P = _drop(P, lambda n: n in ("箱形臂座外壳", "电机护罩", "摆臂外盖板", "髋部大圆盖", "外壳·麦轮轮毂盖"))
+    for code, n, c in (("L01", "箱形臂座外壳", "armor"), ("L02", "电机护罩", "anod"), ("L03", "摆臂外盖板", "dark"),
+                       ("L04", "髋部大圆盖", "dark"), ("L05", "外壳·麦轮轮毂盖", "dark")):
+        P.append((n, _step(_BP, code), c))
+    return P
+

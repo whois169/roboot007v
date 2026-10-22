@@ -19,6 +19,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import build as B  # noqa: E402
 import model as M  # noqa: E402
+M.ENGINEERED = os.environ.get("APPEARANCE") != "1"     # 整机用工程版（能装的打印件）；APPEARANCE=1 看外观版
 from config import *  # noqa: E402,F401,F403
 from look import rgb  # noqa: E402
 
