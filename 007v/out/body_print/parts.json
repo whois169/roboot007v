@@ -1,0 +1,450 @@
+[
+ {
+  "code": "P01",
+  "name": "下层外壳·前",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   23,
+   243,
+   27
+  ],
+  "volume_cm3": 11.8,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P02",
+  "name": "下层外壳·后",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   23,
+   243,
+   27
+  ],
+  "volume_cm3": 14.4,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P03",
+  "name": "下层外壳·左前",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   120,
+   27,
+   2
+  ],
+  "volume_cm3": 0.9,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P04",
+  "name": "下层外壳·左后",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   120,
+   27,
+   2
+  ],
+  "volume_cm3": 0.9,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P05",
+  "name": "下层外壳·右前",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   120,
+   27,
+   2
+  ],
+  "volume_cm3": 0.9,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P06",
+  "name": "下层外壳·右后",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   120,
+   27,
+   2
+  ],
+  "volume_cm3": 0.9,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P07",
+  "name": "上层甲板壳·前鼻",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   45,
+   247,
+   68
+  ],
+  "volume_cm3": 184.1,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P08",
+  "name": "上层甲板壳·后鼻",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   45,
+   247,
+   68
+  ],
+  "volume_cm3": 141.6,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P09",
+  "name": "上层甲板壳·左前",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   198,
+   68,
+   4
+  ],
+  "volume_cm3": 47.1,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P10",
+  "name": "上层甲板壳·左后",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   138,
+   68,
+   4
+  ],
+  "volume_cm3": 32.6,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P11",
+  "name": "上层甲板壳·右前",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   138,
+   68,
+   4
+  ],
+  "volume_cm3": 32.6,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P12",
+  "name": "上层甲板壳·右后",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   198,
+   68,
+   4
+  ],
+  "volume_cm3": 47.1,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P13",
+  "name": "侧挂板·左",
+  "qty": 1,
+  "material": "ASA 深灰",
+  "size": [
+   200,
+   21,
+   7
+  ],
+  "volume_cm3": 27.7,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P14",
+  "name": "侧挂板·右",
+  "qty": 1,
+  "material": "ASA 深灰",
+  "size": [
+   200,
+   21,
+   7
+  ],
+  "volume_cm3": 27.7,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P15",
+  "name": "前保险杠",
+  "qty": 1,
+  "material": "ASA 深灰",
+  "size": [
+   49,
+   200,
+   12
+  ],
+  "volume_cm3": 66.9,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P16",
+  "name": "后格栅",
+  "qty": 1,
+  "material": "PETG 黑",
+  "size": [
+   34,
+   160,
+   8
+  ],
+  "volume_cm3": 39.4,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P17",
+  "name": "头部平台盖",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   142,
+   247,
+   11
+  ],
+  "volume_cm3": 356.4,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P18",
+  "name": "货斗底板",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   238,
+   247,
+   7
+  ],
+  "volume_cm3": 406.5,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P19",
+  "name": "后检修盖",
+  "qty": 1,
+  "material": "ASA 浅灰白",
+  "size": [
+   34,
+   247,
+   11
+  ],
+  "volume_cm3": 75.4,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P20",
+  "name": "滑撬·左",
+  "qty": 1,
+  "material": "PETG / TPU 95A",
+  "size": [
+   300,
+   20,
+   6
+  ],
+  "volume_cm3": 35.5,
+  "diag": true,
+  "valid": true
+ },
+ {
+  "code": "P21",
+  "name": "滑撬·右",
+  "qty": 1,
+  "material": "PETG / TPU 95A",
+  "size": [
+   300,
+   20,
+   6
+  ],
+  "volume_cm3": 35.5,
+  "diag": true,
+  "valid": true
+ },
+ {
+  "code": "P22",
+  "name": "侧栏板·左",
+  "qty": 1,
+  "material": "PETG",
+  "size": [
+   227,
+   70,
+   6
+  ],
+  "volume_cm3": 95.3,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P23",
+  "name": "侧栏板·右",
+  "qty": 1,
+  "material": "PETG",
+  "size": [
+   227,
+   70,
+   6
+  ],
+  "volume_cm3": 95.3,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P24",
+  "name": "后栏板",
+  "qty": 1,
+  "material": "PETG",
+  "size": [
+   70,
+   180,
+   6
+  ],
+  "volume_cm3": 75.6,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P25",
+  "name": "前栏板",
+  "qty": 1,
+  "material": "PETG",
+  "size": [
+   50,
+   180,
+   6
+  ],
+  "volume_cm3": 54.0,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "P26",
+  "name": "编码器支架（左右镜像各打 2）",
+  "qty": 4,
+  "material": "PETG",
+  "size": [
+   28,
+   51,
+   31
+  ],
+  "volume_cm3": 9.4,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "L01",
+  "name": "箱形臂座外壳",
+  "qty": 4,
+  "material": "ASA 深灰",
+  "size": [
+   151,
+   52,
+   34
+  ],
+  "volume_cm3": 42.5,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "L02",
+  "name": "电机护罩",
+  "qty": 4,
+  "material": "PA12-CF / PETG-CF",
+  "size": [
+   94,
+   72,
+   56
+  ],
+  "volume_cm3": 50.2,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "L03",
+  "name": "摆臂外盖板",
+  "qty": 4,
+  "material": "ASA 深灰",
+  "size": [
+   150,
+   51,
+   2
+  ],
+  "volume_cm3": 12.9,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "L04",
+  "name": "髋部大圆盖",
+  "qty": 4,
+  "material": "ASA 深灰",
+  "size": [
+   46,
+   46,
+   3
+  ],
+  "volume_cm3": 4.0,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "L06",
+  "name": "电机护罩端圈",
+  "qty": 4,
+  "material": "PA12-CF / PETG-CF",
+  "size": [
+   94,
+   72,
+   6
+  ],
+  "volume_cm3": 18.0,
+  "diag": false,
+  "valid": true
+ },
+ {
+  "code": "L05",
+  "name": "轮毂盖（扣在 goBILDA 轮毂上）",
+  "qty": 4,
+  "material": "PETG 深灰",
+  "size": [
+   32,
+   32,
+   13
+  ],
+  "volume_cm3": 2.3,
+  "diag": false,
+  "valid": true
+ }
+]
