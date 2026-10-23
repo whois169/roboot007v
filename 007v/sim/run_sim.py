@@ -49,9 +49,9 @@ WHEEL_RATED, WHEEL_PEAK = 2.05, 5.6
 WHEEL_RPM_RATED, WHEEL_RPM_FREE = 150.0, 228.0
 WHEEL_STALL = WHEEL_RATED / (1 - WHEEL_RPM_RATED / WHEEL_RPM_FREE)   # 电压限制线外推到 0 转速
 HEAD_LIMIT = 1.9
-HIP_SPEED = 80.0
+HIP_SPEED = 30.0                                        # 2026-10-22：NFP-5840 减速比 505（空载 16 转/分）÷ 3 → 约 30°/秒
 V_TOP = 1.0                                             # 最高速度：110 轮 + GIM4310-10 带载约 1.1 m/s（2026-10-17 轮子改小后）
-HIP_ACC = 300.0                                         # °/s²，髋从 0 加到 80°/秒 约 0.27 秒
+HIP_ACC = 150.0                                         # °/s²，髋从 0 加到 30°/秒 约 0.2 秒
 
 KP_H, KD_H = 1500.0, 30.0
 KP_W, KD_W, KD_FREE = 30.0, 2.0, 0.02

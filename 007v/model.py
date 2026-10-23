@@ -8,6 +8,7 @@
 摆臂和轮子先按“左前腿、摆臂水平朝前”画，build.py 再旋转、镜像到四条腿。
 """
 import math
+import os
 
 import cadquery as cq
 
@@ -93,7 +94,7 @@ def body_parts():
         add(f"{tag}侧板", box(-L2, L2, y0, y1, 0, BODY_H), "anod")
     add("底板", box(-L2 + PLATE, L2 - PLATE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, 0, PLATE), "alu")
     add("前板", box(L2 - PLATE, L2, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H), "anod")
-    add("后板", box(-L2, -L2 + PLATE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H), "anod")
+    add("后板", box(-L2, -L2 + PLATE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H).cut(shell.rear_plate_cuts()), "anod")
     dk = cq.Workplane("XY").box(BODY_L, BODY_W, PLATE, centered=(True, True, False)).edges("|Z").chamfer(2).val().translate(V(0, 0, BODY_H))
     add("甲板", shell.soft(dk, 1.2), "anod")
     # 顶面三块叠层板：头部平台盖（高）—— 货斗底板（低，货放这里）—— 后检修盖（高）；板边看得见 4 mm 厚，下面垫一圈缩进 3 mm 的垫条，像一块块装上去的
@@ -130,15 +131,30 @@ def body_parts():
     bx, by, bz = BATTERY
     add("电池6S2P", box(-bx / 2, bx / 2, -by / 2, by / 2, PLATE, PLATE + bz), "battery")
     add("电池保护板", box(-BMS[0] / 2, BMS[0] / 2, -BMS[1] / 2, BMS[1] / 2, PLATE + bz, PLATE + bz + BMS[2]), "pcb")
-    add("电子托板", box(-140, 140, -66, 66, TRAY_Z, TRAY_Z + 2), "printed")
-    t = TRAY_Z + 2
-    for name, (x0, y0), (sx, sy, sz) in ELECTRONICS:
+    import body_electronics as BE
+    add("电子托板", box(-140, 140, -66, 66, TRAY_Z, TRAY_Z + BE.T), "printed")
+    t = TRAY_Z + BE.T + BE.STANDOFF                                        # 小板垫 6 mm 尼龙柱
+    for name, x0, y0, sx, sy, sz, _ in BE.TRAY:
         add(name, box(x0, x0 + sx, y0, y0 + sy, t, t + sz), "pcb")
+    for name, x0, y0, sx, sy, sz, _ in BE.BASE:
+        add(name, box(x0, x0 + sx, y0, y0 + sy, PLATE, PLATE + sz), "black")
     dx, dy, dz = DEPTH_CAM
     add("深度相机", box(L2 - PLATE - dx, L2 - PLATE, -dy / 2, dy / 2, 25, 25 + dz), "black")
 
     for n, s, c in shell.body_shell():
         add(n, s, c)
+    for fx in (1, -1):                                          # 轮子电机线：从腿里侧穿过侧板上的护线圈进机身
+        for sy in (1, -1):
+            hx = fx * (HIP_X + shell.CABLE_HOLE_DX)
+            y_in, y_out = sy * (BODY_W / 2 - PLATE_SIDE - 8), sy * (LP0 - 5)
+            stub = cyl_y(hx, shell.CABLE_HOLE_Z, 7, *sorted((y_in, y_out)))
+            tag = ("前" if fx > 0 else "后") + ("左" if sy > 0 else "右")
+            add(f"外壳·电机线缆进机身{tag}", stub, "black")
+            add(f"外壳·护线圈{tag}", shell.ring_y(hx, shell.CABLE_HOLE_Z, 14, 7, *sorted((sy * (BODY_W / 2), sy * (BODY_W / 2 + 2)))), "black")
+    for n, s, c in shell.rear_panel_devices():                  # 后面：急停、总开关、充电口
+        add(n, s, c)
+    for i, (S, d) in enumerate(shell.step_sensors()):
+        add(f"台阶测距板{'前' if S[0] > 0 else '后'}{'左' if S[1] > 0 else '右'}", shell.step_board(S, d), "pcb")
     # 脖子底座 + 两块肩座 + 舵机 + 雷达（都在脖子坐标里画，再挪到机身上）
     for n, s, c in neck_parts():
         add(n, s.translate(V(NECK_X, 0, NECK_Z)), c)
@@ -158,7 +174,7 @@ def body_parts():
     ax, at, ay = ARM_PORT
     cx, cy = ARM_PORT_XY
     add("机械臂接口板", box(cx - ax / 2, cx + ax / 2, cy - ay / 2, cy + ay / 2, BED_Z, BED_Z + at), "alu")
-    return P
+    return _eng_body(P)
 
 
 def hip_drive_FL():
@@ -170,8 +186,10 @@ def hip_drive_FL():
     yin = W2 - PLATE_SIDE                          # 侧板内表面
     bl, bt, bh = WORM_BOX
     gy1 = yin - PULLEY_W - 2                       # 减速箱外侧（带轮离侧板 1 mm，减速箱在带轮里面，中间 16 长的六角柱）
-    P.append(("蜗轮减速箱", box(wx - bl / 2, wx + bl / 2, gy1 - bt, gy1, wz - bh / 2, wz + bh / 2), "motor"))
-    P.append(("蜗轮电机", cyl_x(gy1 - bt / 2, wz, WORM_MOTOR_D, wx - bl / 2 - WORM_MOTOR_L, wx - bl / 2), "motor"))
+    # 5840 竖着装：输出轴离减速箱下端 20，电机朝上（厂家图）
+    z_lo, z_hi = wz - WORM_SHAFT_FROM_END, wz - WORM_SHAFT_FROM_END + bl
+    P.append(("蜗轮减速箱", box(wx - bh / 2, wx + bh / 2, gy1 - bt, gy1, z_lo, z_hi), "motor"))
+    P.append(("蜗轮电机", cyl_z(wx, gy1 - bt / 2, WORM_MOTOR_D, z_hi, z_hi + WORM_MOTOR_L), "motor"))
     py0, py1 = yin - PULLEY_W - 1, yin - 1          # 带轮离侧板内面 1 mm（中间隔圈穿过侧板顶住轴承内圈）
     P.append(("小带轮15T", cyl_y(wx, wz, PULLEY_SMALL_PD + 6, py0, py1), "steel"))
     P.append(("大带轮45T", cyl_y(hx, hz, PULLEY_BIG_PD + 5, py0, py1), "steel"))
@@ -181,7 +199,24 @@ def hip_drive_FL():
     belt = prism_xz(outer, by0, by0 + BELT_W).cut(prism_xz(inner, by0 - 1, by0 + BELT_W + 1))
     P.append(("同步带", belt, "black"))
     P.append(("髋轴", cyl_y(hx, hz, HIP_SHAFT_D, py0 - 6, W2 + BEARING_HOUSING_W + 16), "steel"))   # 穿过侧板，插进臂座
-    P.append(("磁编码器AS5600", box(hx - AS5600[0] / 2, hx + AS5600[0] / 2, py0 - 12, py0 - 8, hz - AS5600[2] / 2, hz + AS5600[2] / 2), "pcb"))
+    # 磁编码器：Adafruit AS5600（官方 .brd：25.4 × 17.78，4 × M2.5 孔距 20.32 × 12.7，芯片在正面正中）正对髋轴端头的 Φ6×2.5 磁铁，间隙 1 mm
+    se = py0 - 6                                   # 髋轴里端
+    chip = se - 2.5 - 1.0                          # 芯片表面
+    bd0, bd1 = chip - 1.5 - 1.6, chip - 1.5        # 板子（芯片高 1.5）
+    P.append(("磁编码器AS5600", box(hx - 12.7, hx + 12.7, bd0, bd1, hz - 8.89, hz + 8.89)
+              .fuse(box(hx - 2.5, hx + 2.5, bd1, chip, hz - 2.5, hz + 2.5)), "pcb"))
+    P.append(("编码器磁铁", cyl_y(hx, hz, 6, se - 2.5, se), "steel"))
+    # 编码器支架（打印 D32）：竖板托住编码器板 → 从大带轮上面绕过去 → 2 颗 M3 拧在侧板上
+    pl0 = bd0 - 3.0
+    br = box(hx - 14, hx + 14, pl0, bd0, hz - 11, hz + 40)
+    br = br.fuse(box(hx - 14, hx + 14, pl0, yin - 0.05, hz + 34, hz + 40))
+    br = br.fuse(box(hx - 14, hx + 14, yin - 4.05, yin - 0.05, hz + 28, hz + 40))
+    for dx in (-10.16, 10.16):
+        for dz in (-6.35, 6.35):
+            br = br.cut(cyl_y(hx + dx, hz + dz, 2.1, pl0 - 1, bd0 + 0.1))
+    for dx in (-9, 9):
+        br = br.cut(cyl_y(hx + dx, hz + 34, 4.0, yin - 6.0, yin + 0.1))      # M3 热熔螺母，螺丝从侧板外面沉头拧进来
+    P.append(("编码器支架", br, "printed"))
     P.append(("轴承座", cyl_y(hx, hz, BEARING_HOUSING_D, W2, W2 + BEARING_HOUSING_W), "trim"))
     return P
 
@@ -213,12 +248,12 @@ def neck_parts():
     """脖子坐标：原点在头部平台盖上表面、俯仰轴正下方。脖子底座 + 两只耳朵 + 电机耳顶上的雷达。"""
     P, (lx, ly, lz) = shell.neck()
     P.append(("雷达LD19", ld19().translate(V(lx, ly, lz)), "black"))
-    return P
+    return _eng_neck(P)
 
 
 def head_parts():
     """中间屏幕头，画在“俯仰轴坐标”里：原点在俯仰轴上。build.py 绕 Y 轴转，再挪到 PIVOT。"""
-    return shell.head() + [("编织线缆", shell.cable(), "black")]   # 屏幕模块 + 到传感塔的线缆
+    return _eng_head(shell.head() + [("编织线缆", shell.cable(), "black")])   # 屏幕模块 + 到传感塔的线缆
 
 
 # ---------------------------------------------------------------- 摆臂 + 轮子（左前腿，摆臂水平朝前；原点在髋轴上）
@@ -242,6 +277,9 @@ def leg_plate(y0, y1, k=0.0):
     return waist_xz(0, ARM, ARM_ROOT_R - k, ARM_END_R - k, y0, y1)
 
 
+HUB_IN = WHEEL_Y0 + (WHEEL_W - 12.0) / 2           # goBILDA 轮毂里侧面（轮毂 12 厚、在轮子正中）
+
+
 def leg_parts_FL():
     """左前腿（摆臂水平朝前，髋轴原点，轮轴在 (ARM, 0)）：从里往外 电机 → 腿板 → 轴承座 → 麦轮 → 轴承座 → 叉板 → 端盖。"""
     W2 = BODY_W / 2
@@ -260,13 +298,16 @@ def leg_parts_FL():
         ("腿板内层", stadium_xz(0, ARM, ARM_ROOT_R - 2, LP0, lp1).fuse(cyl_y(ARM, 0, 2 * ARM_END_R, LP0, lp1)), "anod"),   # 承力板：髋端拧轴毂法兰，轮端装轴承和电机
         ("箱形臂座外壳", shell.soft(arm_box_solid(lp1, op0), 1.5), "armor"),               # 浅色臂座包在承力板外面，轮子那头挖圆弧缺口
         ("摆臂外板", prism_xz(shell.stadium_pts(0, ARM, ARM_ROOT_R, ARM_END_R), op0, op1).cut(cyl_y(ARM, 0, 2 * rc, op0 - 1, op1 + 1)), "anod"),
-        ("轮子电机GIM4310", cyl_y(ARM, 0, WHEEL_MOTOR_D, M0, M0 + WHEEL_MOTOR_W), "motor"),   # 在轴承座里侧，轮子那头露在机身下方
-        ("轮轴承座", cyl_y(ARM, 0, 40, LP0 - AXLE_HOUSING_L, LP0), "alu"),                      # 两个 6801，拧在腿板上
-        ("麦轮轮轴", cyl_y(ARM, 0, 30, LP0 - AXLE_HOUSING_L - AXLE_FLANGE_T, LP0 - AXLE_HOUSING_L).fuse(
-            cyl_y(ARM, 0, 12, LP0 - AXLE_HOUSING_L, wy1 - 6)), "steel"),                         # 法兰拧在电机输出盘上，轴穿过轴承进麦轮
+        ("轮子电机GIM4310", cyl_y(ARM, 0, 40, M0, M0 + 8).fuse(cyl_y(ARM, 0, WHEEL_MOTOR_D, M0 + 8, M0 + WHEEL_MOTOR_W - 1))
+         .fuse(cyl_y(ARM, 0, 37, M0 + WHEEL_MOTOR_W - 1, M0 + WHEEL_MOTOR_W)), "motor"),     # 官方外形：驱动 Φ40×8 + 机身 Φ53×32 + 输出凸台 Φ37×1
+        ("轮轴承座", cyl_y(ARM, 0, 53, LP0 - AXLE_HOUSING_L, LP0 - AXLE_HOUSING_L + 5.5).fuse(
+            cyl_y(ARM, 0, 40, LP0 - AXLE_HOUSING_L + 5.5, LP0)).cut(cyl_y(ARM, 0, 37.1, LP0 - AXLE_HOUSING_L - 1, LP0 - AXLE_HOUSING_L + 5.5)), "alu"),   # B07：电机法兰 + 两个 6801
+        ("麦轮轮轴", cyl_y(ARM, 0, 34, LP0 - AXLE_HOUSING_L + 1, LP0 - AXLE_HOUSING_L + 1 + AXLE_FLANGE_T).fuse(
+            cyl_y(ARM, 0, 12, LP0 - AXLE_HOUSING_L + 1 + AXLE_FLANGE_T, HUB_IN + 6)), "steel"),   # B08：法兰拧在电机输出盘上，轴穿过轴承、双 D 端插进 B09
+        ("轮毂法兰", cyl_y(ARM, 0, 32, HUB_IN - 7, HUB_IN).fuse(cyl_y(ARM, 0, 13.95, HUB_IN, HUB_IN + 6)), "steel"),   # B09：4 颗 M4 拧 goBILDA 轮毂，Φ14 凸台定心
         ("轮轴支座内", cyl_y(ARM, 0, 26, lp1, lp1 + AXLE_BOSS), "anod"),
         ("麦轮外包络", cyl_y(ARM, 0, WHEEL_D, wy0, wy1), "envelope"),      # 只用来查碰撞，不显示
-        ("麦轮轮毂", cyl_y(ARM, 0, 52, wy0 - 1, wy1 - 1.5), "trim"),
+        ("麦轮轮毂", cyl_y(ARM, 0, 53, HUB_IN, HUB_IN + WHEEL_HUB["hub_t"]).cut(cyl_y(ARM, 0, 14, HUB_IN - 1, HUB_IN + 13)), "trim"),
         ("麦轮侧板内", cyl_y(ARM, 0, WHEEL_PLATE_D, wy0, wy0 + WHEEL_PLATE_T), "steel"),
         ("麦轮侧板外", cyl_y(ARM, 0, WHEEL_PLATE_D, wy1 - WHEEL_PLATE_T, wy1 - 1.5), "steel"),
     ]
@@ -281,7 +322,7 @@ def leg_parts_FL():
         if ang > 1e-6:
             s = s.rotate(V(0, 0, 0), V(*ax), ang)
         P.append((f"麦轮滚子{k + 1:02d}", s.translate(V(ARM + p[0], yc + p[1], p[2])), "wheel"))
-    return P
+    return _eng_leg(P)
 
 
 def roller_axis(k, s):
@@ -307,3 +348,96 @@ def roller_solid():
 def half_width():
     """整机半宽（到髋部大圆盖外侧；麦轮外侧和腿外侧齐平）。"""
     return LEG_Y1 + 4
+
+
+# ================================================================ 工程版（2026-10-22）：整机模型里换成能装的打印件
+# 打开后（build.py / export_sw.py 会打开），头部、耳朵、脖子底座、外壳、腿部打印件都用 head_print.py / body_print.py 生成的工程版 STEP，
+# 再加上头里、右耳里的电子件；生成工程版的程序自己用外观版（ENGINEERED = False），不会套圈。
+ENGINEERED = False
+_HP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out", "head_print")
+_BP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out", "body_print")
+_cache = {}
+
+
+def _step(folder, code, dz=0.0):
+    import glob
+    key = (folder, code, dz)
+    if key not in _cache:
+        f = glob.glob(os.path.join(folder, f"{code}_*.step"))
+        if not f:
+            raise FileNotFoundError(f"没有工程版文件 {code}：先跑 head_print.py / body_print.py")
+        s = cq.importers.importStep(f[0]).val()
+        _cache[key] = s.translate(V(0, 0, dz)) if dz else s
+    return _cache[key]
+
+
+def _drop(P, pred):
+    return [p for p in P if not pred(p[0])]
+
+
+def _eng_head(P):
+    if not ENGINEERED:
+        return P
+    import head_electronics as HE
+    up = -PIVOT_UP                                             # head_print 存的是脖子坐标，转回俯仰轴坐标
+    P = _drop(P, lambda n: n in ("屏幕头", "屏板卡槽左", "屏板卡槽右", "屏板压条", "舵盘法兰", "外壳·屏框", "外壳·屏幕模块小字", "4.3寸屏板", "俯仰轴销")
+              or n.startswith(("外壳·相机镜头", "外壳·测距窗", "外壳·隐私指示灯")))      # 螺栓头、小字留着（实物是螺丝头 / 喷漆，模型里单独上色）
+    P += [("屏幕头·主壳", _step(_HP, "H01", up), "deck"), ("屏幕头·顶盖", _step(_HP, "H02", up), "deck"),
+          ("屏板压框", _step(_HP, "H03", up), "printed"), ("屏幕头·电子托板", _step(_HP, "H04", up), "printed"),
+          ("外壳·屏框", _step(_HP, "H05", up), "dark"), ("外壳·相机镜头圈", _step(_HP, "H19", up), "black")]
+    P += [(f"屏幕头·{n}", s, "pcb") for n, s in HE.head_parts()]
+    # 屏幕板按厂家 3D 模型简化：玻璃 + 屏 + PCB + 接线端子（俯仰轴坐标）
+    zc = SCREEN_Z + 1.94
+    brd = box(SCREEN_X - 4.8, SCREEN_X, -56.2, 56.2, SCREEN_Z - 37.55, SCREEN_Z + 37.55)
+    brd = brd.fuse(box(SCREEN_X - 9.1, SCREEN_X - 4.8, -52.0, 52.0, zc - 25.0, zc + 31.0))
+    brd = brd.fuse(box(SCREEN_X - 17.4, SCREEN_X - 9.1, -28.6, 27.6, zc - 37.3, zc - 18.2))
+    P.append(("4.3寸屏板", brd, "pcb"))
+    P.append(("俯仰轴销", cyl_y(0, 0, 8, -88, -53).cut(cyl_y(0, 0, 5, -90, -50)), "steel"))       # 空心轴销 Φ8 / Φ5 × 35
+    return P
+
+
+def _eng_neck(P):
+    if not ENGINEERED:
+        return P
+    import head_electronics as HE
+    import head_print as HPm
+    P = _drop(P, lambda n: n in ("左耳骨架", "右耳骨架", "左耳中板", "右耳中板", "左耳外板", "右耳外板", "左转轴壳", "右转轴壳",
+                                 "外壳·左转轴法兰", "外壳·右转轴法兰", "外壳·转轴青光环", "外壳·方窗（热成像 / 红外）", "外壳·方窗边框",
+                                 "雷达法兰", "雷达护环", "脖子底座", "俯仰舵机") or n.startswith("外壳·护环支柱"))
+    for code, name, col in (("H06", "左耳骨架", "shell"), ("H07", "右耳骨架", "shell"), ("H08", "左耳中板", "shell"), ("H09", "右耳中板", "shell"),
+                            ("H10", "左耳外板", "shell"), ("H11", "右耳外板", "shell"), ("H12", "左转轴壳", "anod"), ("H13", "右转轴壳", "anod"),
+                            ("H14", "外壳·转轴青光环", "cyan"), ("H15", "外壳·方窗面板", "visor"), ("H16", "雷达法兰", "anod"),
+                            ("H17", "雷达护环", "anod"), ("H18", "脖子底座", "anod")):
+        P.append((name, _step(_HP, code), col))
+    P.append(("俯仰舵机", HPm.servo_solid(), "motor"))
+    P += [(f"右耳·{n}", mirror_y(s), "pcb") for n, s in HE.ear_R_parts()]
+    return P
+
+
+def _eng_body(P):
+    if not ENGINEERED:
+        return P
+    P = _drop(P, lambda n: n in ("外壳·下层外壳", "外壳·黑腰", "上层甲板壳",
+                                 "侧挂板左", "侧挂板右", "前保险杠", "后格栅", "头部平台盖", "货斗底板", "后检修盖", "滑撬左", "滑撬右",
+                                 "左栏板", "右栏板", "后栏板", "前栏板"))
+    names = {"P01": ("外壳·下层外壳·前", "shell"), "P02": ("外壳·下层外壳·后", "shell"), "P03": ("外壳·下层外壳·左前", "shell"),
+             "P04": ("外壳·下层外壳·左后", "shell"), "P05": ("外壳·下层外壳·右前", "shell"), "P06": ("外壳·下层外壳·右后", "shell"),
+             "P07": ("上层甲板壳·前鼻", "shell"), "P08": ("上层甲板壳·后鼻", "shell"), "P09": ("上层甲板壳·左前", "shell"),
+             "P10": ("上层甲板壳·左后", "shell"), "P11": ("上层甲板壳·右前", "shell"), "P12": ("上层甲板壳·右后", "shell"),
+             "P13": ("侧挂板左", "dark"), "P14": ("侧挂板右", "dark"), "P15": ("前保险杠", "dark"), "P16": ("后格栅", "black"),
+             "P17": ("头部平台盖", "deck"), "P18": ("货斗底板", "deck"), "P19": ("后检修盖", "deck"), "P20": ("滑撬左", "black"),
+             "P21": ("滑撬右", "black"), "P22": ("左栏板", "shell"), "P23": ("右栏板", "shell"), "P24": ("后栏板", "shell"), "P25": ("前栏板", "shell")}
+    for code, (n, c) in names.items():
+        P.append((n, _step(_BP, code), c))
+    return P
+
+
+def _eng_leg(P):
+    if not ENGINEERED:
+        return P
+    P = _drop(P, lambda n: n in ("箱形臂座外壳", "电机护罩", "摆臂外盖板", "髋部大圆盖", "外壳·麦轮轮毂盖"))
+    for code, n, c in (("L01", "箱形臂座外壳", "armor"), ("L02", "电机护罩", "anod"), ("L03", "摆臂外盖板", "dark"),
+                       ("L04", "髋部大圆盖", "dark"), ("L05", "外壳·麦轮轮毂盖", "dark")):
+        P.append((n, _step(_BP, code), c))
+    return P
+

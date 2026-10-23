@@ -6,7 +6,7 @@ COL = dict(armor="#d9dbdd", alu="#9aa0a6", profile="#3d4247", black="#141516", m
            shell="#d9dbdd", deck="#d9dbdd", dark="#3d4247", silver="#a3a9af", gloss="#0a0d10", seam="#050607",
            cyan="#00bfff", anod="#3d4247", visor="#0a0d10",
            shell_dk="#a6aaae", skel_dk="#25282c",             # 比所在部件深一级的灰（原来的金色线条 / 金色件）
-           lamp_w="#fff7eb", lamp_r="#ff1a10")                # 白色照明灯、红色尾灯
+           lamp_w="#fff7eb", lamp_r="#ff1a10", estop="#c8102e")      # 急停蘑菇头：标准红                # 白色照明灯、红色尾灯
 EMISSIVE = dict(glass=(0.0, 0.35, 0.45), cyan=(0.0, 0.75, 1.0), lamp_w=(1.0, 0.97, 0.92), lamp_r=(1.0, 0.05, 0.03))
 METAL = ("alu", "steel", "trim", "silver")                   # 拉丝金属：螺栓、轴承座、轴毂、轮子侧板
 ANOD = ("anod", "profile", "dark", "motor")                   # 深色阳极氧化：骨架、连杆、电机护罩（轻微金属光泽）

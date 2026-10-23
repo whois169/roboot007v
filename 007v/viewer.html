@@ -92,7 +92,7 @@ td.v small { display: block; font: 11px var(--f-body); color: var(--dim); }
 <header class="top">
   <span class="code">007v</span>
   <h1>机械狗007v 骨架</h1>
-  <p class="sub">按真实零件尺寸画的结构（外壳还没画）和 MuJoCo 仿真回放。拖动旋转，双指缩放。</p>
+  <p class="sub">工程版整机：所有打印件都是能装的版本（带螺丝孔、卡槽），零件按厂家图纸。拖动旋转，双指缩放；勾“透视机身”看里面。</p>
 </header>
 
 <main class="grid">
@@ -178,7 +178,7 @@ td.v small { display: block; font: 11px var(--f-body); color: var(--dim); }
         <div id="s-notes" class="row"></div>
       </div>
       <div class="box">
-        <p class="dimtext">MuJoCo 仿真：麦轮按 12 个 45° 滚子建模；髋 = 5840 蜗轮 × 3:1 同步带，轮 = GIM4310-10（峰值 5.6，转得越快能出的越少）；地面摩擦 0.9；10 kg 货在货斗中间。扭矩条是 10 ms 平滑后的值。</p>
+        <p class="dimtext">MuJoCo 仿真：goBILDA 96 mm 麦轮按 45° 滚子建模；髋 = NFP-5840（减速比 505）× 3:1 同步带，约 30°/秒，轮 = GIM4310-10（峰值 5.6，转得越快能出的越少）；地面摩擦 0.9；10 kg 货在货斗中间。扭矩条是 10 ms 平滑后的值。</p>
       </div>
     </div>
   </aside>
@@ -558,7 +558,7 @@ td.v small { display: block; font: 11px var(--f-body); color: var(--dim); }
     for (const [name, m] of Object.entries(r.mass))
       tm.insertAdjacentHTML("beforeend", `<tr><td>${name}</td><td class="n">${m.mass} kg</td><td class="n">${m.com[2]} mm</td><td class="n">${m.tip_side}°</td></tr>`);
     const dep = Object.values(r.dims)[0], fold = r.dims["折叠"];
-    $("n-width").innerHTML = `整机宽 <b>${dep[1]} mm</b>，比效果图的 41 cm 宽约 3 cm：轮子换成 152 mm 重载麦轮（宽 50）、轮边加了扁平电机。展开高 ${dep[2]} mm，折叠后 ${fold[0]} × ${fold[1]} × ${fold[2]} mm（最高点是雷达）。`;
+    $("n-width").innerHTML = `整机宽 <b>${dep[1]} mm</b>，goBILDA 96 mm 麦轮外侧面和腿外侧齐平。展开高 ${dep[2]} mm，折叠后 ${fold[0]} × ${fold[1]} × ${fold[2]} mm（最高点是雷达）。`;
     const full = Object.values(r.mass)[1].lift_margin;
     $("n-lift").innerHTML = `其他腿不动、直接抬一条腿（满载）：重心离三轮三角形的边 前腿 ${full["前左"]} mm、后腿 <b>${full["后左"]} mm</b>（负数 = 在外面，会歪倒）。` +
       `先让另外三条腿换角度把重心挪开再抬，四条腿都能抬 10 cm、重心在里面约 5 cm，见“仿真回放”。`;

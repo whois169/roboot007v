@@ -94,6 +94,105 @@ def rrect_ring(hx, hy, r, z0, z1, ix=None, iy=None):
 TUB_TOP, WAIST_TOP = 67.0, 83.0          # 照效果图比例：下层底盘 67、黑腰 16、上层甲板 67（机身 153 高）
 
 
+# ================================================================ 台阶测距（Pololu VL53L1X 3415：12.7 × 17.78，2 × Φ2.18 孔距 12.7，离边 2.54）
+STEP_TILT = 30.0                        # 往下斜 30°：站立时看前（后）轮外面约 12 cm 的地面
+
+
+def step_sensors():
+    """[(传感器芯片中心, 朝向)]：前保险杠 y ±62（照明灯下面、相机窗两边），后格栅 y ±48（两片鳍中间）。"""
+    L2 = BODY_L / 2
+    c, s_ = math.cos(math.radians(STEP_TILT)), math.sin(math.radians(STEP_TILT))
+    out = []
+    for sy in (1, -1):
+        out.append(((L2 + 7.5, sy * 62.0, 28.0), (c, 0.0, -s_)))
+        out.append(((-L2 - 6.5, sy * 48.0, 30.0), (-c, 0.0, -s_)))
+    return out
+
+
+def _orient(sol, S, d):
+    """把“x 朝前”画的实体转到朝向 d、放到 S。"""
+    ang = math.degrees(math.atan2(-d[2], abs(d[0])))
+    sol = sol.rotate(V(0, 0, 0), V(0, 1, 0), ang)
+    if d[0] < 0:
+        sol = sol.rotate(V(0, 0, 0), V(0, 0, 1), 180)
+    return sol.translate(V(*S))
+
+
+def step_board(S, d):
+    """板子（背面朝里）+ 芯片，板宽 17.78 沿 y、12.7 沿斜面。"""
+    b = box(-2.6, -1.0, -8.89, 8.89, -6.35, 6.35).fuse(box(-1.0, 0.0, -2.5, 2.5, -1.25, 1.25))
+    return _orient(b, S, d)
+
+
+def step_pocket(S, d):
+    """仓：板子 + 0.3 余量，往后一直开到保险杠 / 格栅背面（从后面装板子）；两根 Φ2 定位柱留在仓里（烫头固定）。"""
+    pk = box(-14.0, 0.3, -9.2, 9.2, -6.7, 6.7)
+    return _orient(pk, S, d)
+
+
+# ---- 后面板三件（按厂家图纸），都在上层甲板壳后鼻那段竖面上（x = -216，z 105–128），两盏尾灯中间排一排，z = 115
+#   急停：施耐德 XB2BS542C（ref/estop/）——Φ40 蘑菇头，面板前 32；面板开孔 Φ22.5、板厚 1–6；面板后 42.5 + 触点 24；底座 40 × 30
+#         拧在后板 A05（铝 3）上；外壳挖一个 Φ44 的窝，蘑菇头从窝里伸出外壳 16 mm（不容易被碰到，伸手一拍就按到）
+#   总开关：GQ16F 系列 16 mm 金属平头自锁按钮带环形灯（ref/switch/）——头 Φ18 × 1.5，M16×1 螺纹，螺母 19 对边，面板后 18 + 针脚，板厚 1–6
+#         拧在外壳上：前面留 4 mm 壁，后面挖 Φ24 的坑放螺母；后板开 Φ24 过线
+#   充电口：Amass XT60E1-F（母座、黑色，ref/xt60/ 是同系列公座的图纸：27.1 × 12.1 × 16.7，两个固定孔）——横着装
+#         从里面贴在 4 mm 壁上，前面开 16.5 × 8.5 的窗，2 颗 M2.5 自攻（孔距 20.5，到货用卡尺核对）；后板开 30 × 15 过线窗
+REAR_PANEL_Z = 115.0
+ESTOP_Z = 114.0                      # 急停底座 30 高：上面离 2020 横梁 1 mm，下面离树莓派 1 mm
+ESTOP_Y, SWITCH_Y, XT60_Y = 0.0, 40.0, -40.0
+NOSE_X = -BODY_L / 2 - 16.0          # 后鼻竖面
+NOSE_WALL = 4.0
+
+
+def cyl_x(cy, cz, d, x0, x1):
+    return cq.Solid.makeCylinder(d / 2, x1 - x0, V(x0, cy, cz), V(1, 0, 0))
+
+
+def rear_panel_cuts():
+    """后鼻外壳上要挖掉的。"""
+    L2, z = BODY_L / 2, REAR_PANEL_Z
+    c = cyl_x(ESTOP_Y, ESTOP_Z, 44.0, NOSE_X - 1, -L2 + 1)
+    c = c.fuse(cyl_x(SWITCH_Y, z, 16.2, NOSE_X - 1, -L2 + 1)).fuse(cyl_x(SWITCH_Y, z, 24.0, NOSE_X + NOSE_WALL, -L2 + 1))
+    c = c.fuse(box(NOSE_X - 1, -L2 + 1, XT60_Y - 8.25, XT60_Y + 8.25, z - 4.25, z + 4.25))
+    c = c.fuse(box(NOSE_X + NOSE_WALL, -L2 + 1, XT60_Y - 14.5, XT60_Y + 14.5, z - 7.0, z + 7.0))
+    for dy in (-10.25, 10.25):
+        c = c.fuse(cyl_x(XT60_Y + dy, z, 2.2, NOSE_X + 1.5, -L2 + 1))       # M2.5 自攻底孔（不打穿正面）
+    return c
+
+
+def rear_plate_cuts():
+    """后板 A05 上的孔（和 mfg.py 一致）。"""
+    L2, z = BODY_L / 2, REAR_PANEL_Z
+    return (cyl_x(ESTOP_Y, ESTOP_Z, 22.5, -L2 - 1, -L2 + PLATE + 1).fuse(cyl_x(SWITCH_Y, z, 24.0, -L2 - 1, -L2 + PLATE + 1))
+            .fuse(box(-L2 - 1, -L2 + PLATE + 1, XT60_Y - 15, XT60_Y + 15, z - 7.5, z + 7.5)))
+
+
+def rear_panel_devices():
+    """买的三件（按厂家图纸的外形）。"""
+    L2, z = BODY_L / 2, REAR_PANEL_Z
+    P = []
+    y, z = ESTOP_Y, ESTOP_Z
+    P.append(("急停蘑菇头", soft(cyl_x(y, z, 40.0, -L2 - 32, -L2 - 20), 2.0), "estop"))
+    P.append(("急停按钮", cyl_x(y, z, 28.0, -L2 - 20, -L2).fuse(box(-L2 + PLATE, -L2 + 42.5, y - 20, y + 20, z - 15, z + 15))
+              .fuse(box(-L2 + 42.5, -L2 + 66.5, y - 15, y + 15, z - 15, z + 15)), "black"))
+    y, z = SWITCH_Y, REAR_PANEL_Z
+    P.append(("总开关", cyl_x(y, z, 18.0, NOSE_X - 1.5, NOSE_X).cut(cyl_x(y, z, 15.0, NOSE_X - 1.6, NOSE_X - 1.2))
+              .fuse(cyl_x(y, z, 16.0, NOSE_X, NOSE_X + 18)).fuse(cyl_x(y, z, 21.0, NOSE_X + NOSE_WALL, NOSE_X + NOSE_WALL + 3))
+              .fuse(box(NOSE_X + 18, NOSE_X + 26, y - 4, y + 4, z - 1, z + 1)), "silver"))
+    P.append(("外壳·总开关灯环", ring_x(y, z, 15.0, 12.0, NOSE_X - 1.6, NOSE_X - 1.2), "cyan"))
+    y = XT60_Y
+    xt = box(NOSE_X - 0.5, NOSE_X + 16.2, y - 7.9, y + 7.9, z - 4.0, z + 4.0)
+    xt = xt.fuse(box(NOSE_X + NOSE_WALL, NOSE_X + NOSE_WALL + 2.5, y - 13.55, y + 13.55, z - 6.05, z + 6.05))
+    for dy in (-3.8, 3.8):
+        xt = xt.cut(cyl_x(y + dy, z, 4.6, NOSE_X - 1, NOSE_X + 8))           # 两个插孔
+    P.append(("充电口XT60", xt, "black"))
+    return P
+
+
+def ring_x(cy, cz, d_out, d_in, x0, x1):
+    return cyl_x(cy, cz, d_out, x0, x1).cut(cyl_x(cy, cz, d_in, x0 - 1, x1 + 1))
+
+
 def body_shell():
     P = []
     W2, L2 = BODY_W / 2, BODY_L / 2
@@ -124,9 +223,6 @@ def body_shell():
         tub = tub.cut(cyl_y(hx, HIP_Z, 70, -W2 - 8, W2 + 8))                    # 髋支座的位置让开
     dx, dy, dz = DEPTH_CAM
     tub = tub.cut(box(L2 - 1, L2 + 8, -dy / 2 - 1, dy / 2 + 1, 23, 24 + dz + 2))   # 深度相机窗
-    tub = tub.cut(cq.Solid.makeCylinder(13, 10, V(-L2 - 8, 0, 70), V(1, 0, 0)))    # 急停
-    tub = tub.cut(cq.Solid.makeCylinder(9, 10, V(-L2 - 8, 55, 70), V(1, 0, 0)))    # 总开关
-    tub = tub.cut(box(-L2 - 8, -L2 + 1, -71, -53, 59, 69))                         # 充电口
     for sy in (1, -1):                                                            # 侧挂板的位置：外壳开窗，挂板四周留 1 mm 缝
         tub = tub.cut(box(-100 - SEAM, 100 + SEAM, *sorted((sy * (W2 - 1), sy * (W2 + 8))), z0 + 3 - SEAM, TUB_TOP - 3 + SEAM))
     for x in (L2 - 30, -(L2 - 30)):                                               # 拆成前、后、左、右几块面板，中间 2 mm 缝
@@ -148,6 +244,7 @@ def body_shell():
     slab = slab.cut(box(-L2, L2, -W2, W2, WAIST_TOP - 1, BODY_H + PLATE + 1))
     for x in (L2 - 30, -(L2 - 30)):                                               # 前鼻、后鼻、左右侧板分开，中间 2 mm 缝
         slab = slab.cut(box(x - SEAM / 2, x + SEAM / 2, -W2 - 20, W2 + 20, WAIST_TOP - 1, BODY_H + 2))
+    slab = slab.cut(rear_panel_cuts())                                           # 后鼻：急停窝、总开关孔、充电口窗
     P.append(("上层甲板壳", slab, "shell"))
     for sy, tag in ((1, "左"), (-1, "右")):
         out = []
@@ -174,17 +271,24 @@ def body_shell():
     bump = prism_xz([(L2, 15), (L2 + 12, 21), (L2 + 12, 59), (L2, 65)], -100, 100)
     dx, dy, dz = DEPTH_CAM
     bump = bump.cut(box(L2 - 1, L2 + 13, -dy / 2 - 1, dy / 2 + 1, 24, 24 + dz + 2))
+    for S, d in step_sensors():
+        if S[0] > 0:
+            bump = bump.cut(step_pocket(S, d)).cut(cyl_dir(S, d, 8.0, 12.0))
     P.append(("前保险杠", soft(bump, 3.0), "dark"))
     P.append(("外壳·深度相机窗", box(L2 + 9, L2 + 10.5, -dy / 2, dy / 2, 25, 24 + dz + 1), "gloss"))
     for sy in (1, -1):
         P.append((f"外壳·照明灯{'左' if sy > 0 else '右'}", box(L2 + 12, L2 + 13.5, *sorted((sy * 64, sy * 88)), 36, 44), "lamp_w"))
     # 尾部：散热格栅 + 6 片银色鳍 + 两盏红色尾灯
-    P.append(("后格栅", box(-L2 - 8, -L2, -80, 80, 18, 52), "black"))
+    grille = box(-L2 - 8, -L2, -80, 80, 18, 52)
+    for S, d in step_sensors():
+        if S[0] < 0:
+            grille = grille.cut(step_pocket(S, d)).cut(cyl_dir(S, d, 8.0, 12.0))
+    P.append(("后格栅", grille, "black"))
     for i in range(6):
         y = -60 + i * 24
         P.append((f"外壳·格栅鳍{i + 1}", box(-L2 - 10, -L2 - 8, y - 1, y + 1, 20, 50), "silver"))
     for sy in (1, -1):
-        P.append((f"外壳·尾灯{'左' if sy > 0 else '右'}", box(-L2 - 16.6, -L2 - 15.9, *sorted((sy * 40, sy * 100)), 114, 122), "lamp_r"))
+        P.append((f"外壳·尾灯{'左' if sy > 0 else '右'}", box(-L2 - 16.6, -L2 - 15.9, *sorted((sy * 58, sy * 100)), 114, 122), "lamp_r"))   # 里头让给充电口、总开关
     # 底部灯槽（不点亮）
     for sy in (1, -1):
         P.append((f"外壳·底部灯槽{'左' if sy > 0 else '右'}", box(-140, 140, *sorted((sy * 30, sy * 36)), -1.5, 0), "dark"))
@@ -426,6 +530,14 @@ def fork_plate(y0, y1, k=0.0):
     return wprism(poly, y0, y1).fuse(cyl_y(ARM, 0, 2 * r, y0, y1))              # 实心（用户 2026-10-18：不要镂空）
 
 
+# 轮子电机线进机身的地方：侧板上 x = 髋 ± 25、z = 75（黑腰那条铝带上，避开灯带），装橡胶护线圈；
+# 站立时线从腿里侧（y = LP0 - 5）走到髋轴旁边的 (u, v)，正好对着这个孔
+CABLE_HOLE_DX, CABLE_HOLE_Z = 25.0, 75.0
+_c, _s = math.cos(math.radians(STANCE_DEG)), math.sin(math.radians(STANCE_DEG))
+CABLE_HIP_U = CABLE_HOLE_DX * _c - (CABLE_HOLE_Z - HIP_Z) * _s
+CABLE_HIP_V = CABLE_HOLE_DX * _s + (CABLE_HOLE_Z - HIP_Z) * _c
+
+
 def leg_skin(op0, ly0, ly1, hub0, ly_out):
     """腿的外观件（左前腿坐标，方案 A 的样子）。op0 = 外板内侧；ly0 / ly1 = 电机两端；hub0 = 臂座外壳内侧；ly_out = 腿外侧面（= 麦轮外侧面）。"""
     P = []
@@ -470,6 +582,9 @@ def leg_skin(op0, ly0, ly1, hub0, ly_out):
     for X in (-12, -4, 4, 12):                                                      # 底面散热槽
         guard = guard.cut(wprism([(X - 1, -30.5), (X + 1, -30.5), (X + 1, -29), (X - 1, -29)], gy0 + 4, gy1 - 5))
     P.append(("电机护罩", soft(guard, 0.8), "anod"))
+    # 护罩端圈（单独打印）：护罩套好、拧上腿板以后，从敞开那头扣进去，封住护罩和电机之间那圈空腔，只露电机端面和青色光环
+    ring = boot(0, gy0 - 2, gy0).fuse(boot(3.2, gy0 - 0.1, gy0 + 4)).cut(cyl_y(ARM, 0, 41, gy0 - 3, gy0 + 5))
+    P.append(("电机护罩端圈", soft(ring, 0.8), "anod"))
     c55, s55 = math.cos(math.radians(STANCE_DEG)), math.sin(math.radians(STANCE_DEG))
     for X in (-31, 31):
         for yb in (gy0 + 9, gy1 - 9):
@@ -480,7 +595,7 @@ def leg_skin(op0, ly0, ly1, hub0, ly_out):
     # 出线口（线缆接头）+ 电机线缆：沿臂座上沿走到髋，三个小线夹
     yy = LP0 - 5
     P.append(("外壳·出线口", cyl_dir((ARM - 46, yy, 25), (0, 0, 1), 10, 5), "dark"))
-    pts = [(ARM - 46, 30), (ARM - 62, 30), (95, 27), (45, 29)]
+    pts = [(ARM - 46, 30), (ARM - 62, 30), (95, 27), (45, 29), (CABLE_HIP_U, CABLE_HIP_V)]   # 一直走到髋轴旁边，在这里留一段余量进机身
     cab = None
     for (p0, p1) in zip(pts, pts[1:]):
         d = V(p1[0] - p0[0], 0, p1[1] - p0[1])
@@ -488,17 +603,9 @@ def leg_skin(op0, ly0, ly1, hub0, ly_out):
         cab = seg if cab is None else cab.fuse(seg)
         cab = cab.fuse(cq.Solid.makeSphere(3.5, V(p1[0], yy, p1[1])))
     P.append(("外壳·电机线缆", cab, "black"))
-    for i, (u, v) in enumerate(((ARM - 62, 30), (95, 27), (60, 28.5))):
+    for i, (u, v) in enumerate(((ARM - 62, 30), (95, 27), (60, 28.5), (22, 29))):
         P.append((f"外壳·线夹{i + 1}", box(u - 3, u + 3, yy - 4.5, yy + 4.5, v - 4.5, v + 4.5), "dark"))
-    # 台阶测距（外盖板上，站立时朝前下方 30°）
-    a = math.radians(25)
-    u_, n_ = (math.cos(a), math.sin(a)), (-math.sin(a), math.cos(a))
-    c = (ARM - 72, 13)
-    corner = lambda su, sn: (c[0] + u_[0] * 9 * su + n_[0] * 6 * sn, c[1] + u_[1] * 9 * su + n_[1] * 6 * sn)  # noqa: E731
-    P.append(("台阶测距", soft(prism_xz([corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], oy, oy + 6), 0.8), "anod"))
-    f0_ = (c[0] + u_[0] * 9 - n_[0] * 4, c[1] + u_[1] * 9 - n_[1] * 4)
-    f1_ = (c[0] + u_[0] * 9 + n_[0] * 4, c[1] + u_[1] * 9 + n_[1] * 4)
-    P.append(("外壳·台阶测距窗", strip(f0_, f1_, 1.2, oy + 1.2, oy + 4.8, inward=(u_[0] * 0.5, u_[1] * 0.5)), "visor"))
+    # 台阶测距 2026-10-22 挪到机身前后（前保险杠、后格栅里），腿上不装
     return P
 
 
