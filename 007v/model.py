@@ -94,7 +94,7 @@ def body_parts():
         add(f"{tag}侧板", box(-L2, L2, y0, y1, 0, BODY_H), "anod")
     add("底板", box(-L2 + PLATE, L2 - PLATE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, 0, PLATE), "alu")
     add("前板", box(L2 - PLATE, L2, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H), "anod")
-    add("后板", box(-L2, -L2 + PLATE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H), "anod")
+    add("后板", box(-L2, -L2 + PLATE, -W2 + PLATE_SIDE, W2 - PLATE_SIDE, PLATE, BODY_H).cut(shell.rear_plate_cuts()), "anod")
     dk = cq.Workplane("XY").box(BODY_L, BODY_W, PLATE, centered=(True, True, False)).edges("|Z").chamfer(2).val().translate(V(0, 0, BODY_H))
     add("甲板", shell.soft(dk, 1.2), "anod")
     # 顶面三块叠层板：头部平台盖（高）—— 货斗底板（低，货放这里）—— 后检修盖（高）；板边看得见 4 mm 厚，下面垫一圈缩进 3 mm 的垫条，像一块块装上去的
@@ -151,6 +151,8 @@ def body_parts():
             tag = ("前" if fx > 0 else "后") + ("左" if sy > 0 else "右")
             add(f"外壳·电机线缆进机身{tag}", stub, "black")
             add(f"外壳·护线圈{tag}", shell.ring_y(hx, shell.CABLE_HOLE_Z, 14, 7, *sorted((sy * (BODY_W / 2), sy * (BODY_W / 2 + 2)))), "black")
+    for n, s, c in shell.rear_panel_devices():                  # 后面：急停、总开关、充电口
+        add(n, s, c)
     for i, (S, d) in enumerate(shell.step_sensors()):
         add(f"台阶测距板{'前' if S[0] > 0 else '后'}{'左' if S[1] > 0 else '右'}", shell.step_board(S, d), "pcb")
     # 脖子底座 + 两块肩座 + 舵机 + 雷达（都在脖子坐标里画，再挪到机身上）

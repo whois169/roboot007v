@@ -99,6 +99,10 @@ def body_items():
         n = r[0]
         add(n, P[n][0], "pcb", (0, 0, 75), "BTS7960 驱动 ×4" if n.startswith("BTS") else lbl.get(n, n))
     add("深度相机", P["深度相机"][0], "black", (70, 0, 0), "深度相机（以后装）")
+    add("急停按钮", P["急停按钮"][0], "black", (-230, 0, 40), "急停 施耐德 XB2BS542C")
+    add("急停蘑菇头", P["急停蘑菇头"][0], "estop", (-230, 0, 40), "")
+    add("总开关", P["总开关"][0], "silver", (-230, 0, 40), "总开关 16 mm 自锁带灯")
+    add("充电口XT60", P["充电口XT60"][0], "black", (-230, 0, 40), "充电口 XT60E1-F")
     for n in P:
         if n.startswith("台阶测距板"):
             add(n, P[n][0], "pcb", (230 if "前" in n else -230, 0, 0), "Pololu VL53L1X 台阶测距 ×4")

@@ -18,7 +18,7 @@ K = float(argv[3]) if len(argv) > 3 else 1.0
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
 COL = dict(alu=(0.62, 0.64, 0.67), alu_dk=(0.08, 0.085, 0.09), silver=(0.55, 0.57, 0.6), steel=(0.45, 0.47, 0.5), motor=(0.05, 0.05, 0.055),
-           black=(0.015, 0.015, 0.017), pcb=(0.06, 0.28, 0.6), battery=(0.15, 0.35, 0.7), print=(0.72, 0.73, 0.75), print_dk=(0.12, 0.13, 0.14),
+           black=(0.015, 0.015, 0.017), pcb=(0.06, 0.28, 0.6), battery=(0.15, 0.35, 0.7), print=(0.72, 0.73, 0.75), print_dk=(0.12, 0.13, 0.14), estop=(0.58, 0.006, 0.027),
            wheel_hub=(0.7, 0.55, 0.1))
 mats = {}
 

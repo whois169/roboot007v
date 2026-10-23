@@ -141,13 +141,14 @@ M = dict(shell=paint("外壳·喷涂", PAL["shell"]), shell_dk=paint("外壳·�
          seam=principled("分缝", srgb("#050607"), 0.9)[0],
          cyan=lamp("青色光环", (0.0, 0.75, 1.0), 3.0 * K), band=lamp("青色腰线灯带", (0.0, 0.75, 1.0), 3.5 * K),
          white=lamp("白色照明灯", (1.0, 0.97, 0.92), 9.0 * K), red=lamp("红色尾灯", (1.0, 0.03, 0.02), 5.0 * K),
+         estop=principled("急停红", srgb("#c8102e"), 0.3)[0],
          floor=principled("地面", srgb("#8d9196") if not NIGHT else srgb("#5d6166"), 0.6)[0])
 
 # 琥珀件在哪个部件上 → 改成那个部件深一级的灰
 AMBER_TO = [("臂座黄箍", "shell_dk"), ("栏板反光条", None), ("摆臂黄条", "skel_dk"), ("摆臂边黄线", "skel_dk"),
             ("髋盖黄圈", "skel_dk"), ("隐私指示灯", "glass")]
 NAME_RULES = [("屏幕玻璃", "hud"), ("腰线端头", "skel"), ("腰线灯", "band"), ("照明灯", "white"), ("尾灯", "red"),
-              ("底部灯槽", "skel")]
+              ("底部灯槽", "skel"), ("急停蘑菇头", "estop")]
 
 
 def key_of(o):

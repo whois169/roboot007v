@@ -130,6 +130,69 @@ def step_pocket(S, d):
     return _orient(pk, S, d)
 
 
+# ---- 后面板三件（按厂家图纸），都在上层甲板壳后鼻那段竖面上（x = -216，z 105–128），两盏尾灯中间排一排，z = 115
+#   急停：施耐德 XB2BS542C（ref/estop/）——Φ40 蘑菇头，面板前 32；面板开孔 Φ22.5、板厚 1–6；面板后 42.5 + 触点 24；底座 40 × 30
+#         拧在后板 A05（铝 3）上；外壳挖一个 Φ44 的窝，蘑菇头从窝里伸出外壳 16 mm（不容易被碰到，伸手一拍就按到）
+#   总开关：GQ16F 系列 16 mm 金属平头自锁按钮带环形灯（ref/switch/）——头 Φ18 × 1.5，M16×1 螺纹，螺母 19 对边，面板后 18 + 针脚，板厚 1–6
+#         拧在外壳上：前面留 4 mm 壁，后面挖 Φ24 的坑放螺母；后板开 Φ24 过线
+#   充电口：Amass XT60E1-F（母座、黑色，ref/xt60/ 是同系列公座的图纸：27.1 × 12.1 × 16.7，两个固定孔）——横着装
+#         从里面贴在 4 mm 壁上，前面开 16.5 × 8.5 的窗，2 颗 M2.5 自攻（孔距 20.5，到货用卡尺核对）；后板开 30 × 15 过线窗
+REAR_PANEL_Z = 115.0
+ESTOP_Z = 114.0                      # 急停底座 30 高：上面离 2020 横梁 1 mm，下面离树莓派 1 mm
+ESTOP_Y, SWITCH_Y, XT60_Y = 0.0, 40.0, -40.0
+NOSE_X = -BODY_L / 2 - 16.0          # 后鼻竖面
+NOSE_WALL = 4.0
+
+
+def cyl_x(cy, cz, d, x0, x1):
+    return cq.Solid.makeCylinder(d / 2, x1 - x0, V(x0, cy, cz), V(1, 0, 0))
+
+
+def rear_panel_cuts():
+    """后鼻外壳上要挖掉的。"""
+    L2, z = BODY_L / 2, REAR_PANEL_Z
+    c = cyl_x(ESTOP_Y, ESTOP_Z, 44.0, NOSE_X - 1, -L2 + 1)
+    c = c.fuse(cyl_x(SWITCH_Y, z, 16.2, NOSE_X - 1, -L2 + 1)).fuse(cyl_x(SWITCH_Y, z, 24.0, NOSE_X + NOSE_WALL, -L2 + 1))
+    c = c.fuse(box(NOSE_X - 1, -L2 + 1, XT60_Y - 8.25, XT60_Y + 8.25, z - 4.25, z + 4.25))
+    c = c.fuse(box(NOSE_X + NOSE_WALL, -L2 + 1, XT60_Y - 14.5, XT60_Y + 14.5, z - 7.0, z + 7.0))
+    for dy in (-10.25, 10.25):
+        c = c.fuse(cyl_x(XT60_Y + dy, z, 2.2, NOSE_X + 1.5, -L2 + 1))       # M2.5 自攻底孔（不打穿正面）
+    return c
+
+
+def rear_plate_cuts():
+    """后板 A05 上的孔（和 mfg.py 一致）。"""
+    L2, z = BODY_L / 2, REAR_PANEL_Z
+    return (cyl_x(ESTOP_Y, ESTOP_Z, 22.5, -L2 - 1, -L2 + PLATE + 1).fuse(cyl_x(SWITCH_Y, z, 24.0, -L2 - 1, -L2 + PLATE + 1))
+            .fuse(box(-L2 - 1, -L2 + PLATE + 1, XT60_Y - 15, XT60_Y + 15, z - 7.5, z + 7.5)))
+
+
+def rear_panel_devices():
+    """买的三件（按厂家图纸的外形）。"""
+    L2, z = BODY_L / 2, REAR_PANEL_Z
+    P = []
+    y, z = ESTOP_Y, ESTOP_Z
+    P.append(("急停蘑菇头", soft(cyl_x(y, z, 40.0, -L2 - 32, -L2 - 20), 2.0), "estop"))
+    P.append(("急停按钮", cyl_x(y, z, 28.0, -L2 - 20, -L2).fuse(box(-L2 + PLATE, -L2 + 42.5, y - 20, y + 20, z - 15, z + 15))
+              .fuse(box(-L2 + 42.5, -L2 + 66.5, y - 15, y + 15, z - 15, z + 15)), "black"))
+    y, z = SWITCH_Y, REAR_PANEL_Z
+    P.append(("总开关", cyl_x(y, z, 18.0, NOSE_X - 1.5, NOSE_X).cut(cyl_x(y, z, 15.0, NOSE_X - 1.6, NOSE_X - 1.2))
+              .fuse(cyl_x(y, z, 16.0, NOSE_X, NOSE_X + 18)).fuse(cyl_x(y, z, 21.0, NOSE_X + NOSE_WALL, NOSE_X + NOSE_WALL + 3))
+              .fuse(box(NOSE_X + 18, NOSE_X + 26, y - 4, y + 4, z - 1, z + 1)), "silver"))
+    P.append(("外壳·总开关灯环", ring_x(y, z, 15.0, 12.0, NOSE_X - 1.6, NOSE_X - 1.2), "cyan"))
+    y = XT60_Y
+    xt = box(NOSE_X - 0.5, NOSE_X + 16.2, y - 7.9, y + 7.9, z - 4.0, z + 4.0)
+    xt = xt.fuse(box(NOSE_X + NOSE_WALL, NOSE_X + NOSE_WALL + 2.5, y - 13.55, y + 13.55, z - 6.05, z + 6.05))
+    for dy in (-3.8, 3.8):
+        xt = xt.cut(cyl_x(y + dy, z, 4.6, NOSE_X - 1, NOSE_X + 8))           # 两个插孔
+    P.append(("充电口XT60", xt, "black"))
+    return P
+
+
+def ring_x(cy, cz, d_out, d_in, x0, x1):
+    return cyl_x(cy, cz, d_out, x0, x1).cut(cyl_x(cy, cz, d_in, x0 - 1, x1 + 1))
+
+
 def body_shell():
     P = []
     W2, L2 = BODY_W / 2, BODY_L / 2
@@ -160,9 +223,6 @@ def body_shell():
         tub = tub.cut(cyl_y(hx, HIP_Z, 70, -W2 - 8, W2 + 8))                    # 髋支座的位置让开
     dx, dy, dz = DEPTH_CAM
     tub = tub.cut(box(L2 - 1, L2 + 8, -dy / 2 - 1, dy / 2 + 1, 23, 24 + dz + 2))   # 深度相机窗
-    tub = tub.cut(cq.Solid.makeCylinder(13, 10, V(-L2 - 8, 0, 70), V(1, 0, 0)))    # 急停
-    tub = tub.cut(cq.Solid.makeCylinder(9, 10, V(-L2 - 8, 55, 70), V(1, 0, 0)))    # 总开关
-    tub = tub.cut(box(-L2 - 8, -L2 + 1, -71, -53, 59, 69))                         # 充电口
     for sy in (1, -1):                                                            # 侧挂板的位置：外壳开窗，挂板四周留 1 mm 缝
         tub = tub.cut(box(-100 - SEAM, 100 + SEAM, *sorted((sy * (W2 - 1), sy * (W2 + 8))), z0 + 3 - SEAM, TUB_TOP - 3 + SEAM))
     for x in (L2 - 30, -(L2 - 30)):                                               # 拆成前、后、左、右几块面板，中间 2 mm 缝
@@ -184,6 +244,7 @@ def body_shell():
     slab = slab.cut(box(-L2, L2, -W2, W2, WAIST_TOP - 1, BODY_H + PLATE + 1))
     for x in (L2 - 30, -(L2 - 30)):                                               # 前鼻、后鼻、左右侧板分开，中间 2 mm 缝
         slab = slab.cut(box(x - SEAM / 2, x + SEAM / 2, -W2 - 20, W2 + 20, WAIST_TOP - 1, BODY_H + 2))
+    slab = slab.cut(rear_panel_cuts())                                           # 后鼻：急停窝、总开关孔、充电口窗
     P.append(("上层甲板壳", slab, "shell"))
     for sy, tag in ((1, "左"), (-1, "右")):
         out = []
@@ -227,7 +288,7 @@ def body_shell():
         y = -60 + i * 24
         P.append((f"外壳·格栅鳍{i + 1}", box(-L2 - 10, -L2 - 8, y - 1, y + 1, 20, 50), "silver"))
     for sy in (1, -1):
-        P.append((f"外壳·尾灯{'左' if sy > 0 else '右'}", box(-L2 - 16.6, -L2 - 15.9, *sorted((sy * 40, sy * 100)), 114, 122), "lamp_r"))
+        P.append((f"外壳·尾灯{'左' if sy > 0 else '右'}", box(-L2 - 16.6, -L2 - 15.9, *sorted((sy * 58, sy * 100)), 114, 122), "lamp_r"))   # 里头让给充电口、总开关
     # 底部灯槽（不点亮）
     for sy in (1, -1):
         P.append((f"外壳·底部灯槽{'左' if sy > 0 else '右'}", box(-140, 140, *sorted((sy * 30, sy * 36)), -1.5, 0), "dark"))

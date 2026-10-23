@@ -409,9 +409,11 @@ def end_plate(front):
         for y in (-62.0, 62.0):
             H.append(hole(y, 32.0, 8.0, "台阶测距过线孔"))
     else:
-        cut.append((-70.0, 60.0, -54.0, 68.0, "XT60 充电口（面板座）"))
-        H.append(hole(0.0, 70.0, 22.0, "急停按钮 Φ22"))
-        H.append(hole(55.0, 70.0, 16.0, "总开关 Φ16（带灯自锁）"))
+        import shell as SH
+        z, ye, ys, yx = SH.REAR_PANEL_Z, SH.ESTOP_Y, SH.SWITCH_Y, SH.XT60_Y
+        H.append(hole(ye, SH.ESTOP_Z, 22.5, "急停按钮 Φ22.5（施耐德 XB2BS542C，板厚 3 在 1–6 范围内）"))
+        H.append(hole(ys, z, 24.0, "总开关过线孔（开关拧在外壳上）"))
+        cut.append((yx - 15.0, z - 7.5, yx + 15.0, z + 7.5, "充电口过线窗（XT60 拧在外壳上）"))
         for y in (-70.0, 70.0):
             for z in (24.0, 46.0):
                 H.append(hole(y, z, 3.4, "后格栅 M3×10（从里面拧进格栅的热熔螺母）"))
