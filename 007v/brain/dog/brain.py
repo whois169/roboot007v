@@ -92,7 +92,7 @@ class Brain:
         th = self.cfg.get("thermal", {})
         if th.get("hz", 1):
             self.eyes.send_thermal({"hz": th.get("hz", 1)})       # 让头部每秒发热画面过来
-        self.eyes.log("BOOT 007V BRAIN")                        # 开机自检：屏幕上逐行打出真实的初始化过程
+        self.eyes.log("SYS BOOT 007V BRAIN")                        # 开机自检：屏幕上逐行打出真实的初始化过程
         await self.chassis.start()
         self.board.add_provider(self.chassis.readings)
         self.eyes.log(f"BASE {self.chassis.kind.upper()} " + ("OK" if self.chassis.online else "OFF" if self.chassis.kind == "none" else "NO LINK"))
@@ -105,7 +105,7 @@ class Brain:
             log.info("语音合成服务在线：音色 %s，机械感 %s", h.get("default_speaker"), h.get("effect"))
         self.eyes.log("TTS QWEN3 OK" if h else "TTS OFFLINE")
         await self.setup_vision()
-        self.eyes.log("CAM OK FACE YUNET" if self.sight else "CAM OFF")
+        self.eyes.log("VIS CAM OK FACE YUNET" if self.sight else "VIS CAM OFF")
         self.setup_senses()
         asyncio.create_task(self.status_loop())
         asyncio.create_task(self.memory.summarize_loop(None if isinstance(self.llm, llm_mod.MockLLM) else self.llm))
@@ -120,13 +120,13 @@ class Brain:
                                      li["end_silence_seconds"], a["sample_rate"])
             self.asr = await asyncio.to_thread(Recognizer, **self.cfg["asr"])
             self.mic = Microphone(a["sample_rate"], a["input_device"])
-            self.eyes.log("KWS OK ASR SENSEVOICE")
+            self.eyes.log("ASR SENSEVOICE OK KWS OK")
         if weather_job:
             try:                                                   # 第一次查天气最多再等 5 秒，查不到也照样启动
                 await asyncio.wait_for(asyncio.shield(weather_job), 5)
             except asyncio.TimeoutError:
                 log.warning("天气还没查到，先启动，后台接着查")
-            self.eyes.log(self.weather.short() if self.weather.data else "WX PENDING")
+            self.eyes.log("NET " + (self.weather.short() if self.weather.data else "WX PENDING"))
         self.eyes.log("LLM MOCK" if isinstance(self.llm, llm_mod.MockLLM) else f"LLM {self.llm.model} READY")
 
     async def setup_vision(self):
@@ -174,7 +174,7 @@ class Brain:
                     (log.info if online else log.warning)("头部 ESP32：%s", "连上了" if online else "3 秒没收到心跳，可能掉线了")
                     self.board.put(senses_mod.Reading("head.link", "头部连接", "正常" if online else "断开",
                                                       source="心跳", location="头部 ESP32", max_age=1e9))
-            line = self.telemetry(n)
+            line = self.telemetry(n) if self.state == "idle" else ""   # 对话时不推读数，屏幕上只看大脑每一步在干什么
             if line:
                 self.eyes.log(line)
             n += 1
@@ -191,19 +191,19 @@ class Brain:
         if kind == 0:
             snd = self.board.get("sound.level")
             db = re.match(r"-?\d+", str(snd.value)).group() if snd else "--"
-            return f"T{val('room.temp')} H{val('room.humidity', '{:.0f}')} SND {db}DB"
+            return f"SNS T{val('room.temp')}C RH{val('room.humidity', '{:.0f}')} SND {db}DB"
         if kind == 1 and self.sight:
             faces, motion, _, _ = self.sight.cam.latest()
-            return f"FACE {len(faces)} MOT {motion:.2f}"
+            return f"VIS FACE {len(faces)} MOT {motion:.2f}"
         if kind == 2:
             up = (time.time() - self.started) / 60
-            return f"{time.strftime('%H:%M:%S')} UP {up:.0f}M STATE {self.state.upper()}"
+            return f"SYS UP {up:.0f}M STATE {self.state.upper()} HIST {len(self.history) // 2}"
         if kind == 3 and n % 15 != 14 and self.chassis.online:
             st = self.chassis.status
             x, y, h = st["odo"]
             return f"BASE {st['st'][:5].upper()} V{st['v'][0]:+.2f} X{x:+.2f} Y{y:+.2f} H{h:+.0f}"
         if kind == 3 and self.weather:
-            return self.weather.short()
+            return "NET " + self.weather.short()
         return ""
 
     async def on_sight_event(self, name: str, desc: str):
@@ -514,7 +514,7 @@ class Brain:
             log.info("你在看着我，开始听")
             if self.cfg["react"].get("listen_beep", True):
                 self.speaker.play(*self.chirp)
-            self.eyes.log("ATTN FACE LOCK")
+            self.eyes.log("ATTN FACE LOCK LISTEN OPEN")
             self.look_when_called()
 
     def on_wake(self, word):
@@ -542,6 +542,7 @@ class Brain:
         dur = len(seg) / 16000
         looked = self.att_frames[1] / max(1, self.att_frames[0])
         self.utt = {"via": self.via, "seconds": round(dur, 2), "looked": round(looked, 2)}
+        self.eyes.log(f"VAD SEG {dur:.2f}S LOOK {looked * 100:.0f}% VIA {self.via.upper()}")
         if self.via in ("look", "follow"):
             if dur < li.get("min_speech_seconds", 0.5):
                 return self.skip(f"太短（{dur:.1f} 秒）", "SHORT")
@@ -565,7 +566,7 @@ class Brain:
         t0 = time.perf_counter()
         text = await asyncio.to_thread(self.asr.transcribe, samples)
         log.info("识别用时 %.2f 秒（%.1f 秒录音）", time.perf_counter() - t0, len(samples) / 16000)
-        self.eyes.log(f"ASR {len(text)}CH {time.perf_counter() - t0:.2f}S")
+        self.eyes.log(f"ASR SENSEVOICE {len(samples) / 16000:.1f}S AUDIO -> {len(text)}CH {time.perf_counter() - t0:.2f}S")
         core = re.sub(r"[\W_]+", "", text)
         li = self.cfg["listen"]
         if not core:                                     # 只有标点或空：大概是噪音
@@ -631,7 +632,7 @@ class Brain:
                 if not first_audio:
                     first_audio.append(time.perf_counter() - t0)
                     log.info("从说完到开口：%.2f 秒", first_audio[0])
-                    self.eyes.log(f"RESP {first_audio[0]:.2f}S")
+                    self.eyes.log(f"TTS 1ST AUDIO {first_audio[0]:.2f}S")
                 self.state = "speaking"
                 self.eyes.mode("speak")
                 self.utt["resp"] = round(first_audio[0], 2)
@@ -649,6 +650,10 @@ class Brain:
                    "via": via}
         messages = prompt.build(self.persona, self.history, text, can_move=self.chassis.kind != "none", **context)
         log.debug("这次发给大模型的三栏：\n%s", messages[-1]["content"])
+        n_sense = context["sensed"].count("\n") + 1 if context["sensed"] else 0
+        n_mem = context["memory"].count("\n") + 1 if context["memory"] else 0
+        self.eyes.log(f"CTX SENSE {n_sense} MEM {n_mem} HIST {len(self.history) // 2} WX {'Y' if context['looked_up'] else 'N'}",
+                      f"LLM REQ {getattr(self.llm, 'model', 'MOCK')} {sum(len(m['content']) for m in messages)}CH")
         raw, said = [], []
         ignored = False
         try:
@@ -667,6 +672,7 @@ class Brain:
                     raw.append(line.strip())
                     if await self.run_skill(call, say, said) == "stop":   # 比如要发的遥控码没学过：后面的话不说了
                         break
+            self.eyes.log(f"LLM END {len(raw)} CALLS {time.perf_counter() - t0:.2f}S" + (" IGNORE" if ignored else ""))
         except Exception as e:
             log.error("大模型调用失败（%s）：%s", type(e).__name__, e)
             self.eyes.log(f"LLM ERR {type(e).__name__[:20]}")
@@ -712,8 +718,9 @@ class Brain:
         if name == "say":
             if not said:
                 log.debug("大模型第一句话到达：%.2f 秒", time.perf_counter() - self._t0)
-                self.eyes.log(f"LLM 1ST {time.perf_counter() - self._t0:.2f}S")
+                self.eyes.log(f"LLM 1ST TOKEN {time.perf_counter() - self._t0:.2f}S")
             print(f"{self.persona['name']}：{call['text']}")
+            self.eyes.log(f"SKL SAY {len(call['text'])}CH")
             said.append(call["text"])
             say(call["text"])
             self.recent_said.append((time.monotonic() + 30, re.sub(r"[\W_]+", "", call["text"])))
@@ -722,10 +729,10 @@ class Brain:
         elif name == "display":
             m = call["mode"]
             self.eyes.mode(m, hold=0 if m == "idle" else 6)          # 扫描、热成像、警告至少显示 6 秒
-            self.eyes.log(f"CMD DISPLAY {m}")
+            self.eyes.log(f"SKL DISPLAY {m}")
         elif name == "look":
             self.eyes.gaze(*eyes_mod.GAZE[call["direction"]])
-            self.eyes.log(f"CMD LOOK {call['direction']}")
+            self.eyes.log(f"SKL LOOK {call['direction']}")
             hold = self.cfg.get("eyes", {}).get("look_hold_seconds", 3)
             asyncio.get_running_loop().call_later(hold, self.eyes.gaze, 0, 0)
         elif name == "remember":
@@ -780,11 +787,11 @@ class Brain:
         name = call["skill"]
         if name == "stop":
             self.halt()
-            self.eyes.log("CMD BASE STOP")
+            self.eyes.log("SKL BASE STOP")
             log.info("停下")
             return
         self.motions.append(call)
-        self.eyes.log("CMD BASE " + {"move": f"{call.get('direction', '')[:4].upper()} {call.get('meters', 0):.2f}M",
+        self.eyes.log("SKL BASE " + {"move": f"{call.get('direction', '')[:4].upper()} {call.get('meters', 0):.2f}M",
                                      "turn": f"TURN {call.get('degrees', 0):+.0f}", "posture": call.get("pose", "").upper()}[name])
         if not self.motion_job or self.motion_job.done():
             self.motion_job = asyncio.create_task(self.motion_run())
@@ -896,6 +903,8 @@ class Brain:
             self.eyes.mode("error", text=code[:6], hold=3)
         elif code == "BAT_LOW":
             self.eyes.mode("low_bat", hold=3)
+        elif code == "CLIFF":
+            self.eyes.mode("alert", text="CLIFF", hold=3)
 
     # ------------------------------------------------------------ 热成像
     def on_thermal(self, ev: dict):

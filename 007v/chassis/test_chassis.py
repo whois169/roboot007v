@@ -15,6 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 from chassis import protocol  # noqa: E402
 from chassis.controller import FOLD_DEG, STANCE_DEG, V_MAX, Controller  # noqa: E402
+from config import ARM, HIP_X, WHEEL_D  # noqa: E402
 from chassis.virtual import VirtualChassis  # noqa: E402
 import run_sim as S  # noqa: E402
 
@@ -79,16 +80,20 @@ class Bench:
 def t_protocol():
     section("协议：指令和事件的检查")
     good = [{"drive": [0.4, 0, 0]}, {"move": {"dx": 1.0, "dth": 90}, "id": 3}, {"pose": "stand", "id": 1}, {"stop": True},
-            {"estop": True}, {"reset": True}, {"limit": {"v": 0.3}}, {"limit": {"v": None}}, {"hb": 1}]
+            {"estop": True}, {"reset": True}, {"limit": {"v": 0.3}}, {"limit": {"v": None}}, {"hb": 1},
+            {"calib": "step", "id": 2}, {"light": {"front": 60}}, {"light": {"front": 0, "dim": 30}}]
     bad = [{"drive": [2, 0, 0]}, {"drive": [0.1, 0]}, {"move": {"dx": 9}}, {"move": {"dz": 1}}, {"pose": "sit"},
-           {"stop": True, "drive": [0, 0, 0]}, {"fly": True}, {"limit": {"v": 3}}, {"pose": "stand", "id": -1}, [1]]
+           {"stop": True, "drive": [0, 0, 0]}, {"fly": True}, {"limit": {"v": 3}}, {"pose": "stand", "id": -1}, [1],
+           {"calib": "hip"}, {"light": {"front": 120}}, {"light": {"rgb": 1}}, {"light": {}}]
     check("合法指令都通过", all(protocol.check_cmd(c) == "" for c in good))
     check("不合法指令都被拦下", all(protocol.check_cmd(c) for c in bad))
     c = Controller([STANCE_DEG] * 4)
     c.command({"move": {"dx": 99}, "id": 4})
     check("不合法的带 id 指令回 ack ok=false why=BAD", any(e.get("ev") == "ack" and e.get("why") == "BAD" for e in c.out))
     evs = [{"ev": "hello", "fw": "0.1.0"}, c.status([55] * 4), {"ev": "ack", "id": 1, "ok": True},
-           {"ev": "done", "id": 1, "ok": False, "why": "TIMEOUT"}, {"ev": "warn", "code": "LINK_LOST"}, {"ev": "fault", "code": "HIP_STALL"}]
+           {"ev": "done", "id": 1, "ok": False, "why": "TIMEOUT"}, {"ev": "warn", "code": "LINK_LOST"}, {"ev": "fault", "code": "HIP_STALL"},
+           {"ev": "warn", "code": "CLIFF", "where": "front"}, {"ev": "warn", "code": "STEP", "where": "front", "h": 15},
+           {"ev": "done", "id": 2, "ok": False, "why": "CLIFF"}]
     check("底盘发出来的事件格式都对", all(protocol.check_event(e) == "" for e in evs), str([protocol.check_event(e) for e in evs]))
 
 
@@ -253,9 +258,98 @@ def t_load_empty():
     check("空车估出来接近 0（±1.5 kg）", load is not None and load <= 1.5, f"估 {load} kg")
 
 
+def t_step():
+    section("台阶测距：地面没了自己刹车、有坎限速、测距板坏了限速")
+    b = Bench(payload=10.0)
+    b.run(0.5)
+    x0 = b.truth()[0]
+    edge = x0 + 1.2                                             # 前面 1.2 米处地面没了（楼梯往下）
+    b.vc.edge = edge
+    for _ in range(20):
+        b.cmd({"drive": [V_MAX, 0, 0]})                         # 全速冲过去
+        b.run(0.1)
+    b.run(1.0)
+    wheel_x = b.truth()[0] + (HIP_X + ARM * math.cos(math.radians(STANCE_DEG)) + WHEEL_D / 2) / 1000
+    st = b.status()
+    check("全速冲向楼梯边：自己刹住，前轮没过边", wheel_x < edge and abs(b.speed()[0]) < 0.02,
+          f"前轮最前沿离边 {(edge - wheel_x) * 1000:.0f} mm")
+    check("报 CLIFF、锁住前面", bool(b.events("warn", code="CLIFF")) and st["cliff"] == "front")
+    xs = b.truth()[0]
+    for _ in range(5):
+        b.cmd({"drive": [0.3, 0, 0]})
+        b.run(0.2)
+    check("锁住以后再往前开：不动", b.truth()[0] - xs < 0.005, f"{(b.truth()[0] - xs) * 1000:.1f} mm")
+    b.cmd({"move": {"dx": -0.4, "v": 0.3}, "id": 21})
+    b.until(lambda: b.events("done", id=21), 8)
+    b.run(0.5)
+    check("往后退开：允许，退开后自动解锁", bool(b.events("done", id=21, ok=True)) and b.status()["cliff"] is None)
+    b.cmd({"move": {"dx": 1.0, "v": 0.5}, "id": 22})
+    b.until(lambda: b.events("done", id=22), 8)
+    check("用 move 往边上走：半路停下，done 的原因是 CLIFF", bool(b.events("done", id=22, ok=False, why="CLIFF")))
+    # 门槛
+    c = Bench(payload=10.0)
+    c.run(0.5)
+    x0 = c.truth()[0]
+    c.vc.bump = (x0 + 0.6, x0 + 0.66, 0.015)                    # 前面 0.6 米处一道 15 mm 的门槛
+    for _ in range(12):
+        c.cmd({"drive": [0.8, 0, 0]})
+        c.run(0.1)
+    warn = c.events("warn", code="STEP")
+    check("前面有 15 mm 门槛：报 STEP、自己限速 0.3", bool(warn) and c.status()["lim"] == 0.3 and c.speed()[0] < 0.35,
+          f"估的高度 {warn[0]['h'] if warn else '-'} mm，速度 {c.speed()[0]:.2f}")
+    # 测距板坏了
+    d = Bench(payload=10.0)
+    d.run(0.3)
+    d.vc.broken = 2
+    for _ in range(10):
+        d.cmd({"drive": [0.8, 0, 0]})
+        d.run(0.2)
+    check("后左测距板没回应：报 STEP_SENSOR、限速 0.2", bool(d.events("warn", code="STEP_SENSOR", where="rear_left"))
+          and d.speed()[0] < 0.22, f"{d.speed()[0]:.2f} m/s")
+    for _ in range(5):
+        d.cmd({"drive": [0, 0.5, 0]})
+        d.run(0.2)
+    check("横着走最快 0.2（两边没有台阶测距）", abs(d.speed()[1]) < 0.21, f"{d.speed()[1]:.2f} m/s")
+    d.vc.broken = None
+    d.run(1.5)                                                  # 等车停稳
+    d.cmd({"calib": "step", "id": 30})
+    d.run(0.1)
+    check("停稳时标定台阶测距：成功", bool(d.events("ack", id=30, ok=True)))
+
+
+def t_light():
+    section("机身的灯：按状态自己亮")
+    b = Bench()
+    b.run(0.3)
+    L = b.vc.ctl.lights()
+    check("平时：腰线青色常亮、尾灯暗红、电机光环亮", L["waist"] == ["solid", "cyan"] and L["tail"] == ["solid", 30] and L["ring"])
+    for _ in range(6):
+        b.cmd({"drive": [0.6, 0, 0]})
+        b.run(0.2)
+    b.cmd({"stop": True})
+    b.run(0.1)
+    check("刹车：尾灯全亮", b.vc.ctl.lights()["tail"] == ["solid", 100])
+    b.run(1.5)
+    for _ in range(4):
+        b.cmd({"drive": [-0.3, 0, 0]})
+        b.run(0.2)
+    check("倒车：尾灯闪", b.vc.ctl.lights()["tail"][0] == "blink")
+    b.cmd({"light": {"front": 60, "dim": 40}, "id": 5})
+    b.run(0.2)
+    st = b.status()
+    check("前白灯、总亮度听大脑的", st["light"] == {"front": 60, "dim": 40})
+    b.vc.ibat = 3.0
+    b.run(0.2)
+    check("插上充电器：状态 chg、腰线绿色呼吸", b.status()["chg"] and b.vc.ctl.lights()["waist"] == ["breath", "green"])
+    b.cmd({"estop": True})
+    b.run(0.2)
+    L = b.vc.ctl.lights()
+    check("急停：腰线、尾灯红色快闪，电机光环灭", L["waist"] == ["flash", "red"] and L["tail"][0] == "flash" and not L["ring"])
+
+
 def main():
     t0 = time.time()
-    for t in (t_protocol, t_stand_fold, t_move, t_drive, t_estop, t_stall, t_load_empty):
+    for t in (t_protocol, t_stand_fold, t_move, t_drive, t_estop, t_stall, t_load_empty, t_step, t_light):
         t()
     n = len(RESULTS)
     print(f"\n共 {n} 项，通过 {sum(RESULTS)} 项，失败 {n - sum(RESULTS)} 项，用时 {time.time() - t0:.0f} 秒")

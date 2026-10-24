@@ -21,24 +21,34 @@ GIF_SCALE = 0.5               # 演示 GIF 缩小一半，文件小一点
 LANG = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] in ("en", "cn") else "en"
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "hud_shots" + ("_cn" if LANG == "cn" else ""))
 FPS = 30
-TELE = ["T22.1* H55* SND -52DB", "FACE {f} MOT 0.0{m}", "10:32:{ss:02d} UP 12M STATE {st}"]   # 和大脑每秒推的读数同一个格式
-BOOT = ["BOOT 007V BRAIN", "TTS QWEN3 OK", "CAM OK FACE YUNET", "KWS OK ASR SENSEVOICE",
-        "WX OK OUT 21.2C RH77", "LLM DEEPSEEK-CHAT READY"]
+# 闲着时每秒一行读数（和大脑 telemetry() 同一个格式；对话时大脑不推读数）
+TELE = ["SNS T22.1*C RH55* SND -52DB", "VIS FACE {f} MOT 0.0{m}", "SYS UP 12M STATE {st} HIST 3",
+        "BASE STAND V+0.00 X+0.00 Y+0.00 H+0"]
+BOOT = ["SYS BOOT 007V BRAIN", "BASE VIRTUAL OK", "TTS QWEN3 OK", "VIS CAM OK FACE YUNET", "MEM HOME 12 FACTS",
+        "ASR SENSEVOICE OK KWS OK", "NET OUT 21.2C RH77 CLOUDY", "LLM DEEPSEEK-CHAT READY"]
+
+
+def fmt(s, t):
+    """和 eyes.log() 一样排成“时间  模块  内容”。"""
+    mod, _, rest = s.partition(" ")
+    return hud.clean(f"10:{32 + int(t) // 60:02d}:{int(t) % 60:02d}  {mod:<4}  {rest}")
 # (模式, 秒数, 额外指令, 这一段里推的日志, 截图: [(第几秒, 名字)])
 SEQ = [
     ("idle", 7.0, {}, BOOT, [(6.6, "idle")]),
-    ("track", 2.5, {}, ["EVT PERSON IN"], [(0.3, "assemble"), (2.0, "track")]),
-    ("wake", 1.0, {}, ["KWS WAKE"], [(0.6, "wake")]),
-    ("listen", 2.5, {}, [], [(1.8, "listen")]),
-    ("think", 2.0, {}, ["ASR 9CH 0.05S"], [(1.5, "think")]),
-    ("speak", 2.5, {}, ["LLM 1ST 1.92S", "TTS 0.41S"], [(1.8, "speak")]),
-    ("listen", 2.0, {"face": "happy"}, ["USER THANKS"], [(1.4, "happy")]),
-    ("idle", 3.0, {}, ["EVT PERSON OUT"], [(0.25, "dissolve")]),
-    ("scan", 3.0, {}, ["SCAN ZONE 1/4"], [(2.0, "scan")]),
+    ("track", 2.5, {}, ["VIS PERSON IN ID MATCH", "ATTN FIRST"], [(0.3, "assemble"), (2.0, "track")]),
+    ("wake", 1.0, {}, ["ATTN FACE LOCK LISTEN OPEN"], [(0.6, "wake")]),
+    ("listen", 2.5, {}, ["VAD SPEECH START"], [(1.8, "listen")]),
+    ("think", 2.0, {}, ["VAD SEG 2.41S LOOK 94% VIA LOOK", "ASR SENSEVOICE 2.4S AUDIO -> 9CH 0.05S",
+                        "CTX SENSE 14 MEM 3 HIST 2 WX Y", "LLM REQ DEEPSEEK-CHAT 3812CH"], [(1.5, "think")]),
+    ("speak", 2.5, {}, ["LLM 1ST TOKEN 1.11S", "SKL SAY 18CH", "TTS 1ST AUDIO 1.52S", "SKL LOOK UP",
+                        "LLM END 3 CALLS 2.31S"], [(1.8, "speak")]),
+    ("listen", 2.0, {"face": "happy"}, ["ATTN FOLLOW 8S"], [(1.4, "happy")]),
+    ("idle", 3.0, {}, ["VIS PERSON OUT"], [(0.25, "dissolve")]),
+    ("scan", 3.0, {}, ["SKL DISPLAY SCAN", "SCAN ZONE 1/4"], [(2.0, "scan")]),
     ("thermal", 3.0, {}, [], [(2.0, "thermal")]),
     ("alert", 2.5, {"text": "门开着" if LANG == "cn" else "DOOR OPEN"}, ["ALERT DOOR 2 OPEN"], [(1.8, "alert")]),
-    ("error", 2.5, {"text": "网络断了" if LANG == "cn" else "E-NET"}, ["LLM ERR NET TIMEOUT"], [(1.8, "error")]),
-    ("low_bat", 2.5, {}, ["BAT 8% RETURN TO DOCK"], [(1.8, "low_bat")]),
+    ("error", 2.5, {"text": "网络断了" if LANG == "cn" else "E-NET"}, ["LLM ERR TIMEOUT 15.0S"], [(1.8, "error")]),
+    ("low_bat", 2.5, {}, ["BASE BAT LOW 8%"], [(1.8, "low_bat")]),
     ("sleep", 3.0, {}, [], [(2.0, "sleep")]),
 ]
 
@@ -71,15 +81,14 @@ def main():
         for i in range(int(dur * FPS)):
             t = start + i / FPS
             u = t - start
-            if int(t) != last_sec and t > 2.5:                    # 开机自检之后，每秒一行读数
+            if int(t) != last_sec and t > 3.2 and mode in ("idle", "scan", "sleep"):   # 闲着时每秒一行读数
                 last_sec = int(t)
                 tele_n += 1
-                line = TELE[tele_n % 3].format(f=1 if mode in ("track", "wake", "listen", "think", "speak") else 0,
-                                               m=tele_n % 7, ss=(41 + tele_n) % 60, st=mode.upper())
-                send({"log": line})
+                line = TELE[tele_n % 4].format(f=0, m=tele_n % 7, st=mode.upper())
+                send({"log": fmt(line, t)})
             for at, s in list(log_at.items()):
                 if t >= at:
-                    send({"log": s})
+                    send({"log": fmt(s, t)})
                     del log_at[at]
             if mode == "listen":
                 send({"level": 0.35 + 0.45 * abs(math.sin(u * 3.1))})

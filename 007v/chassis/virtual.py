@@ -23,9 +23,15 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "sim"))
 import run_sim as S  # noqa: E402
-from config import HEAD_PITCH, SKID_H, STANCE_DEG  # noqa: E402
+from config import BODY_L, HEAD_PITCH, SKID_H, STANCE_DEG  # noqa: E402
 
-from .controller import FOLD_DEG, RATE, Controller  # noqa: E402
+from .controller import FOLD_DEG, RATE, STEP_Z, Controller  # noqa: E402
+
+# 台阶测距在机身坐标里的位置（m，原点 = 机身底面中心）和光线方向：前两个往前下 30°，后两个往后下 30°
+_C30, _S30 = math.cos(math.radians(30)), math.sin(math.radians(30))
+STEP_POS = [(BODY_L / 2000 + 0.0075, 0.062, STEP_Z[0] / 1000), (BODY_L / 2000 + 0.0075, -0.062, STEP_Z[1] / 1000),
+            (-BODY_L / 2000 - 0.0065, 0.048, STEP_Z[2] / 1000), (-BODY_L / 2000 - 0.0065, -0.048, STEP_Z[3] / 1000)]
+STEP_DIR = [(_C30, 0, -_S30), (_C30, 0, -_S30), (-_C30, 0, -_S30), (-_C30, 0, -_S30)]
 
 SUB = int(round(1 / (RATE * S.DT)))           # 每算一次底盘程序，仿真走几步（5 ms / 0.5 ms = 10）
 
@@ -78,6 +84,9 @@ class VirtualChassis:
         self.inbox = deque()
         self.estop_btn = False
         self.vbat = vbat
+        self.ibat = -2.0                     # 电池电流（负 = 放电）；测试里改成正数 = 插上充电器
+        # 假地面（测台阶测距用）：edge = 世界 x 超过这里地面就没了（台阶往下）；bump = (x0, x1, 高 m) 一块凸起；broken = 第几个测距坏了
+        self.edge, self.bump, self.broken = None, None, None
         self.lock = threading.Lock()
         self._thread = None
         self._run = False
@@ -106,7 +115,7 @@ class VirtualChassis:
         moving = float(np.abs(d.qvel[p.wv]).max())
         self.vbat = max(18.0, self.vbat - (2e-6 + 4e-6 * moving) / RATE)   # 慢慢掉电（大约几小时掉一格）
         sens = dict(hip=list(np.degrees(d.qpos[p.hq])), wv=list(d.qvel[p.wv]), wt=list(p.tau_w),
-                    estop=self.estop_btn, vbat=self.vbat)
+                    estop=self.estop_btn, vbat=self.vbat, ibat=self.ibat, step=self.step_readings())
         out = c.update(1 / RATE, sens)
         p.hip_ref = np.radians(out["hip_ref"])
         p.hip_vref = np.full(4, math.radians(out["hip_vel"]))
@@ -115,6 +124,32 @@ class VirtualChassis:
         for _ in range(SUB):
             p.step()
         self._flush()
+
+    def step_readings(self):
+        """四个台阶测距的读数（mm）：从传感器沿光线打到地面（或凸起）的距离；地面没了 = -1，坏了 = None。"""
+        p = self.plant
+        pos, Rm = p.d.xpos[p.base], p.d.xmat[p.base].reshape(3, 3)
+        out = []
+        for i in range(4):
+            if self.broken == i:
+                out.append(None)
+                continue
+            s = pos + Rm @ np.array(STEP_POS[i])
+            v = Rm @ np.array(STEP_DIR[i])
+            t = -s[2] / v[2]
+            hit = s + v * t
+            if self.bump:
+                x0, x1, h = self.bump
+                tb = (h - s[2]) / v[2]
+                hb = s + v * tb
+                if x0 <= hb[0] <= x1:
+                    t = tb
+                    hit = hb
+            if self.edge is not None and hit[0] > self.edge:
+                out.append(-1)
+            else:
+                out.append(round(float(t) * 1000, 1))
+        return out
 
     def run(self, seconds):
         for _ in range(int(round(seconds * RATE))):

@@ -2,16 +2,20 @@
 
 每 5 ms（200 Hz）调一次 update(dt, 传感器)，返回给电机的目标：
   传感器：hip 四个髋角度（度，AS5600）、wv 四个轮子转速（rad/s，GIM4310 回传）、wt 四个轮子扭矩（N·m，GIM4310 回传）、
-          estop 急停按钮按下没有、vbat 电池电压
+          estop 急停按钮按下没有、vbat 电池电压、ibat 电池电流（A，往电池里流为正 = 在充电，INA226）、
+          step 四个台阶测距的读数（前左 前右 后左 后右，mm；-1 = 测不到地面，None = 测距板没回应；没装测距时不给这个字段）
   输出：  hip_ref / hip_vel 四个髋的目标角度（度）和目标角速度（度/秒）—— ESP32 自己用 PWM 做髋的位置环；
-          wheel_mode "vel" 速度环（速度 0 就是原地锁住）/ "free" 松开（站起来、趴下的过程中轮子要能自己滚）；wheel_w 四个轮子目标转速（rad/s，CAN 发给 GIM4310）
+          wheel_mode "vel" 速度环（速度 0 就是原地锁住）/ "free" 松开（站起来、趴下的过程中轮子要能自己滚）；wheel_w 四个轮子目标转速（rad/s，CAN 发给 GIM4310）；
+          light 机身的灯（见 lights()，交给灯珠驱动去画）
 指令和事件的格式见 protocol.py。只用 math，没有 numpy，方便翻成 C++。
 
 规矩都来自仿真（docs/机械狗007v/仿真报告.md）：
   - 最高 1.1 m/s（110 轮 + GIM4310-10）；横走 0.5、原地转 90°/秒
   - 加速 0.5 m/s²，刹车 1 m/s²，急停 4 m/s²（后轮还压着 2.6 kg，不会往前翻）
   - 站起来、趴下：髋 80°/秒，轮子接地前后 ±8° 放慢到 20°/秒（不然 25 kg 一下子被拽起来，髋冲到 17.8 N·m）
-  - 过门槛要慢到 0.3 m/s：大脑看到门槛发 limit
+  - 过门槛要慢到 0.3 m/s：台阶测距看到坎自己限速（大脑也可以发 limit）
+  - 台阶测距（前后各两个，往下斜 30° 看车外约 27 cm 的地面）：地面没了 → 4 m/s² 刹停并锁住那个方向；
+    1 m/s 时刹停要约 18 cm（含 50 ms 反应），来得及。左右没有台阶测距，所以横着走最快 0.2 m/s
 """
 import math
 import os
@@ -35,7 +39,7 @@ FOLD_DEG = 0.0                              # 趴平（2026-10-18 不再往上�
 TOUCH_DEG = math.degrees(math.asin((SKID_H - WHEEL_D / 2 + HIP_Z) / ARM))   # 轮子刚碰到地的摆臂角（约 -3.4°）
 
 # ---- 限制
-V_MAX, VY_MAX, WZ_MAX = 1.0, 0.5, math.radians(90)       # Φ97 麦轮 + GIM4310-10 带载约 1.0 m/s
+V_MAX, VY_MAX, WZ_MAX = 1.0, 0.2, math.radians(90)       # Φ97 麦轮 + GIM4310-10 带载约 1.0 m/s；横走 0.2（两边没有台阶测距）
 A_ACC, A_BRAKE, A_Y, A_W = 0.5, 1.0, 0.5, math.radians(180)
 A_ESTOP, ESTOP_RAMP = 4.0, 0.1                 # 急停减速度 0.1 秒内从 1 加到 4（一下子到 4，车会往前一栽，后轮瞬间失重）
 W_MAX = V_MAX / R                           # 轮子最快转速（rad/s）
@@ -43,13 +47,21 @@ DRIVE_TIMEOUT, LINK_TIMEOUT = 0.5, 2.0
 HIP_SPEED, HIP_ACC, HIP_SLOW, TOUCH_BAND = 30.0, 150.0, 15.0, 8.0   # 5840 减速比 505 ÷ 3 ≈ 30°/秒
 HIP_STALL_DEG, HIP_STALL_S = 15.0, 1.0
 MOVE_V, MOVE_A = 0.4, 0.4                   # move 默认最高速度、规划用的加减速度
-MOVE_VY, MOVE_WZ = 0.3, math.radians(60)
+MOVE_VY, MOVE_WZ = 0.2, math.radians(60)
 POS_TOL, ANG_TOL = 0.01, math.radians(1.0)
 BAT_LOW = 15
 # 载重估计：轮子总推力 F = m·a + b（b 是滚动阻力、坡），用加速、刹车时的样本拟合 m；m − 空载时的 m = 背上的重量
 M_EMPTY = 14.3                              # 空车估出来的“等效质量”（仿真里标的，含轮子转动惯量）。
 # 到货后标定：空车前后各走 1 米，状态里 load 应该是 0；不是 0 就把 M_EMPTY 加上这个数（显示 0 但背 5 kg 只显示 3 时，把 M_EMPTY 减 2）
 LOAD_MIN_N, LOAD_MIN_VAR, LOAD_RESET_S = 120, 0.02, 3.0
+# ---- 台阶测距（位置和 shell.step_sensors() 一致：前保险杠 y ±62、后格栅 y ±48，往下斜 30°）
+STEP_NAMES = ("front_left", "front_right", "rear_left", "rear_right")
+STEP_Z = (28.0, 28.0, 30.0, 30.0)           # 传感器离机身底多高（mm）
+STEP_SIN = math.sin(math.radians(30.0))
+CLIFF_MM, STEP_MM = 40.0, 30.0              # 比平地远 40 mm 算“地面没了”，近 30 mm 算“有坎”（都是沿着光线量的）
+STEP_V, STEP_SENSOR_V = 0.3, 0.2            # 有坎限速、测距板坏了限速
+CLIFF_CLEAR_S, STEP_HOLD_S = 0.3, 1.0       # 读数回到平地多久解锁；看不到坎以后限速再保持多久
+CHG_A = 0.3                                 # 往电池里流的电流超过这个算“在充电”
 
 
 def wrap(a):
@@ -109,7 +121,18 @@ class Controller:
         self.still_t = 0.0
         self.a_f = self.f_f = 0.0
         self._vx_prev = 0.0
-        self.out.append(dict(ev="hello", fw=FW, caps=["mecanum", "hip4", "odom", "load", "estop"]))
+        self.step = [None] * 4               # 台阶测距最新读数
+        self.step_cal = [0.0] * 4            # 标定：实际平地读数 − 几何算出来的
+        self.cliff = None                    # 地面没了锁住的方向
+        self.clear_t = 0.0
+        self.step_lim = self.sensor_lim = None
+        self.step_t = -9.0
+        self.hard_brake = False
+        self.chg = False
+        self.light_front, self.light_dim = 0, 100
+        self._vabs_prev = 0.0
+        self.braking = False
+        self.out.append(dict(ev="hello", fw=FW, caps=["mecanum", "hip4", "odom", "load", "estop", "step", "light"]))
 
     # ------------------------------------------------------------ 收指令
     def command(self, c: dict):
@@ -132,6 +155,17 @@ class Controller:
             return self._ack(cid, True)
         if k == "limit":
             self.limit = v["v"]
+            return self._ack(cid, True)
+        if k == "light":
+            self.light_front = int(v.get("front", self.light_front))
+            self.light_dim = int(v.get("dim", self.light_dim))
+            return self._ack(cid, True)
+        if k == "calib":
+            if self.state != "standing" or self._moving():
+                return self._ack(cid, False, "FOLDED" if self.state != "standing" else "MOVING")
+            if any(x is None or x < 0 for x in self.step):
+                return self._ack(cid, False, "NODATA")
+            self.step_cal = [self.step[i] - self._step_geo(i) for i in range(4)]
             return self._ack(cid, True)
         if k == "stop":
             self._cancel("STOPPED")
@@ -161,7 +195,7 @@ class Controller:
             vm = min(v.get("v", MOVE_V), V_MAX)
             dist = math.hypot(dx, dy)
             ang = abs(math.radians(v.get("dth", 0.0)))
-            t_est = dist / max(min(vm, self.limit or 9), 0.05) + ang / MOVE_WZ + 2.0
+            t_est = dist / max(min(vm, self.vlim() or 9), 0.05) + ang / MOVE_WZ + 2.0
             self.task = dict(id=cid, kind="move", goal=(gx, gy, th0 + math.radians(v.get("dth", 0.0))), v=vm,
                              deadline=self.now + 2 * t_est + 3)
             self.mode = "move"
@@ -190,9 +224,18 @@ class Controller:
             return "MOVING"
         return ""
 
+    def vlim(self):
+        """现在的限速：大脑发的 limit、看到坎、测距板坏了，取最小的。"""
+        lims = [x for x in (self.limit, self.step_lim, self.sensor_lim) if x]
+        return min(lims) if lims else None
+
     def _clamp(self, v):
-        vmax = min(V_MAX, self.limit or V_MAX)
+        vmax = min(V_MAX, self.vlim() or V_MAX)
         v = [max(-vmax, min(vmax, v[0])), max(-min(VY_MAX, vmax), min(min(VY_MAX, vmax), v[1])), max(-WZ_MAX, min(WZ_MAX, v[2]))]
+        if self.cliff == "front":                           # 地面没了的那个方向不许走
+            v[0] = min(0.0, v[0])
+        elif self.cliff == "rear":
+            v[0] = max(0.0, v[0])
         w = max(abs(x) for x in self.wheel_speeds(v, self.hip_ref))
         if w > W_MAX:                                       # 合起来某个轮子超速：整体按比例降
             v = [x * W_MAX / w for x in v]
@@ -248,6 +291,9 @@ class Controller:
         if self.vbat and bat_pct(self.vbat) < BAT_LOW and not self.bat_warned:
             self.bat_warned = True
             self._warn("BAT_LOW", f"电量 {bat_pct(self.vbat)}%")
+        self.chg = s.get("ibat", 0.0) > CHG_A
+        if "step" in s:
+            self._step_check(s["step"], hips, dt)
         # 各模式
         if self.mode == "drive" and self.now - self.drive_t > DRIVE_TIMEOUT:
             self.v_tgt = [0.0, 0.0, 0.0]                       # drive 断了：慢慢停
@@ -265,9 +311,12 @@ class Controller:
         self._load_step(s, dt)
         if self.mode == "stop" and not self._moving():
             self.mode = "idle"
+        vabs = abs(self.v_cmd[0])
+        self.braking = self.hard_brake or (vabs > 0.02 and vabs < self._vabs_prev - 1e-6)
+        self._vabs_prev = vabs
         out = dict(hip_ref=list(self.hip_ref), hip_vel=self.hip_vel,
                    wheel_mode="free" if self.state in ("unfolding", "folding") else "vel",
-                   wheel_w=self.wheel_speeds(self.v_cmd, hips))
+                   wheel_w=self.wheel_speeds(self.v_cmd, hips), light=self.lights())
         if self.n % STATUS_EVERY == 0:
             self.out.append(self.status(hips))
         return out
@@ -280,10 +329,14 @@ class Controller:
             if self.state == "estop":
                 k = min(1.0, (self.now - self.estop_t) / ESTOP_RAMP)
                 acc = dec = (A_BRAKE + (A_ESTOP - A_BRAKE) * k) if i < 2 else A_W * 4
+            if i == 0 and self.hard_brake:                     # 地面没了：前后方向按急停的减速度刹
+                dec = A_ESTOP
             cur, t = self.v_cmd[i], tgt[i]
             a = acc if (t * cur >= 0 and abs(t) > abs(cur)) else dec
             step = a * dt
             self.v_cmd[i] = cur + max(-step, min(step, t - cur))
+        if self.hard_brake and abs(self.v_cmd[0]) < 1e-6:
+            self.hard_brake = False
 
     def _move_step(self):
         """move：按剩下的距离算速度（快到了提前减速），在“现在的车身方向”上分解。"""
@@ -294,7 +347,7 @@ class Controller:
         ex = ex_w * math.cos(th) + ey_w * math.sin(th)
         ey = -ex_w * math.sin(th) + ey_w * math.cos(th)
         eth = wrap(gth - th)
-        vlim = min(t["v"], self.limit or V_MAX)
+        vlim = min(t["v"], self.vlim() or V_MAX)
 
         def prof(e, vmax, a, tol):
             if abs(e) < tol * 0.5:
@@ -346,6 +399,77 @@ class Controller:
             self.v_tgt = [0.0, 0.0, 0.0]
             self.mode = "idle"
             self.out.append(dict(ev="fault", code="HIP_STALL", text=f"髋关节跟不上（差 {err:.0f}°），停下"))
+
+    # ------------------------------------------------------------ 台阶测距
+    def _step_geo(self, i):
+        """站着时第 i 个测距“在平地上应该测到”多远（沿光线，mm）：机身底离地 = 轮子半径 + 摆臂下垂 − 髋离机身底的高度。"""
+        h = max(SKID_H, WHEEL_D / 2 + ARM * math.sin(math.radians(STANCE_DEG)) - HIP_Z)
+        return (h + STEP_Z[i]) / STEP_SIN
+
+    def _step_check(self, st, hips, dt):
+        self.step = list(st)
+        bad = [i for i in range(4) if st[i] is None]
+        if bad:
+            self.sensor_lim = STEP_SENSOR_V
+            self._warn_once("STEP_SENSOR", f"{STEP_NAMES[bad[0]]} 台阶测距没回应，限速 {STEP_SENSOR_V}", where=STEP_NAMES[bad[0]])
+        else:
+            self.sensor_lim = None
+        if self.state != "standing":                         # 趴着、站起来的过程中不看（机身高度在变）
+            self.cliff, self.step_lim = None, None
+            return
+        drop_any = False
+        for side, idx, sgn in (("front", (0, 1), 1), ("rear", (2, 3), -1)):
+            exp = {i: self._step_geo(i) + self.step_cal[i] for i in idx}
+            drop = any(st[i] == -1 or (st[i] is not None and st[i] - exp[i] > CLIFF_MM) for i in idx)
+            rise = max([exp[i] - st[i] for i in idx if st[i] is not None and st[i] >= 0] or [0.0])
+            toward = self.v_cmd[0] * sgn > 0.01 or self.v_tgt[0] * sgn > 0.01
+            if drop:
+                drop_any = True
+                self.clear_t = 0.0
+                if self.cliff != side:
+                    self.cliff = side
+                    if toward:                               # 正往那边走：急刹，取消正在做的 move
+                        self.hard_brake = True
+                        self.v_tgt[0] = 0.0
+                        if self.task and self.task["kind"] == "move":
+                            self._cancel("CLIFF")
+                            self.mode = "stop"
+                    self._warn("CLIFF", ("前" if side == "front" else "后") + "面地面没了，已刹车，只能往反方向走", where=side)
+            if rise > STEP_MM and toward:
+                if self.step_lim is None:
+                    h = round(rise * STEP_SIN)
+                    self._warn("STEP", ("前" if side == "front" else "后") + f"面有约 {h} mm 的坎，限速 {STEP_V}", where=side, h=h)
+                self.step_lim, self.step_t = STEP_V, self.now
+        if self.cliff and not drop_any:                      # 读数回到平地一阵：解锁
+            self.clear_t += dt
+            if self.clear_t >= CLIFF_CLEAR_S:
+                self.cliff = None
+        if self.step_lim and self.now - self.step_t > STEP_HOLD_S:
+            self.step_lim = None
+
+    # ------------------------------------------------------------ 灯（机身的灯都归底盘管，按状态自己亮）
+    def lights(self):
+        """给灯珠驱动的：腰线灯带 [效果, 颜色]、尾灯 [效果, 亮度 %]、电机端面光环 亮不亮、前白灯亮度 %、总亮度 %。
+        效果：solid 常亮 / breath 呼吸 / flash 快闪（急停、故障）/ blink 慢闪（倒车）。"""
+        bad = self.state in ("estop", "fault")
+        pct = bat_pct(self.vbat) if self.vbat else 100
+        if bad:
+            waist = ["flash", "red"]
+        elif self.chg:
+            waist = ["breath", "green"]
+        elif pct < 20:
+            waist = ["solid", "amber"]
+        else:
+            waist = ["solid", "cyan"]
+        if bad:
+            tail = ["flash", 100]
+        elif self.braking:
+            tail = ["solid", 100]
+        elif self.v_cmd[0] < -0.02:
+            tail = ["blink", 100]
+        else:
+            tail = ["solid", 30]
+        return dict(waist=waist, tail=tail, ring=not bad, front=self.light_front, dim=self.light_dim)
 
     # ------------------------------------------------------------ 载重估计
     def load_reset(self):
@@ -422,22 +546,24 @@ class Controller:
     def _done(self, cid, ok, why=""):
         self.out.append(dict(ev="done", id=cid, ok=ok, **({} if ok else {"why": why})))
 
-    def _warn(self, code, text):
-        self.out.append(dict(ev="warn", code=code, text=text))
+    def _warn(self, code, text, **kw):
+        self.out.append(dict(ev="warn", code=code, text=text, **kw))
 
-    def _warn_once(self, code, text):
+    def _warn_once(self, code, text, **kw):
         last = getattr(self, "_warn_t", {})
         if self.now - last.get(code, -9) > 1.0:
             last[code] = self.now
             self._warn_t = last
-            self._warn(code, text)
+            self._warn(code, text, **kw)
 
     def status(self, hips):
         return dict(ev="chassis", st=self.state, v=[round(x, 3) for x in self.v_meas],
                     odo=[round(self.odo[0], 3), round(self.odo[1], 3), round(math.degrees(self.odo[2]), 1)],
                     hip=[round(h, 1) for h in hips], bat=bat_pct(self.vbat) if self.vbat else None,
-                    vbat=round(self.vbat, 2) if self.vbat else None, lim=self.limit, load=self.load,
-                    busy=self.task["id"] if self.task else None)
+                    vbat=round(self.vbat, 2) if self.vbat else None, lim=self.vlim(), load=self.load,
+                    busy=self.task["id"] if self.task else None,
+                    step=[None if x is None else round(x) for x in self.step], cliff=self.cliff, chg=self.chg,
+                    light=dict(front=self.light_front, dim=self.light_dim))
 
     def take_events(self):
         out, self.out = self.out, []

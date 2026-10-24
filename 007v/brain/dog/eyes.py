@@ -112,8 +112,14 @@ class Eyes:
         self.send({"status": kw})
 
     def log(self, *lines: str):
-        """往屏幕的数据流里加几行（自动转成大写、去掉字体里没有的字符）。"""
-        self.send({"log": [hud.clean(s) for s in lines]})
+        """往屏幕的数据流里加几行。每行排成“时间  模块  内容”（第一个词当模块名，补齐 4 格），
+        像机器的运行日志；自动转成大写、去掉日志里不用的字符。"""
+        now = time.strftime("%H:%M:%S")
+        out = []
+        for s in lines:
+            mod, _, rest = str(s).partition(" ")
+            out.append(hud.clean(f"{now}  {mod:<4}  {rest}"))
+        self.send({"log": out})
 
 
 class SimEyes(Eyes):

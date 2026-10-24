@@ -26,7 +26,7 @@ STATE_CN = {"folded": "趴着（折叠）", "unfolding": "正在站起来", "sta
             "estop": "急停中", "fault": "故障停机"}
 WHY_CN = {"FOLDED": "我现在趴着", "MOVING": "我还在走", "ESTOP": "急停没解除", "FAULT": "底盘有故障", "BAD": "指令不对",
           "STOPPED": "被叫停了", "TIMEOUT": "超时没走到", "BUSY": "正在站起来或趴下", "NO_LINK": "底盘没连上",
-          "NO_CHASSIS": "没有接底盘"}
+          "NO_CHASSIS": "没有接底盘", "CLIFF": "前面地面没了，停下了", "NODATA": "台阶测距没有读数"}
 
 
 class Chassis:
@@ -169,7 +169,14 @@ class Chassis:
             out.append(Reading("base.battery", "电池电量", st["bat"], "%", source=src + "，按电压估算",
                                location="机身电池", confidence=conf or 0.0, max_age=60))
         if st.get("lim") is not None:
-            out.append(Reading("base.limit", "限速", st["lim"], "m/s", source="大脑设置", location="底盘", max_age=1e9))
+            out.append(Reading("base.limit", "限速", st["lim"], "m/s", source="大脑设置或底盘自己（看到坎、测距板坏了）",
+                               location="底盘", max_age=1e9))
+        if st.get("cliff"):
+            out.append(Reading("base.cliff", "地面没了（台阶 / 边沿）", "前面" if st["cliff"] == "front" else "后面",
+                               source=src + "，台阶测距", location="前保险杠、后格栅", confidence=conf or 0.0, max_age=5,
+                               note="那个方向锁住了，只能往反方向走"))
+        if st.get("chg"):
+            out.append(Reading("base.charging", "正在充电", "是", source=src + "，电池电流", location="机身电池", max_age=5))
         return out
 
 

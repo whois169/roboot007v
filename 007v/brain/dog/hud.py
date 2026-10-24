@@ -45,6 +45,7 @@ TOP, BOTTOM = 56, 384         # 中间区域（上下两条状态栏）
 LOG_MAX = 62                  # 数据流一行最多几个字
 LINE_H = 19                   # 数据流行高
 LOG_SIZE = 15                 # 数据流字号
+LOG_COL = (74, 122)           # 数据流三列：模块、内容离行首多远（像素）
 FLOW_MIN = 12.0               # 数据流最慢的流速（像素/秒）
 LOG_X = 30
 
@@ -80,17 +81,17 @@ UI = {"en": dict(LABEL, spd="SPD", load="LOAD", temp="TEMP", online="ONLINE", sw
 _E = dict(w=120, h=104, r=24, bright=0.85, fill=1, ret=0, cut=0, arc=0)
 STYLE = {
     "idle":    dict(_E, eyes=0, stream=1.0,  color=CYAN,  ov=None),
-    "wake":    dict(_E, bright=1.0, arc=1, eyes=1, stream=0.7, color=CYAN, ov="online"),
-    "listen":  dict(_E, bright=0.9, eyes=1, stream=0.7, color=CYAN, ov="bars"),
-    "think":   dict(_E, w=124, h=30, r=14, eyes=1, stream=0.7, color=CYAN, ov="think"),
-    "speak":   dict(_E, h=96, bright=0.9, eyes=1, stream=0.7, color=CYAN, ov="wave"),
-    "track":   dict(_E, w=110, h=110, r=22, bright=1.0, fill=0, ret=1, eyes=1, stream=0.7, color=CYAN, ov=None),
-    "scan":    dict(_E, eyes=0, stream=0.6, color=CYAN,  ov="scan"),
+    "wake":    dict(_E, bright=1.0, arc=1, eyes=1, stream=0.9, color=CYAN, ov="online"),
+    "listen":  dict(_E, bright=0.9, eyes=1, stream=0.9, color=CYAN, ov="bars"),
+    "think":   dict(_E, w=124, h=30, r=14, eyes=1, stream=0.9, color=CYAN, ov="think"),
+    "speak":   dict(_E, h=96, bright=0.9, eyes=1, stream=0.9, color=CYAN, ov="wave"),
+    "track":   dict(_E, w=110, h=110, r=22, bright=1.0, fill=0, ret=1, eyes=1, stream=0.9, color=CYAN, ov=None),
+    "scan":    dict(_E, eyes=0, stream=0.8, color=CYAN,  ov="scan"),
     "thermal": dict(_E, eyes=0, stream=0.0,  color=CYAN,  ov="thermal"),
-    "alert":   dict(_E, bright=1.0, cut=1, eyes=1, stream=0.55, color=AMBER, ov="alert"),
-    "error":   dict(_E, eyes=0, stream=0.5,  color=RED,   ov="error"),
+    "alert":   dict(_E, bright=1.0, cut=1, eyes=1, stream=0.8, color=AMBER, ov="alert"),
+    "error":   dict(_E, eyes=0, stream=0.7,  color=RED,   ov="error"),
     "sleep":   dict(_E, eyes=0, stream=0.0,  color=CYAN,  ov="sleep"),
-    "low_bat": dict(_E, eyes=0, stream=0.4, color=AMBER, ov="lowbat"),
+    "low_bat": dict(_E, eyes=0, stream=0.7, color=AMBER, ov="lowbat"),
 }
 FACES = {"normal": dict(cut=0, arc=0), "happy": dict(cut=0, arc=1), "angry": dict(cut=1, arc=0)}
 SHAPE = ("w", "h", "r", "bright", "fill", "ret", "cut", "arc", "stream")
@@ -541,9 +542,16 @@ class HudRenderer:
             col = mix(BG, SUB if ln is not last else TEXT, a)
             if ln is last:
                 g.fill_rect(LOG_X - 12, round(y) + 6, 5, 5, mix(BG, c, a))
-            w = g.text(LOG_X, round(y), shown, col, LOG_SIZE, "light", clip=(TOP, BOTTOM))
+            yy, clip = round(y), (TOP, BOTTOM)
+            if len(ln["s"]) > 16 and ln["s"][8:10] == "  ":           # “时间  模块  内容”：三列对齐，时间暗一点、模块用主色
+                g.text(LOG_X, yy, shown[:8], mix(BG, SUB, a * 0.7), LOG_SIZE, "light", clip=clip)
+                g.text(LOG_X + LOG_COL[0], yy, shown[10:14].strip(), mix(BG, c, a), LOG_SIZE, "regular", clip=clip)
+                x0, rest = LOG_X + LOG_COL[1], shown[16:]
+            else:
+                x0, rest = LOG_X, shown
+            w = g.text(x0, yy, rest, col, LOG_SIZE, "light", clip=clip) if rest else 0
             if ln["typed"] < len(ln["s"]) and int(self.now * 10) % 2 == 0:
-                g.fill_rect(LOG_X + w + 2, round(y) + 3, 7, LOG_SIZE - 3, col)   # 打字光标
+                g.fill_rect(x0 + w + 2, yy + 3, 7, LOG_SIZE - 3, col)   # 打字光标
 
     def _breath(self):
         if self.mode in ("idle", "wake", "listen", "track"):

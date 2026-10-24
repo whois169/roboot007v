@@ -9,22 +9,32 @@
   {"reset":true}                              清除急停 / 故障（急停按钮还按着时清不掉）
   {"limit":{"v":0.3}}                         限速（前面有门槛、人多的地方）；{"limit":{"v":null}} 取消
   {"hb":1}                                    心跳：大脑每 0.5 秒发一次；底盘 2 秒收不到任何一行就当断线，自己停下
+  {"calib":"step","id":9}                     台阶测距标定：站着、停稳、在平地上发一次，底盘记住现在的读数当"平地"
+  {"light":{"front":60}}                      前面白灯亮度 0–100（0 = 关）；{"light":{"dim":30}} 所有灯的总亮度（默认 100）。两个可以一起写
 
 底盘 → 大脑（都带 "ev"）：
   {"ev":"hello","fw":"0.1.0","caps":[...]}                  开机或重连时发一次
   {"ev":"chassis","st":"standing","v":[0.40,0,0],"odo":[1.23,0.01,2.0],"hip":[55,55,55,55],
-   "bat":87,"vbat":24.1,"lim":null,"load":6.5,"busy":7}       每 0.1 秒一次（同时当心跳）。v 实测速度；odo 里程 [x m, y m, 朝向 度]；
-                                                              load 估出来的背上载重 kg（还没估出来是 null）；busy 正在做的 move / pose 的 id
+   "bat":87,"vbat":24.1,"lim":null,"load":6.5,"busy":7,
+   "step":[812,806,795,801],"cliff":null,"chg":false,"light":{"front":0,"dim":100}}
+                                                              每 0.1 秒一次（同时当心跳）。v 实测速度；odo 里程 [x m, y m, 朝向 度]；
+                                                              load 估出来的背上载重 kg（还没估出来是 null）；busy 正在做的 move / pose 的 id；
+                                                              step 台阶测距（前左 前右 后左 后右，mm；-1 = 测不到地面，null = 测距板没回应）；
+                                                              cliff 因为地面没了锁住的方向 "front" / "rear" / null；chg 正在充电
   {"ev":"ack","id":7,"ok":true}                               收到带 id 的指令；ok=false 时带 why（FOLDED / MOVING / ESTOP / FAULT / BAD）
-  {"ev":"done","id":7,"ok":true}                              move / pose 做完；ok=false 时带 why（STOPPED 被取消 / TIMEOUT / ESTOP / FAULT）
+  {"ev":"done","id":7,"ok":true}                              move / pose 做完；ok=false 时带 why（STOPPED 被取消 / TIMEOUT / ESTOP / FAULT / CLIFF 地面没了）
   {"ev":"warn","code":"LINK_LOST","text":"..."}               提醒：LINK_LOST 断线自己停了 / FOLDED 趴着不能走 / BAT_LOW 电量低 / LIMIT 被限速
+  {"ev":"warn","code":"CLIFF","where":"front","text":"..."}   地面没了：已经刹车，那个方向锁住（只能往反方向走），读数回到平地 0.3 秒后自动解锁
+  {"ev":"warn","code":"STEP","where":"front","h":15,"text":"..."}   前面有坎（h 估算高度 mm），自动限速 0.3
+  {"ev":"warn","code":"STEP_SENSOR","where":"rear_left","text":"..."}   台阶测距板没回应，限速 0.2
   {"ev":"fault","code":"HIP_STALL","text":"..."}              故障，停下不动，要 reset：ESTOP_BTN 急停按钮 / HIP_STALL 髋卡住 / WHEEL_LOST 轮子电机没回应
 """
 
 STATES = ("folded", "unfolding", "standing", "folding", "estop", "fault")
 POSES = ("stand", "fold")
-WHY = ("FOLDED", "MOVING", "ESTOP", "FAULT", "BAD", "STOPPED", "TIMEOUT", "BUSY")
-WARNS = ("LINK_LOST", "FOLDED", "BAT_LOW", "LIMIT")
+WHY = ("FOLDED", "MOVING", "ESTOP", "FAULT", "BAD", "STOPPED", "TIMEOUT", "BUSY", "CLIFF", "NODATA")
+WARNS = ("LINK_LOST", "FOLDED", "BAT_LOW", "LIMIT", "CLIFF", "STEP", "STEP_SENSOR")
+WHERE = ("front", "rear", "front_left", "front_right", "rear_left", "rear_right")
 FAULTS = ("ESTOP_BTN", "ESTOP_CMD", "HIP_STALL", "WHEEL_LOST")
 LIMITS = dict(dx=5.0, dy=2.0, dth=360.0, v=1.1)          # move 一次最多走多远、转多少
 
@@ -62,6 +72,12 @@ def check_cmd(c) -> str:
     elif k == "limit":
         if not (isinstance(v, dict) and set(v) == {"v"} and (v["v"] is None or _num(v["v"], 0.05, 1.1))):
             return "limit 写 {\"v\": 0.05–1.1 或 null}"
+    elif k == "calib":
+        if v != "step":
+            return "calib 只能是 \"step\""
+    elif k == "light":
+        if not (isinstance(v, dict) and v and not set(v) - {"front", "dim"} and all(_num(x, 0, 100) for x in v.values())):
+            return "light 写 {\"front\": 0–100, \"dim\": 0–100}（写一个或两个）"
     else:
         return f"不认识的指令：{k}"
     return ""
@@ -83,6 +99,10 @@ def check_event(e) -> str:
         for a in ("bat", "vbat", "lim", "load", "busy"):
             if e.get(a) is not None and not _num(e[a], -1e6, 1e9):
                 return f"{a} 要是数字或 null"
+        if "step" in e and not (isinstance(e["step"], list) and len(e["step"]) == 4 and all(x is None or _num(x, -1, 1e5) for x in e["step"])):
+            return "step 要是 4 个数（或 null）"
+        if e.get("cliff") not in (None, "front", "rear"):
+            return "cliff 只能是 front / rear / null"
         return ""
     if k in ("ack", "done"):
         if not isinstance(e.get("id"), int) or not isinstance(e.get("ok"), bool):
@@ -91,7 +111,11 @@ def check_event(e) -> str:
             return f"why 只能是 {WHY}"
         return ""
     if k == "warn":
-        return "" if e.get("code") in WARNS else f"warn 的 code 只能是 {WARNS}"
+        if e.get("code") not in WARNS:
+            return f"warn 的 code 只能是 {WARNS}"
+        if e["code"] in ("CLIFF", "STEP", "STEP_SENSOR") and e.get("where") not in WHERE:
+            return f"{e['code']} 要写 where（{WHERE}）"
+        return ""
     if k == "fault":
         return "" if e.get("code") in FAULTS else f"fault 的 code 只能是 {FAULTS}"
     return f"不认识的事件：{k!r}"
