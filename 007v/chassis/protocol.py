@@ -10,6 +10,7 @@
   {"limit":{"v":0.3}}                         限速（前面有门槛、人多的地方）；{"limit":{"v":null}} 取消
   {"hb":1}                                    心跳：大脑每 0.5 秒发一次；底盘 2 秒收不到任何一行就当断线，自己停下
   {"calib":"step","id":9}                     台阶测距标定：站着、停稳、在平地上发一次，底盘记住现在的读数当"平地"
+  {"calib":"hip","id":10}                     髋角度零点标定：趴平、停稳时发一次，底盘把 4 个 AS5600 现在的读数记成 0°（存进 Flash，只在装好以后做一次）
   {"light":{"front":60}}                      前面白灯亮度 0–100（0 = 关）；{"light":{"dim":30}} 所有灯的总亮度（默认 100）。两个可以一起写
 
 底盘 → 大脑（都带 "ev"）：
@@ -27,15 +28,17 @@
   {"ev":"warn","code":"CLIFF","where":"front","text":"..."}   地面没了：已经刹车，那个方向锁住（只能往反方向走），读数回到平地 0.3 秒后自动解锁
   {"ev":"warn","code":"STEP","where":"front","h":15,"text":"..."}   前面有坎（h 估算高度 mm），自动限速 0.3
   {"ev":"warn","code":"STEP_SENSOR","where":"rear_left","text":"..."}   台阶测距板没回应，限速 0.2
-  {"ev":"fault","code":"HIP_STALL","text":"..."}              故障，停下不动，要 reset：ESTOP_BTN 急停按钮 / HIP_STALL 髋卡住 / WHEEL_LOST 轮子电机没回应
+  {"ev":"fault","code":"HIP_STALL","text":"..."}              故障，停下不动，要 reset：ESTOP_BTN 急停按钮 / HIP_STALL 髋卡住 / WHEEL_LOST 轮子电机没回应 /
+                                                              WHEEL_FAULT 轮子驱动报故障（电压、电流、温度、编码器）
+  {"ev":"warn","code":"HW_CHECK","text":"..."}                开机自检发现的问题（髋角度没标定、少了测距板……），不影响别的功能
 """
 
 STATES = ("folded", "unfolding", "standing", "folding", "estop", "fault")
 POSES = ("stand", "fold")
-WHY = ("FOLDED", "MOVING", "ESTOP", "FAULT", "BAD", "STOPPED", "TIMEOUT", "BUSY", "CLIFF", "NODATA")
-WARNS = ("LINK_LOST", "FOLDED", "BAT_LOW", "LIMIT", "CLIFF", "STEP", "STEP_SENSOR")
+WHY = ("FOLDED", "MOVING", "ESTOP", "FAULT", "BAD", "STOPPED", "TIMEOUT", "BUSY", "CLIFF", "NODATA", "NOT_FOLDED")
+WARNS = ("LINK_LOST", "FOLDED", "BAT_LOW", "LIMIT", "CLIFF", "STEP", "STEP_SENSOR", "HW_CHECK")
 WHERE = ("front", "rear", "front_left", "front_right", "rear_left", "rear_right")
-FAULTS = ("ESTOP_BTN", "ESTOP_CMD", "HIP_STALL", "WHEEL_LOST")
+FAULTS = ("ESTOP_BTN", "ESTOP_CMD", "HIP_STALL", "WHEEL_LOST", "WHEEL_FAULT")
 LIMITS = dict(dx=5.0, dy=2.0, dth=360.0, v=1.1)          # move 一次最多走多远、转多少
 
 
@@ -73,8 +76,8 @@ def check_cmd(c) -> str:
         if not (isinstance(v, dict) and set(v) == {"v"} and (v["v"] is None or _num(v["v"], 0.05, 1.1))):
             return "limit 写 {\"v\": 0.05–1.1 或 null}"
     elif k == "calib":
-        if v != "step":
-            return "calib 只能是 \"step\""
+        if v not in ("step", "hip"):
+            return "calib 只能是 \"step\" 或 \"hip\""
     elif k == "light":
         if not (isinstance(v, dict) and v and not set(v) - {"front", "dim"} and all(_num(x, 0, 100) for x in v.values())):
             return "light 写 {\"front\": 0–100, \"dim\": 0–100}（写一个或两个）"

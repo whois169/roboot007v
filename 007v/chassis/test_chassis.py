@@ -84,7 +84,7 @@ def t_protocol():
             {"calib": "step", "id": 2}, {"light": {"front": 60}}, {"light": {"front": 0, "dim": 30}}]
     bad = [{"drive": [2, 0, 0]}, {"drive": [0.1, 0]}, {"move": {"dx": 9}}, {"move": {"dz": 1}}, {"pose": "sit"},
            {"stop": True, "drive": [0, 0, 0]}, {"fly": True}, {"limit": {"v": 3}}, {"pose": "stand", "id": -1}, [1],
-           {"calib": "hip"}, {"light": {"front": 120}}, {"light": {"rgb": 1}}, {"light": {}}]
+           {"calib": "wheel"}, {"light": {"front": 120}}, {"light": {"rgb": 1}}, {"light": {}}]
     check("合法指令都通过", all(protocol.check_cmd(c) == "" for c in good))
     check("不合法指令都被拦下", all(protocol.check_cmd(c) for c in bad))
     c = Controller([STANCE_DEG] * 4)
@@ -310,11 +310,35 @@ def t_step():
         d.cmd({"drive": [0, 0.5, 0]})
         d.run(0.2)
     check("横着走最快 0.2（两边没有台阶测距）", abs(d.speed()[1]) < 0.21, f"{d.speed()[1]:.2f} m/s")
+    d.cmd({"calib": "hip", "id": 31})
+    d.run(0.1)
+    check("站着时标定髋零点：拒绝（要趴平）", bool(d.events("ack", id=31, ok=False, why="NOT_FOLDED")))
     d.vc.broken = None
     d.run(1.5)                                                  # 等车停稳
     d.cmd({"calib": "step", "id": 30})
     d.run(0.1)
     check("停稳时标定台阶测距：成功", bool(d.events("ack", id=30, ok=True)))
+
+
+def t_hw_fault():
+    section("硬件层报的故障：轮子电机没回应")
+    b = Bench()
+    b.run(0.3)
+    b.cmd({"move": {"dx": 1.0}, "id": 40})
+    b.run(0.5)
+    b.vc.ctl.external_fault("WHEEL_LOST", "前左轮子电机 100 ms 没回应")
+    b.run(1.5)
+    check("走到一半轮子没回应：报 WHEEL_LOST、move 失败、停下", bool(b.events("fault", code="WHEEL_LOST"))
+          and bool(b.events("done", id=40, ok=False, why="FAULT")) and abs(b.speed()[0]) < 0.02, f"{b.speed()[0]:.2f} m/s")
+    b.cmd({"reset": True})
+    b.cmd({"move": {"dx": 0.2}, "id": 41})
+    b.until(lambda: b.events("done", id=41), 6)
+    check("reset 以后能接着走", bool(b.events("done", id=41, ok=True)))
+    f = Bench(folded=True)
+    f.run(0.3)
+    f.cmd({"calib": "hip", "id": 42})
+    f.run(0.1)
+    check("趴平时标定髋零点：接受", bool(f.events("ack", id=42, ok=True)) and f.vc.ctl.calib_hip_req)
 
 
 def t_light():
@@ -349,7 +373,7 @@ def t_light():
 
 def main():
     t0 = time.time()
-    for t in (t_protocol, t_stand_fold, t_move, t_drive, t_estop, t_stall, t_load_empty, t_step, t_light):
+    for t in (t_protocol, t_stand_fold, t_move, t_drive, t_estop, t_stall, t_load_empty, t_step, t_hw_fault, t_light):
         t()
     n = len(RESULTS)
     print(f"\n共 {n} 项，通过 {sum(RESULTS)} 项，失败 {n - sum(RESULTS)} 项，用时 {time.time() - t0:.0f} 秒")

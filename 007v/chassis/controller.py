@@ -62,6 +62,8 @@ CLIFF_MM, STEP_MM = 40.0, 30.0              # 比平地远 40 mm 算“地面没
 STEP_V, STEP_SENSOR_V = 0.3, 0.2            # 有坎限速、测距板坏了限速
 CLIFF_CLEAR_S, STEP_HOLD_S = 0.3, 1.0       # 读数回到平地多久解锁；看不到坎以后限速再保持多久
 CHG_A = 0.3                                 # 往电池里流的电流超过这个算“在充电”
+BRAKE_A = 0.05                              # 减速度超过这个（m/s²）、速度又超过 0.0213 m/s，尾灯才按“刹车”全亮；0.0213 故意不取整数：刹车每步减 0.005，整数门槛会被正好碰上
+EPS_T = 1e-4                                # 计时比较的余量：C++ 用单精度累加时间，正好卡在阈值上时和 Python 差一拍
 
 
 def wrap(a):
@@ -132,6 +134,7 @@ class Controller:
         self.light_front, self.light_dim = 0, 100
         self._vabs_prev = 0.0
         self.braking = False
+        self.calib_hip_req = False           # 收到合法的 calib hip（真车上主程序去存零点）
         self.out.append(dict(ev="hello", fw=FW, caps=["mecanum", "hip4", "odom", "load", "estop", "step", "light"]))
 
     # ------------------------------------------------------------ 收指令
@@ -159,6 +162,11 @@ class Controller:
         if k == "light":
             self.light_front = int(v.get("front", self.light_front))
             self.light_dim = int(v.get("dim", self.light_dim))
+            return self._ack(cid, True)
+        if k == "calib" and v == "hip":                     # 髋角度零点：真车上由固件存 AS5600 读数；这里只检查能不能做
+            if self.state != "folded" or self._moving():
+                return self._ack(cid, False, "NOT_FOLDED" if self.state != "folded" else "MOVING")
+            self.calib_hip_req = True
             return self._ack(cid, True)
         if k == "calib":
             if self.state != "standing" or self._moving():
@@ -312,7 +320,7 @@ class Controller:
         if self.mode == "stop" and not self._moving():
             self.mode = "idle"
         vabs = abs(self.v_cmd[0])
-        self.braking = self.hard_brake or (vabs > 0.02 and vabs < self._vabs_prev - 1e-6)
+        self.braking = self.hard_brake or (vabs > 0.0213 and vabs < self._vabs_prev - BRAKE_A * dt)
         self._vabs_prev = vabs
         out = dict(hip_ref=list(self.hip_ref), hip_vel=self.hip_vel,
                    wheel_mode="free" if self.state in ("unfolding", "folding") else "vel",
@@ -442,7 +450,7 @@ class Controller:
                 self.step_lim, self.step_t = STEP_V, self.now
         if self.cliff and not drop_any:                      # 读数回到平地一阵：解锁
             self.clear_t += dt
-            if self.clear_t >= CLIFF_CLEAR_S:
+            if self.clear_t >= CLIFF_CLEAR_S - EPS_T:
                 self.cliff = None
         if self.step_lim and self.now - self.step_t > STEP_HOLD_S:
             self.step_lim = None
@@ -465,11 +473,23 @@ class Controller:
             tail = ["flash", 100]
         elif self.braking:
             tail = ["solid", 100]
-        elif self.v_cmd[0] < -0.02:
+        elif self.v_cmd[0] < -0.0213:
             tail = ["blink", 100]
         else:
             tail = ["solid", 30]
         return dict(waist=waist, tail=tail, ring=not bad, front=self.light_front, dim=self.light_dim)
+
+    def external_fault(self, code, text):
+        """硬件层发现的故障（轮子电机没回应 WHEEL_LOST、驱动报故障 WHEEL_FAULT）：和髋卡住一样停下，要 reset。"""
+        if self.fault:
+            return
+        self.fault = code
+        self.state = "fault"
+        self._cancel("FAULT")
+        self.hip_vel = 0.0
+        self.v_tgt = [0.0, 0.0, 0.0]
+        self.mode = "idle"
+        self.out.append(dict(ev="fault", code=code, text=text))
 
     # ------------------------------------------------------------ 载重估计
     def load_reset(self):
