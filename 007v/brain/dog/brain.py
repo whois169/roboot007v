@@ -88,7 +88,7 @@ class Brain:
         log.info("语音合成：%s", self.voice.name)
         weather_job = asyncio.create_task(self.weather.start()) if self.weather else None   # 和下面的加载一起进行
         await self.eyes.start()
-        self.eyes.send({"lang": self.cfg.get("eyes", {}).get("lang", "cn")})   # 屏幕界面文字：cn 中文 / en 英文
+        self.eyes.send({"lang": self.cfg.get("eyes", {}).get("lang", "en")})   # 屏幕界面文字：en 英文（默认）/ cn 中文
         th = self.cfg.get("thermal", {})
         if th.get("hz", 1):
             self.eyes.send_thermal({"hz": th.get("hz", 1)})       # 让头部每秒发热画面过来
