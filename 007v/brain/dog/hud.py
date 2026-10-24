@@ -80,11 +80,11 @@ UI = {"en": dict(LABEL, spd="SPD", load="LOAD", temp="TEMP", online="ONLINE", sw
 _E = dict(w=120, h=104, r=24, bright=0.85, fill=1, ret=0, cut=0, arc=0)
 STYLE = {
     "idle":    dict(_E, eyes=0, stream=1.0,  color=CYAN,  ov=None),
-    "wake":    dict(_E, bright=1.0, arc=1, eyes=1, stream=0.4, color=CYAN, ov="online"),
-    "listen":  dict(_E, bright=0.9, eyes=1, stream=0.4, color=CYAN, ov="bars"),
-    "think":   dict(_E, w=124, h=30, r=14, eyes=1, stream=0.45, color=CYAN, ov="think"),
-    "speak":   dict(_E, h=96, bright=0.9, eyes=1, stream=0.4, color=CYAN, ov="wave"),
-    "track":   dict(_E, w=110, h=110, r=22, bright=1.0, fill=0, ret=1, eyes=1, stream=0.4, color=CYAN, ov=None),
+    "wake":    dict(_E, bright=1.0, arc=1, eyes=1, stream=0.7, color=CYAN, ov="online"),
+    "listen":  dict(_E, bright=0.9, eyes=1, stream=0.7, color=CYAN, ov="bars"),
+    "think":   dict(_E, w=124, h=30, r=14, eyes=1, stream=0.7, color=CYAN, ov="think"),
+    "speak":   dict(_E, h=96, bright=0.9, eyes=1, stream=0.7, color=CYAN, ov="wave"),
+    "track":   dict(_E, w=110, h=110, r=22, bright=1.0, fill=0, ret=1, eyes=1, stream=0.7, color=CYAN, ov=None),
     "scan":    dict(_E, eyes=0, stream=0.6, color=CYAN,  ov="scan"),
     "thermal": dict(_E, eyes=0, stream=0.0,  color=CYAN,  ov="thermal"),
     "alert":   dict(_E, bright=1.0, cut=1, eyes=1, stream=0.55, color=AMBER, ov="alert"),
@@ -534,7 +534,7 @@ class HudRenderer:
         for ln in self.lines:
             y = ln["y"]
             height = max(0.0, min(1.0, (y - TOP) / span))           # 0 = 顶上，1 = 底下
-            a = (0.12 + 0.7 * height ** 1.4) * vis
+            a = (0.28 + 0.6 * height ** 1.2) * vis                  # 顶上的也看得清，有眼睛时也不会糊成一片
             if ln is last:
                 a = 0.95 * vis
             shown = ln["s"][:int(ln["typed"])]
