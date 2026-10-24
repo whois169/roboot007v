@@ -1,7 +1,7 @@
 """不开窗口，把 HUD 每个状态跑一遍：每个状态截图 + 一张总览图 + 一段演示 GIF。
 
-用法：python scripts/hud_capture.py
-输出：data/hud_shots/  （每个状态的 PNG、overview.png、demo.gif）
+用法：python scripts/hud_capture.py [en|cn]      （界面文字用英文还是中文，默认英文）
+输出：data/hud_shots/（英文）或 data/hud_shots_cn/（中文）：每个状态的 PNG、overview.png、demo.gif
 
 演示里的日志行是照着大脑真实会推的格式写的示例。
 """
@@ -18,7 +18,8 @@ from dog import hud, thermal  # noqa: E402
 
 SCALE = 1
 GIF_SCALE = 0.5               # 演示 GIF 缩小一半，文件小一点
-OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "hud_shots")
+LANG = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] in ("en", "cn") else "en"
+OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "hud_shots" + ("_cn" if LANG == "cn" else ""))
 FPS = 30
 TELE = ["T22.1* H55* SND -52DB", "FACE {f} MOT 0.0{m}", "10:32:{ss:02d} UP 12M STATE {st}"]   # 和大脑每秒推的读数同一个格式
 BOOT = ["BOOT 007V BRAIN", "TTS QWEN3 OK", "CAM OK FACE YUNET", "KWS OK ASR SENSEVOICE",
@@ -35,8 +36,8 @@ SEQ = [
     ("idle", 3.0, {}, ["EVT PERSON OUT"], [(0.25, "dissolve")]),
     ("scan", 3.0, {}, ["SCAN ZONE 1/4"], [(2.0, "scan")]),
     ("thermal", 3.0, {}, [], [(2.0, "thermal")]),
-    ("alert", 2.5, {"text": "DOOR OPEN"}, ["ALERT DOOR 2 OPEN"], [(1.8, "alert")]),
-    ("error", 2.5, {"text": "E-NET"}, ["LLM ERR NET TIMEOUT"], [(1.8, "error")]),
+    ("alert", 2.5, {"text": "门开着" if LANG == "cn" else "DOOR OPEN"}, ["ALERT DOOR 2 OPEN"], [(1.8, "alert")]),
+    ("error", 2.5, {"text": "网络断了" if LANG == "cn" else "E-NET"}, ["LLM ERR NET TIMEOUT"], [(1.8, "error")]),
     ("low_bat", 2.5, {}, ["BAT 8% RETURN TO DOCK"], [(1.8, "low_bat")]),
     ("sleep", 3.0, {}, [], [(2.0, "sleep")]),
 ]
@@ -51,6 +52,7 @@ def main():
     r = hud.HudRenderer(hud.Gfx(surf), now=0.0, seed=7)
     send = lambda cmd: r.apply(json.loads(json.dumps(cmd)))      # 和串口一样：先变成一行 JSON 再解析
     send({"status": {"temp": 22.1, "sim": True, "bat": 87, "spd": 0.0, "load": 6.5}})
+    send({"lang": LANG})
     scene = thermal.FakeScene(seed=3)                            # 热成像用模拟器的假房间
     t, frames, shots = 0.0, [], []
     last_sec, tele_n = -1, 0

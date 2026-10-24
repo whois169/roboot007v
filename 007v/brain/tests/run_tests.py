@@ -125,8 +125,10 @@ def test_hud():
     check("合法指令通过", all(hud.check(c) == "" for c in good))
     bad = [{"mode": "happy"}, {"gaze": [1]}, {"level": 3}, {"foo": 1}, {"log": "X" * 99}]
     check("不合法指令被拦下", all(hud.check(c) for c in bad))
-    check("两套字体字形都完整", all(len(g) == 7 and all(len(r) == 5 for r in g) for g in hud.GLYPHS.values())
-          and all(len(g) == 5 and all(len(r) == 4 for r in g) for g in hud.SMALL.values()))
+    gf = hud.Gfx(pygame.Surface((hud.W, hud.H)))
+    check("西文、中文字体都找得到", gf.measure("LISTEN 22.1", 20) > 40 and gf.measure("聆听", 20) > 20)
+    check("中文提示文字能写", hud.check({"text": "门开着", "lang": "cn"}) == "" and hud.check({"lang": "jp"}) != "")
+    check("数据流只留日志字符", hud.clean("face 1 mot 0.03 你好") == "FACE 1 MOT 0.03   ")
     r = hud.HudRenderer(hud.Gfx(pygame.Surface((hud.W, hud.H))), now=0.0, seed=1)
     t, err = 0.0, ""
     try:
