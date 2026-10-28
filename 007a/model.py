@@ -20,7 +20,7 @@ OUT = os.path.join(HERE, "out", "parts")
 V = cq.Vector
 
 # ================================================================ 尺寸
-BODY_L, BODY_W, BODY_H = 480.0, 260.0, 160.0          # v11：机身高 185 → 160（底不动，顶往下压 25）
+BODY_L, BODY_W, BODY_H = 480.0, 260.0, 140.0          # v12：机身高 185 → 160 → 140
 L2, W2 = BODY_L / 2, BODY_W / 2
 HIP_X = 160.0                                   # 髋往后收：头要在最前面（v2，用户：腿不能超过头）
 MOTOR_D = 92.0                                   # 关节电机（GIM8108-8 级别）
@@ -33,8 +33,8 @@ S = L1 / math.dist(H0, K0)
 LS = math.dist(K0, T0) * S                       # 小腿（膝 → 脚尖）
 STAND_KNEE = 90.0
 HIP_Z = math.sqrt(L1 ** 2 + LS ** 2 - 2 * L1 * LS * math.cos(math.radians(STAND_KNEE)))
-Z0 = HIP_Z - 80.0                                # 机身底离地（髋在下层底盘上方）
-TUB_TOP, WAIST_TOP = Z0 + 46, Z0 + 60            # 下层底盘顶、黑腰顶（上层外壳 125 高）
+Z0 = HIP_Z - 72.0                                # 机身底离地（v12：髋在机身高度一半附近）
+TUB_TOP, WAIST_TOP = Z0 + 40, Z0 + 50            # 下层底盘顶、黑腰顶（v12：上层外壳 90 高）
 TOP = Z0 + BODY_H
 HUB_SK = [(-35, -33), (28, -33), (33, 38), (-4, 49), (-47, 8)]
 RK = 17.0                                        # 大腿膝那头的圆头半径
@@ -244,7 +244,7 @@ def leg_parts(fx, sy):
 #   切角：所有斜面都是 45°；大斜面 24（机身前后上下）、中斜面 18（头的上沿和下巴、下层底盘）、俯视转角 10；所有外棱倒 1.5
 #   线：  头的正面上下沿 = 两边斜槽的外沿；灯条、字样、检修板都在两条分缝（x = ±120）之间居中
 #   接缝：头四周留 4 mm 的影线缝（屏幕抬头低头要的间隙，不是装饰）
-CH_BIG, CH_MID, CH_PLAN, EDGE = 24.0, 18.0, 10.0, 1.5
+CH_BIG, CH_MID, CH_PLAN, EDGE = 18.0, 18.0, 10.0, 1.5
 SEAM_X = 120.0
 
 
@@ -271,16 +271,16 @@ def body_parts():
         tub = tub.cut(box(x - SEAM / 2, x + SEAM / 2, -W2, W2, Z0 - 1, TUB_TOP + 1))
     for sy in (1, -1):                                             # 侧面检修板（凹 1.5 + 四颗螺栓）
         y = sy * (W2 - 6)
-        tub = tub.cut(box(-90, 90, *sorted((y, y - sy * 1.5)), Z0 + 10, TUB_TOP - 8))
+        tub = tub.cut(box(-90, 90, *sorted((y, y - sy * 1.5)), Z0 + 17, TUB_TOP - 3))
     P.append(("下层底盘", tub, "shell"))
     for sy in (1, -1):
-        for x, z in ((-82, Z0 + 15), (82, Z0 + 15), (-82, TUB_TOP - 13), (82, TUB_TOP - 13)):
+        for x, z in ((-82, Z0 + 21), (82, Z0 + 21), (-82, TUB_TOP - 7), (82, TUB_TOP - 7)):
             P.append((f"检修板螺栓{sy}{x}{z:.0f}", cyl_y(x, z, 5, *sorted((sy * (W2 - 7.5), sy * (W2 - 6.5)))), "metal"))
     # ---- 黑腰：凹进去一圈 + 两侧青色灯条 + 前后端头
     waist = box(-L2 + 8, L2 - 8, -W2 + 10, W2 - 10, TUB_TOP, WAIST_TOP)
     P.append(("黑腰", waist, "skel_dk"))
     for sy in (1, -1):
-        P.append((f"腰线灯{sy}", box(-SEAM_X + 14, SEAM_X - 14, *sorted((sy * (W2 - 10), sy * (W2 - 9.4))), TUB_TOP + 5.5, WAIST_TOP - 5.5), "cyan"))
+        P.append((f"腰线灯{sy}", box(-SEAM_X + 14, SEAM_X - 14, *sorted((sy * (W2 - 10), sy * (W2 - 9.4))), TUB_TOP + 3, WAIST_TOP - 3), "cyan"))
     # ---- 上层甲板壳：前后大斜面（007v 那种往回收的装甲板），左右在 x=±120 分缝
     c = CH_BIG
     slab_prof = [(-L2 - 4 + c, WAIST_TOP), (L2 + 4 - c, WAIST_TOP), (L2 + 4, WAIST_TOP + c), (L2 + 4, TOP - c), (L2 + 4 - c, TOP),
@@ -293,7 +293,7 @@ def body_parts():
     # 前脸：屏幕窗 + 两边各两道凹槽（照用户的前脸图）
     sw, sh = 124.0, 64.0                                           # 4.3 寸屏露出来的部分
     zc = WAIST_TOP + (TOP - WAIST_TOP) / 2 - 2
-    HW, HH, HD = sw + 26, sh + 24, 30.0                              # 头：往前凸出的屏幕模块（宽、高、伸出来多少）
+    HW, HH, HD = sw + 26, sh + 16, 30.0                              # 头：往前凸出的屏幕模块（宽、高、伸出来多少）
     grooves = []
     for sy in (1, -1):                                             # 两边各两道平行斜槽（45°，和机身切角统一）
         y_in, y_end = sy * (HW / 2 + 12), sy * (W2 - 14)
@@ -353,7 +353,7 @@ def body_parts():
         P.append((f"头转轴盖{sy}", soft(cyl_y(hx0 + 6, zc, 20, *sorted((sy * (HW / 2 + 6), sy * (HW / 2 + 9)))), 0.8), "metal"))
         P.append((f"头转轴光环{sy}", ring_y(hx0 + 6, zc, 28, 23, *sorted((sy * (HW / 2 + 6), sy * (HW / 2 + 6.6)))), "cyan"))
     # 激光雷达：人面对它看的左上角（= 机器人自己的右边，-y），照用户的前脸图
-    lx, ly = L2 - 46, -(W2 - 40)
+    lx, ly = L2 - 46, -(W2 - 50)
     P.append(("雷达座", soft(plan_chamfer(box(lx - 26, lx + 26, ly - 26, ly + 26, TOP, TOP + 10)), 1.0), "skel_dk"))
     P.append(("雷达", soft(cq.Solid.makeCylinder(20, 26, V(lx, ly, TOP + 10)), 1.5), "skel_dk"))
     P.append(("雷达窗", cq.Solid.makeCylinder(20.4, 8, V(lx, ly, TOP + 18)).cut(cq.Solid.makeCylinder(19, 8, V(lx, ly, TOP + 18))), "glass"))
