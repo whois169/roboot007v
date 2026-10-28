@@ -38,7 +38,8 @@ TUB_TOP, WAIST_TOP = Z0 + 46, Z0 + 60            # 下层底盘顶、黑腰顶�
 TOP = Z0 + BODY_H
 HUB_SK = [(-35, -33), (28, -33), (33, 38), (-4, 49), (-47, 8)]
 RK = 17.0                                        # 大腿膝那头的圆头半径
-RH = MOTOR_D / 2 + 7.0                           # v4：髋关节外壳半径（Φ106，只比电机大一圈）
+HEX_A = MOTOR_D / 2 + 7.0                        # v5：髋盘是正六边形，边心距 53（刚好包住电机 + 台阶）
+HEX_R = HEX_A / math.cos(math.radians(30))       # 六边形外接圆半径（角到中心）
 
 
 def _hub_scale():
@@ -121,12 +122,24 @@ def leg_2d(foot=(0.0, -HIP_Z)):
     a_sk = math.atan2(*reversed(sk(K0, H0)))
     r = math.atan2(knee[1], knee[0]) - a_sk
     kx, kz = knee
-    d = math.hypot(kx, kz)
-    base = math.atan2(kz, kx)
-    al = math.acos((RH - RK) / d)                                  # 两圆外公切线
-    hub_arc = [(RH * math.cos(base + al + (2 * math.pi - 2 * al) * i / 36), RH * math.sin(base + al + (2 * math.pi - 2 * al) * i / 36))
-               for i in range(37)]                                 # 髋：从上切点绕后面到下切点
-    knee_arc = [(kx + RK * math.cos(base - al + 2 * al * i / 12), kz + RK * math.sin(base - al + 2 * al * i / 12)) for i in range(13)]
+    th = math.atan2(kz, kx)                                        # 髋 → 膝 的方向
+    # v5：正六边形髋盘，正对膝盖的那条边垂直于大腿；大腿两条边从这条边的两个角出发，正好切到膝盖圆头上（左右对称）
+    hexv = [(HEX_R * math.cos(th + math.radians(30 + 60 * k)), HEX_R * math.sin(th + math.radians(30 + 60 * k))) for k in range(6)]
+
+    def tangent(v, side):
+        """从点 v 到膝盖圆（半径 RK）的切点；side = +1 上沿 / -1 下沿。"""
+        dx, dz = kx - v[0], kz - v[1]
+        dd = math.hypot(dx, dz)
+        b = math.asin(RK / dd)
+        phi = math.atan2(dz, dx) + side * b                        # 切线方向
+        return kx - side * RK * math.sin(phi), kz + side * RK * math.cos(phi), phi
+    tx1, tz1, p1 = tangent(hexv[0], 1)
+    tx2, tz2, p2 = tangent(hexv[5], -1)
+    a_top, a_bot = math.atan2(tz1 - kz, tx1 - kx), math.atan2(tz2 - kz, tx2 - kx)
+    while a_top < a_bot:
+        a_top += 2 * math.pi
+    knee_arc = [(kx + RK * math.cos(a_bot + (a_top - a_bot) * i / 16), kz + RK * math.sin(a_bot + (a_top - a_bot) * i / 16)) for i in range(17)]
+    hub_arc = hexv[:]                                               # 六个角：0（上沿起点）→ 5（下沿起点），逆时针绕后面
     thigh = hub_arc + knee_arc
 
     def at_knee(pts, rr):
@@ -163,10 +176,13 @@ def leg_parts(fx, sy):
             (math.cos(ang) * 400 + nx * up * 2, math.sin(ang) * 400 + nz * up * 2),
             (-math.cos(ang) * 400 + nx * up * 2, -math.sin(ang) * 400 + nz * up * 2)]
     cover = prism_xz_offset(thigh, -5.0, y_out - 0.5, y_out + 2.0).intersect(prism_xz(half, y_out - 2, y_out + 4))
-    cover = cover.cut(cyl_y(0, 0, 2 * RH + 10, y_out - 5, y_out + 6)).cut(cyl_y(kx, kz, 2 * RK + 6, y_out - 5, y_out + 6))
+    ux, uz = math.cos(ang), math.sin(ang)
+    keep = [(ux * (HEX_A + 8) + nx * 300, uz * (HEX_A + 8) + nz * 300), (ux * (HEX_A + 8) - nx * 300, uz * (HEX_A + 8) - nz * 300),
+            (ux * 900 - nx * 300, uz * 900 - nz * 300), (ux * 900 + nx * 300, uz * 900 + nz * 300)]
+    cover = cover.intersect(prism_xz(keep, y_out - 3, y_out + 5)).cut(cyl_y(kx, kz, 2 * RK + 8, y_out - 5, y_out + 6))
     P.append(("大腿外盖板", place(soft(cover, 1.2), 0), "shell"))
     # 髋关节：分层——外壳（大腿一体）→ 一圈台阶 → 电机端盖（深色）→ 青色光环（关节状态灯）→ 金属中心盖 + 6 颗螺栓
-    P.append(("髋台阶", place(soft(ring_y(0, 0, 2 * RH - 4, MOTOR_D + 2, y_out, y_out + 2.5), 0.8), 0), "metal"))
+    P.append(("髋台阶", place(soft(ring_y(0, 0, 2 * HEX_A - 6, MOTOR_D + 2, y_out, y_out + 2.5), 0.8), 0), "metal"))
     P.append(("髋盖", place(cyl_y(0, 0, MOTOR_D + 2, y_out, y_out + 4), 0), "skel_dk"))
     P.append(("髋光环", place(ring_y(0, 0, MOTOR_D - 6, MOTOR_D - 12, y_out + 4, y_out + 4.6), 0), "cyan"))
     P.append(("髋中心盖", place(soft(cyl_y(0, 0, 34, y_out + 4, y_out + 8), 1.5), 0), "metal"))
