@@ -38,8 +38,11 @@ TUB_TOP, WAIST_TOP = Z0 + 46, Z0 + 60            # 下层底盘顶、黑腰顶�
 TOP = Z0 + BODY_H
 HUB_SK = [(-35, -33), (28, -33), (33, 38), (-4, 49), (-47, 8)]
 RK = 17.0                                        # 大腿膝那头的圆头半径
-HEX_A = MOTOR_D / 2 + 7.0                        # v5：髋盘是正六边形，边心距 53（刚好包住电机 + 台阶）
-HEX_R = HEX_A / math.cos(math.radians(30))       # 六边形外接圆半径（角到中心）
+HEX_A = MOTOR_D / 2 + 5.0                        # v6：髋盘每条边离电机中心都是 51（刚好包住电机，四周留 5）
+# v6：髋盘照 v3（用户认可的造型：后面尖角、上沿斜边、下面缺口、楔形大腿），只把轮廓理顺、缩小。
+# 在“大腿坐标”里定义（u 沿 髋→膝，v 朝大腿上沿那侧），每条边：(方向角, 离中心的距离)；v3 量出来是 34° / -129° / 170° / 106°，取整成：
+HUB_EDGES = dict(AB=30.0, CD=-120.0, DE=180.0, EA=120.0)
+HUB_B_U, HUB_C_V = 8.0, -12.0                     # 大腿上沿从 B 出发（AB 边上 u = 8 的点），下沿从 C 出发（CD 边上 v = -12 的点）
 
 
 def _hub_scale():
@@ -123,23 +126,40 @@ def leg_2d(foot=(0.0, -HIP_Z)):
     r = math.atan2(knee[1], knee[0]) - a_sk
     kx, kz = knee
     th = math.atan2(kz, kx)                                        # 髋 → 膝 的方向
-    # v5：正六边形髋盘，正对膝盖的那条边垂直于大腿；大腿两条边从这条边的两个角出发，正好切到膝盖圆头上（左右对称）
-    hexv = [(HEX_R * math.cos(th + math.radians(30 + 60 * k)), HEX_R * math.sin(th + math.radians(30 + 60 * k))) for k in range(6)]
+    cu, su = math.cos(th), math.sin(th)
+    W = lambda u, v: (u * cu - v * su, u * su + v * cu)            # 大腿坐标 → 腿平面
 
-    def tangent(v, side):
-        """从点 v 到膝盖圆（半径 RK）的切点；side = +1 上沿 / -1 下沿。"""
-        dx, dz = kx - v[0], kz - v[1]
-        dd = math.hypot(dx, dz)
-        b = math.asin(RK / dd)
-        phi = math.atan2(dz, dx) + side * b                        # 切线方向
-        return kx - side * RK * math.sin(phi), kz + side * RK * math.cos(phi), phi
-    tx1, tz1, p1 = tangent(hexv[0], 1)
-    tx2, tz2, p2 = tangent(hexv[5], -1)
-    a_top, a_bot = math.atan2(tz1 - kz, tx1 - kx), math.atan2(tz2 - kz, tx2 - kx)
-    while a_top < a_bot:
-        a_top += 2 * math.pi
-    knee_arc = [(kx + RK * math.cos(a_bot + (a_top - a_bot) * i / 16), kz + RK * math.sin(a_bot + (a_top - a_bot) * i / 16)) for i in range(17)]
-    hub_arc = hexv[:]                                               # 六个角：0（上沿起点）→ 5（下沿起点），逆时针绕后面
+    def line(ang):
+        """方向角 ang（度）的边，离中心 HEX_A；返回 (点, 方向)。外法线 = 方向转 +90°（多边形按顺时针走：A→B→膝→C→D→E）。"""
+        a = math.radians(ang)
+        d = (math.cos(a), math.sin(a))
+        nrm = (-d[1], d[0])
+        return (nrm[0] * HEX_A, nrm[1] * HEX_A), d
+
+    def meet(l1, l2):
+        (p1, d1), (p2, d2) = l1, l2
+        den = d1[0] * d2[1] - d1[1] * d2[0]
+        t = ((p2[0] - p1[0]) * d2[1] - (p2[1] - p1[1]) * d2[0]) / den
+        return p1[0] + d1[0] * t, p1[1] + d1[1] * t
+    AB, CD, DE, EA = (line(HUB_EDGES[k]) for k in ("AB", "CD", "DE", "EA"))
+    A, D, E = meet(EA, AB), meet(CD, DE), meet(DE, EA)
+    B = (HUB_B_U, AB[0][1] + (HUB_B_U - AB[0][0]) * AB[1][1] / AB[1][0])
+    C = (CD[0][0] + (HUB_C_V - CD[0][1]) * CD[1][0] / CD[1][1], HUB_C_V)
+    L = math.hypot(kx, kz)                                          # 膝在大腿坐标里是 (L, 0)
+
+    def tangent(pt, side):
+        """从 pt 到膝盖圆（(L, 0)，半径 RK）的切点；side = +1 上沿 / -1 下沿。"""
+        dx, dy = L - pt[0], -pt[1]
+        dd = math.hypot(dx, dy)
+        phi = math.atan2(dy, dx) + side * math.asin(RK / dd)
+        return L - side * RK * math.sin(phi), side * RK * math.cos(phi)
+    T1, T2 = tangent(B, 1), tangent(C, -1)
+    a1, a2 = math.atan2(T1[1], T1[0] - L), math.atan2(T2[1], T2[0] - L)
+    while a2 > a1:
+        a2 -= 2 * math.pi
+    arc = [(L + RK * math.cos(a1 + (a2 - a1) * i / 16), RK * math.sin(a1 + (a2 - a1) * i / 16)) for i in range(17)]
+    hub_arc = [W(*A), W(*B)]
+    knee_arc = [W(*q) for q in arc] + [W(*C), W(*D), W(*E)]
     thigh = hub_arc + knee_arc
 
     def at_knee(pts, rr):
