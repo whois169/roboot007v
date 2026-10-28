@@ -20,7 +20,7 @@ OUT = os.path.join(HERE, "out", "parts")
 V = cq.Vector
 
 # ================================================================ 尺寸
-BODY_L, BODY_W, BODY_H = 480.0, 260.0, 160.0
+BODY_L, BODY_W, BODY_H = 480.0, 260.0, 185.0          # v4：机身往上加高 25（底不动）
 L2, W2 = BODY_L / 2, BODY_W / 2
 HIP_X = 160.0                                   # 髋往后收：头要在最前面（v2，用户：腿不能超过头）
 MOTOR_D = 92.0                                   # 关节电机（GIM8108-8 级别）
@@ -33,11 +33,12 @@ S = L1 / math.dist(H0, K0)
 LS = math.dist(K0, T0) * S                       # 小腿（膝 → 脚尖）
 STAND_KNEE = 90.0
 HIP_Z = math.sqrt(L1 ** 2 + LS ** 2 - 2 * L1 * LS * math.cos(math.radians(STAND_KNEE)))
-Z0 = HIP_Z - BODY_H / 2                          # 机身底离地
-TUB_TOP, WAIST_TOP = Z0 + 46, Z0 + 60            # 下层底盘顶、黑腰顶（上层外壳 100 高，屏幕整块嵌进去）
+Z0 = HIP_Z - 80.0                                # 机身底离地（髋在下层底盘上方）
+TUB_TOP, WAIST_TOP = Z0 + 46, Z0 + 60            # 下层底盘顶、黑腰顶（上层外壳 125 高）
 TOP = Z0 + BODY_H
 HUB_SK = [(-35, -33), (28, -33), (33, 38), (-4, 49), (-47, 8)]
 RK = 17.0                                        # 大腿膝那头的圆头半径
+RH = MOTOR_D / 2 + 7.0                           # v4：髋关节外壳半径（Φ106，只比电机大一圈）
 
 
 def _hub_scale():
@@ -119,17 +120,14 @@ def leg_2d(foot=(0.0, -HIP_Z)):
     sk = lambda p, o: (-(p[0] - o[0]), -(p[1] - o[1]))           # 草图 → 镜像 + y 朝上
     a_sk = math.atan2(*reversed(sk(K0, H0)))
     r = math.atan2(knee[1], knee[0]) - a_sk
-    hub = [_rot((-x * HUB_F, -y * HUB_F), r) for x, y in HUB_SK]
     kx, kz = knee
-    ang = math.atan2(kz, kx)
-    ux, uz = math.cos(ang), math.sin(ang)
-    nx, nz = -uz, ux
-    # v3：照草图的楔形大腿：上沿从髋盘右上角直通到膝，下沿从髋盘下面的缺口收到膝；膝那头是半圆（转轴在圆心）
-    sgn = 1 if (hub[1][0] * nx + hub[1][1] * nz) > 0 else -1      # 草图镜像后，髋盘第 2 个点在大腿哪一侧（那一侧是“上沿”）
-    f_top, f_u = math.atan2(sgn * nz, sgn * nx), math.atan2(uz, ux)
-    d = 1 if math.sin(f_u - f_top) > 0 else -1                     # 从上沿那侧绕过膝的外头，转到下沿那侧
-    arc = [(kx + RK * math.cos(f_top + d * math.pi * i / 12), kz + RK * math.sin(f_top + d * math.pi * i / 12)) for i in range(13)]
-    thigh = hub[:2] + arc + hub[2:]
+    d = math.hypot(kx, kz)
+    base = math.atan2(kz, kx)
+    al = math.acos((RH - RK) / d)                                  # 两圆外公切线
+    hub_arc = [(RH * math.cos(base + al + (2 * math.pi - 2 * al) * i / 36), RH * math.sin(base + al + (2 * math.pi - 2 * al) * i / 36))
+               for i in range(37)]                                 # 髋：从上切点绕后面到下切点
+    knee_arc = [(kx + RK * math.cos(base - al + 2 * al * i / 12), kz + RK * math.sin(base - al + 2 * al * i / 12)) for i in range(13)]
+    thigh = hub_arc + knee_arc
 
     def at_knee(pts, rr):
         return [tuple(k + d for k, d in zip(knee, _rot((sk(p, K0)[0] * S, sk(p, K0)[1] * S), rr))) for p in pts]
@@ -165,9 +163,10 @@ def leg_parts(fx, sy):
             (math.cos(ang) * 400 + nx * up * 2, math.sin(ang) * 400 + nz * up * 2),
             (-math.cos(ang) * 400 + nx * up * 2, -math.sin(ang) * 400 + nz * up * 2)]
     cover = prism_xz_offset(thigh, -5.0, y_out - 0.5, y_out + 2.0).intersect(prism_xz(half, y_out - 2, y_out + 4))
-    cover = cover.cut(cyl_y(0, 0, MOTOR_D + 12, y_out - 5, y_out + 6)).cut(cyl_y(kx, kz, 2 * RK + 6, y_out - 5, y_out + 6))
+    cover = cover.cut(cyl_y(0, 0, 2 * RH + 10, y_out - 5, y_out + 6)).cut(cyl_y(kx, kz, 2 * RK + 6, y_out - 5, y_out + 6))
     P.append(("大腿外盖板", place(soft(cover, 1.2), 0), "shell"))
-    # 髋盘外面：深色电机盖 + 青色光环 + 中心盖 + 6 颗螺栓
+    # 髋关节：分层——外壳（大腿一体）→ 一圈台阶 → 电机端盖（深色）→ 青色光环（关节状态灯）→ 金属中心盖 + 6 颗螺栓
+    P.append(("髋台阶", place(soft(ring_y(0, 0, 2 * RH - 4, MOTOR_D + 2, y_out, y_out + 2.5), 0.8), 0), "metal"))
     P.append(("髋盖", place(cyl_y(0, 0, MOTOR_D + 2, y_out, y_out + 4), 0), "skel_dk"))
     P.append(("髋光环", place(ring_y(0, 0, MOTOR_D - 6, MOTOR_D - 12, y_out + 4, y_out + 4.6), 0), "cyan"))
     P.append(("髋中心盖", place(soft(cyl_y(0, 0, 34, y_out + 4, y_out + 8), 1.5), 0), "metal"))
@@ -258,12 +257,10 @@ def body_parts():
         else:
             txt = txt.translate(V(0, -W2 - 2, zc))
         P.append((f"字样{sy}", txt, "skel_dk"))
-        P.append((f"甲板边线{sy}", box(-L2 + 30, L2 - 30, *sorted((sy * (W2 + 2), sy * (W2 + 2.4))), TOP - 7, TOP - 5), "metal"))
     # ---- 头：深色屏幕模块从前脸往前伸 30，前面切角（像头盔面罩）；两侧金属圆盖 = 抬头低头的转轴
     hx0, hx1 = L2 + 4, L2 + 4 + HD
     zb, zt = zc - HH / 2, zc + HH / 2
-    prof = [(hx0 - 10, zb + 4), (hx1 - 18, zb), (hx1, zb + 18), (hx1, zt - 12), (hx1 + 9, zt - 4), (hx1 + 6, zt),
-            (hx0 - 10, zt + 2)]                                      # 侧面：下巴往回收、眉檐往前探 9 mm
+    prof = [(hx0 - 10, zb + 4), (hx1 - 18, zb), (hx1, zb + 18), (hx1, zt - 6), (hx1 - 6, zt), (hx0 - 10, zt)]   # 侧面：下巴往回收
     head = prism_xz(prof, -HW / 2, HW / 2)
     for sy in (1, -1):                                             # 前面两侧切掉一个斜角（收窄）
         tri = cq.Workplane("XY").polyline([(hx1 - 12, sy * (HW / 2 + 1)), (hx1 + 12, sy * (HW / 2 + 1)),
@@ -272,7 +269,6 @@ def body_parts():
     head = soft(head, 1.5)
     head = head.cut(box(hx1 - 3, hx1 + 1, -sw / 2, sw / 2, zc - sh / 2 - 2, zc + sh / 2 - 2))
     P.append(("头", head, "skel_dk"))
-    P.append(("头眉檐灯", box(hx1 + 2, hx1 + 8, -HW / 2 + 22, HW / 2 - 22, zt - 4.6, zt - 4.0), "cyan"))
     for sy in (1, -1):                                             # 头两侧的鳍（装转轴的“耳朵”）
         fin = prism_xz([(hx0 - 6, zc - 22), (hx0 + 14, zc - 22), (hx0 + 22, zc + 10), (hx0 + 4, zc + 26), (hx0 - 6, zc + 26)],
                        *sorted((sy * HW / 2, sy * (HW / 2 + 6))))
