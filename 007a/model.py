@@ -127,7 +127,7 @@ def leg_2d(foot=(0.0, -HIP_Z)):
     kx, kz = knee
     th = math.atan2(kz, kx)                                        # 髋 → 膝 的方向
     cu, su = math.cos(th), math.sin(th)
-    W = lambda u, v: (u * cu - v * su, u * su + v * cu)            # 大腿坐标 → 腿平面
+    W = lambda u, v: (u * cu + v * su, u * su - v * cu)            # 大腿坐标 → 腿平面（v 取反：v3 里大腿连续的长直边在后面、髋盘尖角朝前上）
 
     def line(ang):
         """方向角 ang（度）的边，离中心 HEX_A；返回 (点, 方向)。外法线 = 方向转 +90°（多边形按顺时针走：A→B→膝→C→D→E）。"""
