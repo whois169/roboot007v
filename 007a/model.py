@@ -22,7 +22,7 @@ V = cq.Vector
 # ================================================================ 尺寸
 BODY_L, BODY_W, BODY_H = 480.0, 260.0, 160.0
 L2, W2 = BODY_L / 2, BODY_W / 2
-HIP_X = 185.0
+HIP_X = 160.0                                   # 髋往后收：头要在最前面（v2，用户：腿不能超过头）
 MOTOR_D = 92.0                                   # 关节电机（GIM8108-8 级别）
 SEAM = 2.0
 
@@ -37,7 +37,20 @@ Z0 = HIP_Z - BODY_H / 2                          # 机身底离地
 TUB_TOP, WAIST_TOP = Z0 + 46, Z0 + 60            # 下层底盘顶、黑腰顶（上层外壳 100 高，屏幕整块嵌进去）
 TOP = Z0 + BODY_H
 HUB_SK = [(-35, -33), (28, -33), (33, 38), (-4, 49), (-47, 8)]
-HUB_F = (MOTOR_D / 2 + 8) / 30.0
+WR, WK = 30.0, 14.0                              # 大腿：根部半宽、膝那头半宽（v2：收窄，用户嫌大腿太大）
+
+
+def _hub_scale():
+    """髋盘照草图的尖角外形，按“刚好包住电机（半径 + 5）”缩放：最小边心距 = 51。"""
+    best = 1e9
+    n = len(HUB_SK)
+    for i in range(n):
+        (x0, y0), (x1, y1) = HUB_SK[i], HUB_SK[(i + 1) % n]
+        best = min(best, abs(x0 * y1 - x1 * y0) / math.hypot(x1 - x0, y1 - y0))   # 原点到边的距离
+    return (MOTOR_D / 2 + 5) / best
+
+
+HUB_F = _hub_scale()
 KNEE_TOP = [(303, 234), (311, 245), (313, 262)]
 KNEE_BOT = [(296, 266)]
 SHANK_SK = [(310, 250), (317, 265), (311, 285), (218, 303), (160, 348), (149, 340), (208, 288), (294, 262)]
@@ -101,25 +114,30 @@ def _rot(p, r):
 
 
 def leg_2d(foot=(0.0, -HIP_Z)):
-    """返回 (髋盘+大腿 多边形, 小腿 多边形, 膝, 脚)。草图里膝朝右，这里膝朝后（-x），所以先把草图左右镜像。"""
+    """返回 (髋盘 多边形, 大腿臂 多边形, 小腿 多边形, 膝, 脚)。草图里膝朝右，这里膝朝后（-x），所以先把草图左右镜像。"""
     knee = leg_ik(foot)
     sk = lambda p, o: (-(p[0] - o[0]), -(p[1] - o[1]))           # 草图 → 镜像 + y 朝上
     a_sk = math.atan2(*reversed(sk(K0, H0)))
     r = math.atan2(knee[1], knee[0]) - a_sk
-    hub = [_rot((-x * HUB_F, -y * HUB_F), r) for x, y in HUB_SK]
+    hub = [_rot((-x * HUB_F, -y * HUB_F), r) for x, y in HUB_SK][::-1]
+    ang = math.atan2(knee[1], knee[0])                             # v2：大腿是一条从髋盘中心收到膝的臂，和髋盘一体
+    nx, nz = -math.sin(ang), math.cos(ang)
+    ux, uz = math.cos(ang), math.sin(ang)
+    kx, kz = knee
+    arm = [(nx * WR, nz * WR), (kx + nx * WK, kz + nz * WK), (kx + ux * WK, kz + uz * WK),
+           (kx - nx * WK, kz - nz * WK), (-nx * WR, -nz * WR)]
 
     def at_knee(pts, rr):
         return [tuple(k + d for k, d in zip(knee, _rot((sk(p, K0)[0] * S, sk(p, K0)[1] * S), rr))) for p in pts]
-    thigh = hub[:2] + at_knee(KNEE_TOP, r) + at_knee(KNEE_BOT, r) + hub[2:]
     a_sh = math.atan2(*reversed(sk(T0, K0)))
     a_now = math.atan2(foot[1] - knee[1], foot[0] - knee[0])
     shank = at_knee(SHANK_SK, a_now - a_sh)
-    return thigh[::-1], shank[::-1], knee, foot                  # 镜像后顺序反了，翻回逆时针
+    return hub, arm, shank[::-1], knee, foot
 
 
 def leg_parts(fx, sy):
     """一条腿（fx = 1 前 / -1 后，sy = 1 左 / -1 右）的零件，已放到机身上。"""
-    thigh, shank, knee, foot = leg_2d()
+    hub, arm, shank, knee, foot = leg_2d()
     hx, hz = fx * HIP_X, HIP_Z
     P = []
 
@@ -129,11 +147,11 @@ def leg_parts(fx, sy):
 
     yc = LEG_Y                                                     # 大腿中面（左边的腿；右边镜像）
     y_out = yc + T_THIGH / 2
-    th = prism_xz(thigh, yc - T_THIGH / 2, y_out)
-    th = soft(th, 4.0)
+    th = prism_xz(hub, yc - T_THIGH / 2, y_out).fuse(prism_xz(arm, yc - T_THIGH / 2 + 3, y_out - 3)).clean()
+    th = soft(th, 3.0)
     P.append(("大腿", place(th, 0), "skel"))
-    cover = prism_xz_offset(thigh, -7.0, y_out - 0.5, y_out + 2.5)   # 外盖板：浅色，比骨架小一圈、凸出 2.5
-    cover = cover.cut(cyl_y(0, 0, MOTOR_D + 6, y_out - 2, y_out + 4))   # 髋盘位置让出来（那里是光环和盖）
+    cover = prism_xz_offset(arm, -5.0, y_out - 3.5, y_out - 0.5)      # 大腿臂的浅色外盖板（髋盘那段让出来）
+    cover = cover.cut(cyl_y(0, 0, MOTOR_D + 14, y_out - 5, y_out + 2))
     P.append(("大腿外盖板", place(soft(cover, 1.2), 0), "shell"))
     # 髋盘外面：深色电机盖 + 青色光环 + 中心盖 + 6 颗螺栓
     P.append(("髋盖", place(cyl_y(0, 0, MOTOR_D + 2, y_out, y_out + 4), 0), "skel_dk"))
@@ -153,7 +171,8 @@ def leg_parts(fx, sy):
     P.append(("膝盖帽外", place(soft(cyl_y(kx, kz, 30, y_out, y_out + 4), 1.2), 0), "skel_dk"))
     P.append(("膝光点", place(ring_y(kx, kz, 20, 15, y_out + 4, y_out + 4.6), 0), "cyan"))
     fxp, fzp = foot
-    P.append(("脚垫", place(cq.Solid.makeSphere(14, V(fxp, ys0 + T_SHANK / 2, fzp + 14)), 0), "rubber"))
+    pad = cq.Solid.makeSphere(19, V(fxp, ys0 + T_SHANK / 2, fzp + 17)).cut(box(fxp - 30, fxp + 30, ys0 - 20, ys0 + 50, fzp - 10, fzp + 1))
+    P.append(("脚垫", place(pad.translate(V(0, 0, -1)), 0), "rubber"))      # 加大、底下削平一点（站得稳）
     # 机身侧面的髋座（外摆电机的法兰，深色圆盘）
     P.append(("髋座", place(soft(cyl_y(0, 0, MOTOR_D + 18, W2 - 1, W2 + 7), 2.0), 0), "skel_dk"))
     tag = ("前" if fx > 0 else "后") + ("左" if sy > 0 else "右")
@@ -192,14 +211,18 @@ def body_parts():
     # 前脸：屏幕窗 + 两边各两道凹槽（照用户的前脸图）
     sw, sh = 124.0, 64.0                                           # 4.3 寸屏露出来的部分
     zc = WAIST_TOP + (TOP - WAIST_TOP) / 2 - 2
-    slab = slab.cut(box(L2 - 14, L2 + 10, -sw / 2 - 8, sw / 2 + 8, zc - sh / 2 - 8, zc + sh / 2 + 8))
-    for sy in (1, -1):
-        for z0, z1 in ((zc + 12, zc + 26), (zc - 26, zc - 12)):
-            slab = slab.cut(box(L2 - 4, L2 + 10, *sorted((sy * (sw / 2 + 16), sy * (W2 - 6))), z0, z1))
+    HW, HH, HD = sw + 26, sh + 24, 30.0                              # 头：往前凸出的屏幕模块（宽、高、伸出来多少）
+    grooves = []
+    for sy in (1, -1):                                             # 两边各两道平行斜槽（45°，和机身切角统一）
+        y_in, y_end = sy * (HW / 2 + 12), sy * (W2 - 14)
+        for z0, z1 in ((zc + 10, zc + 22), (zc - 22, zc - 10)):
+            h = z1 - z0
+            pts = [(y_in, z0), (y_end - sy * h, z0), (y_end, z1), (y_in + sy * h, z1)]   # 平行四边形：都往外上方斜
+            slab = slab.cut(prism_yz(pts, L2 - 1, L2 + 10))
+            grooves.append((sy, z0, pts))
     P.append(("上层甲板壳", slab, "shell"))
-    for sy in (1, -1):                                             # 凹槽里的深色内衬（看得出是陷进去的）
-        for z0, z1 in ((zc + 12, zc + 26), (zc - 26, zc - 12)):
-            P.append((f"凹槽内衬{sy}{z0:.0f}", box(L2 - 4.5, L2 - 3.5, *sorted((sy * (sw / 2 + 16), sy * (W2 - 6))), z0, z1), "skel_dk"))
+    for sy, z0, pts in grooves:                                    # 凹槽里的深色内衬
+        P.append((f"凹槽内衬{sy}{z0:.0f}", prism_yz(pts, L2 - 1.5, L2 + 0.8), "skel_dk"))
     for sy in (1, -1):
         txt = cq.Workplane("XZ").text("007A", 30, 0.8, halign="center", valign="center", fontPath="C:/Windows/Fonts/bahnschrift.ttf").val()
         txt = txt.translate(V(-40, 0, 0))
@@ -209,15 +232,23 @@ def body_parts():
             txt = txt.translate(V(0, -W2 - 2, zc))
         P.append((f"字样{sy}", txt, "skel_dk"))
         P.append((f"甲板边线{sy}", box(-L2 + 30, L2 - 30, *sorted((sy * (W2 + 2), sy * (W2 + 2.4))), TOP - 7, TOP - 5), "metal"))
-    # ---- 头：屏幕框（深色）+ 屏幕（玻璃）+ 眼睛（屏上的图案）
-    bez = box(L2 - 14, L2 - 2, -sw / 2 - 7, sw / 2 + 7, zc - sh / 2 - 7, zc + sh / 2 + 7)
-    bez = bez.cut(box(L2 - 15, L2 - 1, -sw / 2, sw / 2, zc - sh / 2, zc + sh / 2))
-    P.append(("屏幕框", soft(bez, 1.5), "skel_dk"))
-    P.append(("屏幕", box(L2 - 6, L2 - 4, -sw / 2, sw / 2, zc - sh / 2, zc + sh / 2), "glass"))
+    # ---- 头：深色屏幕模块从前脸往前伸 30，前面切角（像头盔面罩）；两侧金属圆盖 = 抬头低头的转轴
+    hx0, hx1 = L2 + 4, L2 + 4 + HD
+    head = box(hx0 - 10, hx1, -HW / 2, HW / 2, zc - HH / 2, zc + HH / 2)
+    head = cq.Workplane().add(head).edges("|Y and >X").chamfer(8).val()
+    head = cq.Workplane().add(head).edges("|Z and >X").chamfer(6).val()
+    head = soft(head, 1.5)
+    head = head.cut(box(hx1 - 3, hx1 + 1, -sw / 2, sw / 2, zc - sh / 2, zc + sh / 2))
+    P.append(("头", head, "skel_dk"))
+    P.append(("屏幕", box(hx1 - 3, hx1 - 1.5, -sw / 2, sw / 2, zc - sh / 2, zc + sh / 2), "glass"))
     for ey in (-30, 30):
-        eye = cq.Workplane("YZ").rect(30, 24).extrude(0.4).edges("|X").fillet(6).val().translate(V(L2 - 3.9, ey, zc + 4))
+        eye = cq.Workplane("YZ").rect(30, 24).extrude(0.4).edges("|X").fillet(6).val().translate(V(hx1 - 1.4, ey, zc + 4))
         P.append((f"眼睛{ey}", eye, "eye"))
-    P.append(("屏幕下沿灯", box(L2 - 3.8, L2 - 3.4, -40, 40, zc - sh / 2 + 8, zc - sh / 2 + 10), "cyan"))
+    P.append(("屏幕下沿灯", box(hx1 - 1.3, hx1 - 0.9, -40, 40, zc - sh / 2 + 8, zc - sh / 2 + 10), "cyan"))
+    for sy in (1, -1):
+        P.append((f"头转轴盖{sy}", soft(cyl_y(hx0 + 6, zc, 22, *sorted((sy * HW / 2, sy * (HW / 2 + 3)))), 0.8), "metal"))
+        P.append((f"头转轴光环{sy}", ring_y(hx0 + 6, zc, 30, 25, *sorted((sy * HW / 2, sy * (HW / 2 + 0.6)))), "cyan"))
+    P.append(("头上沿灯", box(hx1 - 9, hx1 - 2, -HW / 2 + 16, HW / 2 - 16, zc + HH / 2 - 0.2, zc + HH / 2 + 0.3), "cyan"))
     # 激光雷达：人面对它看的左上角（= 机器人自己的右边，-y），照用户的前脸图
     lx, ly = L2 - 46, -(W2 - 40)
     P.append(("雷达座", soft(box(lx - 26, lx + 26, ly - 26, ly + 26, TOP, TOP + 10), 2.0), "skel_dk"))
