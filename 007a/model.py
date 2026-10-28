@@ -240,13 +240,34 @@ def leg_parts(fx, sy):
 
 
 # ================================================================ 机身
+# v8 做精：一套规则
+#   切角：所有斜面都是 45°；大斜面 24（机身前后上下）、中斜面 18（头的上沿和下巴、下层底盘）、俯视转角 10；所有外棱倒 1.5
+#   线：  头的正面上下沿 = 两边斜槽的外沿；灯条、字样、检修板都在两条分缝（x = ±120）之间居中
+#   接缝：头四周留 4 mm 的影线缝（屏幕抬头低头要的间隙，不是装饰）
+CH_BIG, CH_MID, CH_PLAN, EDGE = 24.0, 18.0, 10.0, 1.5
+SEAM_X = 120.0
+
+
+def plan_chamfer(s, ch=CH_PLAN):
+    """俯视的四个转角切 45°（竖直的棱）。"""
+    for sx in (1, -1):
+        for sy in (1, -1):
+            bb = s.BoundingBox()
+            x, y = (bb.xmax if sx > 0 else bb.xmin), (bb.ymax if sy > 0 else bb.ymin)
+            tri = cq.Workplane("XY").polyline([(x + sx, y + sy), (x - sx * ch, y + sy), (x + sx, y - sy * ch)]).close() \
+                .extrude(bb.zlen + 2).val().translate(V(0, 0, bb.zmin - 1))
+            s = s.cut(tri)
+    return s
+
+
 def body_parts():
     P = []
     # ---- 下层底盘：往里收，前后下角切大斜角
-    tub_prof = [(-L2 + 4, Z0 + 20), (-L2 + 24, Z0), (L2 - 24, Z0), (L2 - 4, Z0 + 20), (L2 - 4, TUB_TOP), (-L2 + 4, TUB_TOP)]
+    tub_prof = [(-L2 + 4, Z0 + CH_MID), (-L2 + 4 + CH_MID, Z0), (L2 - 4 - CH_MID, Z0), (L2 - 4, Z0 + CH_MID), (L2 - 4, TUB_TOP),
+                (-L2 + 4, TUB_TOP)]
     tub = prism_xz(tub_prof, -W2 + 6, W2 - 6)
-    tub = soft(tub, 3.0)
-    for x in (-L2 + 120, L2 - 120):                                # 面板分缝
+    tub = soft(plan_chamfer(tub), EDGE)
+    for x in (-SEAM_X, SEAM_X):                                    # 面板分缝（和上层甲板壳同一个 x，线从上到下连着）
         tub = tub.cut(box(x - SEAM / 2, x + SEAM / 2, -W2, W2, Z0 - 1, TUB_TOP + 1))
     for sy in (1, -1):                                             # 侧面检修板（凹 1.5 + 四颗螺栓）
         y = sy * (W2 - 6)
@@ -259,14 +280,14 @@ def body_parts():
     waist = box(-L2 + 8, L2 - 8, -W2 + 10, W2 - 10, TUB_TOP, WAIST_TOP)
     P.append(("黑腰", waist, "skel_dk"))
     for sy in (1, -1):
-        for x in (-100, 100):
-            P.append((f"腰线灯{sy}{x}", box(x - 60, x + 60, *sorted((sy * (W2 - 10), sy * (W2 - 9.4))), TUB_TOP + 5.5, WAIST_TOP - 5.5), "cyan"))
+        P.append((f"腰线灯{sy}", box(-SEAM_X + 14, SEAM_X - 14, *sorted((sy * (W2 - 10), sy * (W2 - 9.4))), TUB_TOP + 5.5, WAIST_TOP - 5.5), "cyan"))
     # ---- 上层甲板壳：前后大斜面（007v 那种往回收的装甲板），左右在 x=±120 分缝
-    slab_prof = [(-L2 + 26, WAIST_TOP), (L2 - 26, WAIST_TOP), (L2 + 4, WAIST_TOP + 24), (L2 + 4, TOP - 18), (L2 - 18, TOP),
-                 (-L2 + 18, TOP), (-L2 - 4, TOP - 18), (-L2 - 4, WAIST_TOP + 24)]
+    c = CH_BIG
+    slab_prof = [(-L2 - 4 + c, WAIST_TOP), (L2 + 4 - c, WAIST_TOP), (L2 + 4, WAIST_TOP + c), (L2 + 4, TOP - c), (L2 + 4 - c, TOP),
+                 (-L2 - 4 + c, TOP), (-L2 - 4, TOP - c), (-L2 - 4, WAIST_TOP + c)]
     slab = prism_xz(slab_prof, -W2 - 2, W2 + 2)
-    slab = soft(slab, 2.5)
-    for x in (-L2 + 120, L2 - 120):                                # 分缝只在两侧和前后，顶上留整块（货台是一体的）
+    slab = soft(plan_chamfer(slab), EDGE)
+    for x in (-SEAM_X, SEAM_X):                                # 分缝只在两侧和前后，顶上留整块（货台是一体的）
         for sy in (1, -1):
             slab = slab.cut(box(x - SEAM / 2, x + SEAM / 2, *sorted((sy * (W2 - 30), sy * (W2 + 5))), WAIST_TOP - 1, TOP - 20))
     # 前脸：屏幕窗 + 两边各两道凹槽（照用户的前脸图）
@@ -276,16 +297,20 @@ def body_parts():
     grooves = []
     for sy in (1, -1):                                             # 两边各两道平行斜槽（45°，和机身切角统一）
         y_in, y_end = sy * (HW / 2 + 12), sy * (W2 - 14)
-        for z0, z1 in ((zc + 10, zc + 22), (zc - 22, zc - 10)):
+        ff = HH / 2 - CH_MID                                          # 头正面的半高
+        for z0, z1 in ((zc + ff - 12, zc + ff), (zc - ff, zc - ff + 12)):
             h = z1 - z0
             pts = [(y_in, z0), (y_end - sy * h, z0), (y_end, z1), (y_in + sy * h, z1)]   # 平行四边形：都往外上方斜
             slab = slab.cut(prism_yz(pts, L2 - 1, L2 + 10))
             grooves.append((sy, z0, pts))
     BX0, BX1, BW, BD = -178.0, 128.0, 196.0, 14.0                    # 货台：凹下去 14
-    slab = slab.cut(soft(box(BX0, BX1, -BW / 2, BW / 2, TOP - BD, TOP + 5), 6.0))
+    slab = slab.cut(plan_chamfer(box(BX0, BX1, -BW / 2, BW / 2, TOP - BD, TOP + 5), 16.0))
     for x in (BX0 - 9, BX1 + 9):                                   # 前后沿的绑带孔
         for y in (-60, 0, 60):
             slab = slab.cut(soft(box(x - 3, x + 3, y - 14, y + 14, TOP - 8, TOP + 5), 1.5))
+    gap = box(L2 - 6, L2 + 10, -HW / 2 - 4, HW / 2 + 4, zc - HH / 2 - 4, zc + HH / 2 + 4)
+    slab = slab.cut(gap)
+    P.append(("头影线缝底", box(L2 - 6, L2 - 5, -HW / 2 - 4, HW / 2 + 4, zc - HH / 2 - 4, zc + HH / 2 + 4), "skel_dk"))
     P.append(("上层甲板壳", slab, "shell"))
     P.append(("货台底垫", box(BX0 + 4, BX1 - 4, -BW / 2 + 4, BW / 2 - 4, TOP - BD, TOP - BD + 2), "rubber"))
     for k in range(9):                                             # 防滑筋
@@ -298,7 +323,6 @@ def body_parts():
         P.append((f"凹槽内衬{sy}{z0:.0f}", prism_yz(pts, L2 - 1.5, L2 + 0.8), "skel_dk"))
     for sy in (1, -1):
         txt = cq.Workplane("XZ").text("007A", 30, 0.8, halign="center", valign="center", fontPath="C:/Windows/Fonts/bahnschrift.ttf").val()
-        txt = txt.translate(V(-40, 0, 0))
         if sy > 0:
             txt = txt.rotate(V(0, 0, 0), V(0, 0, 1), 180).translate(V(0, W2 + 2, zc))
         else:
@@ -307,20 +331,20 @@ def body_parts():
     # ---- 头：深色屏幕模块从前脸往前伸 30，前面切角（像头盔面罩）；两侧金属圆盖 = 抬头低头的转轴
     hx0, hx1 = L2 + 4, L2 + 4 + HD
     zb, zt = zc - HH / 2, zc + HH / 2
-    prof = [(hx0 - 10, zb + 4), (hx1 - 18, zb), (hx1, zb + 18), (hx1, zt - 6), (hx1 - 6, zt), (hx0 - 10, zt)]   # 侧面：下巴往回收
+    prof = [(hx0 - 10, zb), (hx1 - CH_MID, zb), (hx1, zb + CH_MID), (hx1, zt - CH_MID), (hx1 - CH_MID, zt), (hx0 - 10, zt)]   # 上沿、下巴都是 45° × 18
     head = prism_xz(prof, -HW / 2, HW / 2)
     for sy in (1, -1):                                             # 前面两侧切掉一个斜角（收窄）
         tri = cq.Workplane("XY").polyline([(hx1 - 12, sy * (HW / 2 + 1)), (hx1 + 12, sy * (HW / 2 + 1)),
                                             (hx1 + 12, sy * (HW / 2 - 13))]).close().extrude(HH + 20).val()
         head = head.cut(tri.translate(V(0, 0, zb - 10)))
     head = soft(head, 1.5)
-    head = head.cut(box(hx1 - 3, hx1 + 1, -sw / 2, sw / 2, zc - sh / 2 - 2, zc + sh / 2 - 2))
+    head = head.cut(box(hx1 - 3, hx1 + 1, -sw / 2, sw / 2, zc - sh / 2, zc + sh / 2))
     P.append(("头", head, "skel_dk"))
     for sy in (1, -1):                                             # 头两侧的鳍（装转轴的“耳朵”）
         fin = prism_xz([(hx0 - 6, zc - 22), (hx0 + 14, zc - 22), (hx0 + 22, zc + 10), (hx0 + 4, zc + 26), (hx0 - 6, zc + 26)],
                        *sorted((sy * HW / 2, sy * (HW / 2 + 6))))
         P.append((f"头鳍{sy}", soft(fin, 1.2), "shell"))
-    P.append(("屏幕", box(hx1 - 3, hx1 - 1.5, -sw / 2, sw / 2, zc - sh / 2 - 2, zc + sh / 2 - 2), "glass"))
+    P.append(("屏幕", box(hx1 - 3, hx1 - 1.5, -sw / 2, sw / 2, zc - sh / 2, zc + sh / 2), "glass"))
     for ey in (-30, 30):
         eye = cq.Workplane("YZ").rect(30, 24).extrude(0.4).edges("|X").fillet(6).val().translate(V(hx1 - 1.4, ey, zc + 4))
         P.append((f"眼睛{ey}", eye, "eye"))
@@ -330,7 +354,7 @@ def body_parts():
         P.append((f"头转轴光环{sy}", ring_y(hx0 + 6, zc, 28, 23, *sorted((sy * (HW / 2 + 6), sy * (HW / 2 + 6.6)))), "cyan"))
     # 激光雷达：人面对它看的左上角（= 机器人自己的右边，-y），照用户的前脸图
     lx, ly = L2 - 46, -(W2 - 40)
-    P.append(("雷达座", soft(box(lx - 26, lx + 26, ly - 26, ly + 26, TOP, TOP + 10), 2.0), "skel_dk"))
+    P.append(("雷达座", soft(plan_chamfer(box(lx - 26, lx + 26, ly - 26, ly + 26, TOP, TOP + 10)), 1.0), "skel_dk"))
     P.append(("雷达", soft(cq.Solid.makeCylinder(20, 26, V(lx, ly, TOP + 10)), 1.5), "skel_dk"))
     P.append(("雷达窗", cq.Solid.makeCylinder(20.4, 8, V(lx, ly, TOP + 18)).cut(cq.Solid.makeCylinder(19, 8, V(lx, ly, TOP + 18))), "glass"))
     # ---- 背上：货台已经做进上层甲板壳里了（见上面）
