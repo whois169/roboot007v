@@ -42,6 +42,7 @@ HEX_A = MOTOR_D / 2 + 5.0                        # v6：髋盘每条边离电机
 # v6：髋盘照 v3（用户认可的造型：后面尖角、上沿斜边、下面缺口、楔形大腿），只把轮廓理顺、缩小。
 # 在“大腿坐标”里定义（u 沿 髋→膝，v 朝大腿上沿那侧），每条边：(方向角, 离中心的距离)；v3 量出来是 34° / -129° / 170° / 106°，取整成：
 HUB_EDGES = dict(AB=30.0, CD=-120.0, DE=180.0, EA=120.0)
+HUB_CUT = 54.0                                    # 尖角 A 切掉以后，切口离电机中心多远
 HUB_B_U, HUB_C_V = 8.0, -12.0                     # 大腿上沿从 B 出发（AB 边上 u = 8 的点），下沿从 C 出发（CD 边上 v = -12 的点）
 
 
@@ -158,8 +159,18 @@ def leg_2d(foot=(0.0, -HIP_Z)):
     while a2 > a1:
         a2 -= 2 * math.pi
     arc = [(L + RK * math.cos(a1 + (a2 - a1) * i / 16), RK * math.sin(a1 + (a2 - a1) * i / 16)) for i in range(17)]
-    hub_arc = [W(*A), W(*B)]
-    knee_arc = [W(*q) for q in arc] + [W(*C), W(*D), W(*E)]
+    # v6.1：A 角是两条边 90° 相交，太尖（用户：不协调）——垂直于它的方向切掉，切口离中心 54，变成一条短边
+    ra = math.hypot(*A)
+    ua = (A[0] / ra, A[1] / ra)
+
+    def cut_on(p0, p1):                                             # 边 p0→p1 和切口线（离中心 54、垂直于 ua）的交点
+        d0 = p0[0] * ua[0] + p0[1] * ua[1] - HUB_CUT
+        d1 = p1[0] * ua[0] + p1[1] * ua[1] - HUB_CUT
+        t = d0 / (d0 - d1)
+        return p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t
+    A1, A2 = cut_on(E, A), cut_on(A, B)
+    hub_arc = [W(*A2), W(*B)]
+    knee_arc = [W(*q) for q in arc] + [W(*C), W(*D), W(*E), W(*A1)]
     thigh = hub_arc + knee_arc
 
     def at_knee(pts, rr):
