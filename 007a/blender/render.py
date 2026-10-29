@@ -51,7 +51,8 @@ M = dict(shell=principled("外壳·喷涂", srgb("#d9dbdd"), 0.42),
          cyan=principled("青色光", (0.0, 0.6, 1.0, 1), 0.3, emit=(0.0, 0.75, 1.0, 1), strength=4.0),
          eye=principled("眼睛", (0.3, 0.7, 1.0, 1), 0.3, emit=(0.47, 0.78, 1.0, 1), strength=3.0),
          red=principled("尾灯", (1.0, 0.05, 0.03, 1), 0.3, emit=(1.0, 0.04, 0.02, 1), strength=5.0),
-         estop=principled("急停红", srgb("#c8102e"), 0.3))
+         estop=principled("急停红", srgb("#c8102e"), 0.3),
+         lamp=principled("探照灯", (0.95, 0.97, 1.0, 1), 0.15, emit=(1.0, 0.97, 0.9, 1), strength=2.5))
 
 man = json.load(open(os.path.join(SRC, "manifest.json"), encoding="utf-8"))
 objs = []

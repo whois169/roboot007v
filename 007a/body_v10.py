@@ -10,7 +10,10 @@
   扬声器孔：前脸两组斜槽中间各一排小孔 —— 喇叭（USB 声卡）往前出声
   麦克风阵列 + 录音灯：顶上右前角一个深色圆座、5 个拾音孔、外圈青色灯 —— 会议助手录音用，灯亮 = 正在录（大家看得见）
   电源开关：尾部接口板右边一个自锁开关（GQ16）带青色光圈 —— 开机，光圈亮 = 通电
-  雷达保护架：雷达外面一圈金属架 —— 倒了、撞了保护雷达
+  探照灯（一个）：前防撞杠左头，圆筒形强光灯 —— 管廊、楼道里照路，给相机补光
+  底部绑带卡口 ×4：机身底下四个角，凹进去的卡口带横销（外面看不到）—— 以后绑带子用
+  深度相机：前防撞杠正中，往下斜的相机罩（两个红外镜头 + 投射器 + 彩色镜头）—— 看台阶、看前面地面（上楼梯的眼睛）
+  雷达护圈：雷达底下一圈八角形矮护圈，上沿低于扫描窗 —— 不挡扫描，侧面撞到先碰护圈
   前防撞杠：车头下面一根深色杠，台阶测距窗在杠里 —— 保护车头和测距窗
   尾部接口板：凹进去的深色板，急停、充电口在上面
 用法：python 007a/body_v10.py → 007a/out/parts
@@ -57,6 +60,8 @@ def body_parts():
             shells[n] = [s, c]
         elif n.startswith("字样"):
             continue                                              # 字样挪到装甲板上（浅色）
+        elif n == "雷达座":
+            continue                                              # 换成八角护圈
         elif n.startswith("测距窗"):
             continue                                              # 测距窗挪进防撞杠
         else:
@@ -110,11 +115,12 @@ def body_parts():
         bumper = bumper.cut(box(L2 + 4, L2 + 10, sy * 70 - 9, sy * 70 + 9, Z0 + 29, Z0 + 37))
         P.append((f"测距窗{sy}", box(L2 + 4, L2 + 5, sy * 70 - 9, sy * 70 + 9, Z0 + 29, Z0 + 37), "glass"))
     P.append(("前防撞杠", soft(bumper, 1.5), "skel_dk"))
-    # ---- 雷达保护架（雷达在 (L2-46, -(W2-40))）
+    # ---- 雷达护圈：八角形矮护圈（和机身 45° 切角一样），上沿低于雷达扫描窗 2 —— 不挡扫描，侧面撞到先碰护圈
     lx, ly = L2 - 46, -(W2 - 50)
-    for dx in (-30.0, 30.0):
-        P.append((f"雷达架立柱{dx:.0f}", cq.Solid.makeCylinder(4, 44, V(lx + dx, ly, TOP + 10)), "metal"))
-    P.append(("雷达架顶环", ring_y(lx, TOP + 54, 68, 60, ly - 4, ly + 4).rotate(V(lx, ly, TOP + 54), V(lx + 1, ly, TOP + 54), 90), "metal"))
+    collar = M.plan_chamfer(box(lx - 30, lx + 30, ly - 30, ly + 30, TOP, TOP + 16), 14.0)
+    collar = collar.cut(cq.Solid.makeCylinder(22, 20, V(lx, ly, TOP + 4)))
+    collar = collar.cut(M.plan_chamfer(box(lx - 26, lx + 26, ly - 26, ly + 26, TOP + 14, TOP + 17), 12.0))   # 上沿内侧一圈台阶
+    P.append(("雷达护圈", soft(collar, 1.0), "skel"))
     # ---- 斜肩（顶上两条长棱 45° × 22）、底盘收腰（底下两条长棱 45° × 18）
     SH, BL = 22.0, 18.0
     for sy in (1, -1):
@@ -152,6 +158,26 @@ def body_parts():
     # ---- 电源开关（GQ16 自锁，带光圈）：尾部接口板右边
     P.append(("电源开关", cyl_x(44, ZC, 19, -L2 - 8, -L2 - 2), "metal"))
     P.append(("电源光圈", cyl_x(44, ZC, 22, -L2 - 3, -L2 - 1).cut(cyl_x(44, ZC, 18, -L2 - 4, -L2)), "cyan"))
+    # ---- 深度相机：前防撞杠正中，正面往下斜 20°（看台阶）
+    cam = prism_xz([(L2 + 4, Z0 + 18), (L2 + 22, Z0 + 18), (L2 + 26, Z0 + 29), (L2 + 26, Z0 + 38), (L2 + 16, Z0 + 48), (L2 + 4, Z0 + 48)], -48, 48)
+    P.append(("深度相机罩", soft(cam, 1.0), "skel"))
+    P.append(("深度相机窗", prism_xz([(L2 + 25.5, Z0 + 21), (L2 + 26.6, Z0 + 21), (L2 + 26.6, Z0 + 37), (L2 + 25.5, Z0 + 37)], -42, 42), "glass"))
+    for y, d in ((-32, 10), (32, 10), (0, 7), (14, 7)):             # 左右红外、投射器、彩色
+        P.append((f"相机镜头{y}", cyl_x(y, Z0 + 29, d, L2 + 26.4, L2 + 27.4), "metal"))
+    # ---- 探照灯（一个）：前防撞杠左头（+y，和右上角的雷达斜对着），圆筒灯 Φ34，凸出 18
+    ly_, lz_ = 101.0, Z0 + 32
+    P.append(("探照灯筒", soft(cyl_x(ly_, lz_, 34, L2 - 2, L2 + 16), 1.0), "skel"))
+    P.append(("探照灯圈", cyl_x(ly_, lz_, 36, L2 + 14, L2 + 18).cut(cyl_x(ly_, lz_, 27, L2 + 13, L2 + 19)), "metal"))
+    P.append(("探照灯", cyl_x(ly_, lz_, 25, L2 + 14, L2 + 15), "lamp"))
+    for k in range(4):                                              # 灯筒上的散热环
+        x = L2 + 1 + k * 3
+        P.append((f"灯散热环{k}", cyl_x(ly_, lz_, 37, x, x + 1.2), "skel_dk"))
+    # ---- 底部绑带卡口 ×4：底下四个角，凹 10 的槽 + 一根横销（带子穿过去）
+    for x in (-150.0, 150.0):
+        for y in (-70.0, 70.0):
+            tub = tub.cut(box(x - 18, x + 18, y - 6, y + 6, Z0 - 1, Z0 + 10))
+            P.append((f"卡口底{x:.0f}{y:.0f}", box(x - 18, x + 18, y - 6, y + 6, Z0 + 9, Z0 + 10), "skel_dk"))
+            P.append((f"卡口横销{x:.0f}{y:.0f}", cq.Solid.makeCylinder(2.5, 12, V(x, y - 6, Z0 + 4), V(0, 1, 0)), "metal"))
     P += [("上层甲板壳", up, "shell"), ("下层底盘", tub, "shell"), ("黑腰", waist, "skel_dk")]
     return P
 
@@ -175,4 +201,4 @@ if __name__ == "__main__":
         cq.exporters.export(cq.Workplane().add(s), os.path.join(out, fn), tolerance=0.08, angularTolerance=0.15)
         man.append(dict(file=fn, name=n, color=c))
     json.dump(man, open(os.path.join(out, "manifest.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=0)
-    print(f"{len(man)} 个零件（v13：腿 200/190 + 扬声器、麦克风、电源开关）")
+    print(f"{len(man)} 个零件（v15：一个探照灯、深度相机、底部绑带卡口）")
