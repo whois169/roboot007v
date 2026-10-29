@@ -2,7 +2,9 @@
 
 用法：python 007a/mass.py → 打印分项、合计、重心，并和 sizing.py 的估算比
 """
+import json
 import math
+import os
 
 import eng_body as B
 import eng_leg as E
@@ -104,3 +106,10 @@ if __name__ == "__main__":
         print(f"  {k:<36}{v:6.2f}")
     print(f"\n现在图上全按实心算：{solid:.2f} kg；按减重目标：{tot:.2f} kg（sizing.py 估的 14.4 kg）")
     print(f"重心：x {cx:+.0f}（正 = 偏前），y {cy:+.0f}，离地 {cz:.0f}（髋高 {M.HIP_Z:.0f}）")
+    # 给仿真（sim/export_mujoco.py）：机身（不含 4 条腿）的重量和重心，腿在仿真里按零件逐个算
+    body = [(m, p) for n, m, p in items if not n.startswith("腿")]
+    bm = sum(m for m, _ in body)
+    bc = [sum(m * p[i] for m, p in body) / bm for i in range(3)]
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out", "mass.json")
+    json.dump(dict(total=tot, com=[cx, cy, cz], body=bm, body_com=bc, legs=tot - bm), open(out, "w", encoding="utf-8"), indent=1)
+    print("→", out)
