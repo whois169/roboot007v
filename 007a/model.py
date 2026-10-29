@@ -28,9 +28,8 @@ SEAM = 2.0
 
 # 腿：比例照用户草图（concept_v3）
 H0, K0, B0, T0 = (97, 122), (307, 262), (213, 295), (155, 345)
-L1 = 230.0
-S = L1 / math.dist(H0, K0)
-LS = math.dist(K0, T0) * S                       # 小腿（膝 → 脚尖）
+L1, LS = 200.0, 190.0                           # v13：大腿 230 → 200、小腿 158 → 190（stair_calc.py 算的：住宅楼梯余量 10 → 26 mm，站高不变）
+S = LS / math.dist(K0, T0)                       # 小腿草图的缩放（大腿外形由 L1 直接生成，不用这个）
 STAND_KNEE = 90.0
 HIP_Z = math.sqrt(L1 ** 2 + LS ** 2 - 2 * L1 * LS * math.cos(math.radians(STAND_KNEE)))
 Z0 = HIP_Z - 72.0                                # 机身底离地（v12：髋在机身高度一半附近）

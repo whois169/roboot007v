@@ -7,12 +7,16 @@
   斜肩：上层甲板壳顶上两条长棱切 45° × 22 —— 侧翻时先着地的是斜面（不是尖棱），棱线也是顶盖的分界
   底盘收腰：下层底盘两条底棱切 45° × 18 —— 腿往里摆、过坎时不刮机身底
   护角：上层甲板壳四个竖棱包深色橡胶护角 —— 撞墙、撞门框先碰护角
+  扬声器孔：前脸两组斜槽中间各一排小孔 —— 喇叭（USB 声卡）往前出声
+  麦克风阵列 + 录音灯：顶上右前角一个深色圆座、5 个拾音孔、外圈青色灯 —— 会议助手录音用，灯亮 = 正在录（大家看得见）
+  电源开关：尾部接口板右边一个自锁开关（GQ16）带青色光圈 —— 开机，光圈亮 = 通电
   雷达保护架：雷达外面一圈金属架 —— 倒了、撞了保护雷达
   前防撞杠：车头下面一根深色杠，台阶测距窗在杠里 —— 保护车头和测距窗
   尾部接口板：凹进去的深色板，急停、充电口在上面
 用法：python 007a/body_v10.py → 007a/out/parts
 """
 import json
+import math
 import os
 
 import cadquery as cq
@@ -127,6 +131,27 @@ def body_parts():
                    (X + sx * t, Y - sy * 16), (X + sx * t, Y - sy * (ch - 1.2)), (X - sx * (ch - 1.2), Y + sy * t), (X - sx * 30, Y + sy * t)]
             g = cq.Workplane("XY").polyline(pts).close().extrude(zg1 - zg0).val().translate(V(0, 0, zg0))
             P.append((f"护角{sx}{sy}", soft(g, 0.8), "rubber"))
+    # ---- 扬声器孔：前脸两组斜槽中间（左右立体声）
+    hw = 150.0 / 2                                                  # 头宽一半（model.py：sw + 26）
+    for sy in (1, -1):
+        for i in range(5):
+            for j in (-1, 0, 1):
+                y, z = sy * (hw + 18 + i * 5.5), ZC + 2 + j * 5.5
+                up = up.cut(cyl_x(y, z, 3.0, L2 + 1, L2 + 8))
+        y0, y1 = sorted((sy * (hw + 15), sy * (hw + 43)))
+        P.append((f"扬声器孔底{sy}", box(L2 + 1, L2 + 2, y0, y1, ZC - 6, ZC + 10), "skel_dk"))
+    # ---- 麦克风阵列 + 录音灯：顶上右前角（雷达在左前角，对称）
+    mx, my = L2 - 46, W2 - 50
+    up = up.cut(cq.Solid.makeCylinder(23, 4, V(mx, my, TOP - 1.5)))
+    P.append(("麦克风座", cq.Solid.makeCylinder(20, 1.5, V(mx, my, TOP - 1.5)), "skel_dk"))
+    P.append(("录音灯", ring_y(0, 0, 46, 41, 0, 1).rotate(V(0, 0, 0), V(1, 0, 0), 90).translate(V(mx, my, TOP - 0.6)), "cyan"))
+    for a in range(4):
+        ang = a * 3.14159 / 2 + 0.785
+        P.append((f"拾音孔{a}", cq.Solid.makeCylinder(1.6, 0.4, V(mx + 11 * math.cos(ang), my + 11 * math.sin(ang), TOP)), "rubber"))
+    P.append(("拾音孔中", cq.Solid.makeCylinder(1.6, 0.4, V(mx, my, TOP)), "rubber"))
+    # ---- 电源开关（GQ16 自锁，带光圈）：尾部接口板右边
+    P.append(("电源开关", cyl_x(44, ZC, 19, -L2 - 8, -L2 - 2), "metal"))
+    P.append(("电源光圈", cyl_x(44, ZC, 22, -L2 - 3, -L2 - 1).cut(cyl_x(44, ZC, 18, -L2 - 4, -L2)), "cyan"))
     P += [("上层甲板壳", up, "shell"), ("下层底盘", tub, "shell"), ("黑腰", waist, "skel_dk")]
     return P
 
@@ -150,4 +175,4 @@ if __name__ == "__main__":
         cq.exporters.export(cq.Workplane().add(s), os.path.join(out, fn), tolerance=0.08, angularTolerance=0.15)
         man.append(dict(file=fn, name=n, color=c))
     json.dump(man, open(os.path.join(out, "manifest.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=0)
-    print(f"{len(man)} 个零件（v12：压低 + 斜肩 + 收腰 + 护角）")
+    print(f"{len(man)} 个零件（v13：腿 200/190 + 扬声器、麦克风、电源开关）")
