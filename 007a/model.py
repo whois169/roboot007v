@@ -324,7 +324,7 @@ def body_parts():
             pts = [(y_in, z0), (y_end - sy * h, z0), (y_end, z1), (y_in + sy * h, z1)]   # 平行四边形：都往外上方斜
             slab = slab.cut(prism_yz(pts, L2 - 1, L2 + 10))
             grooves.append((sy, z0, pts))
-    BX0, BX1, BW, BD = -178.0, 128.0, 196.0, 14.0                    # 货台：凹下去 14
+    BX0, BX1, BW, BD = -178.0, 128.0, 196.0, 6.0                     # 货台：凹下去 6（第 2 步：14 → 6，下面要让髋座外摆）
     slab = slab.cut(plan_chamfer(box(BX0, BX1, -BW / 2, BW / 2, TOP - BD, TOP + 5), 16.0))
     for x in (BX0 - 9, BX1 + 9):                                   # 前后沿的绑带孔
         for y in (-60, 0, 60):

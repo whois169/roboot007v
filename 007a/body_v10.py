@@ -74,9 +74,10 @@ def body_parts():
         # ---- 髋窝：髋盖后面一圈浅窝
         for fx in (1, -1):                                         # 浅窝：半径 66、深 5，比髋盖大一圈（髋转动的让位），窝底中灰
             y0, y1 = sorted((sy * (W2 - 5), sy * (W2 + 20)))       # R62 深 5（大腿内层只包皮带，外摆 ±15° 也不碰，eng_leg.py 算的）
-            pit = cyl_y(fx * HX, HZ, 124, y0, y1)
+            pit = cyl_y(fx * HX, HZ, 128, y0, y1)                  # R64：髋机构穿过侧壁的口（x ±52、z ±63，eng_body.py 量的）整个藏在窝里
             up, tub, waist = up.cut(pit), tub.cut(pit), waist.cut(pit)
-            liner = ring_y(fx * HX, HZ, 124, 100, *sorted((sy * (W2 - 6), sy * (W2 - 5)))).intersect(box(-L2, L2, -W2, W2, Z0 + 1, TOP - 1))
+            liner = cyl_y(fx * HX, HZ, 128, *sorted((sy * (W2 - 6), sy * (W2 - 5)))).cut(
+                cq.Workplane("XY").box(108, 2 * W2 + 20, 130).edges("|Y").fillet(20).val().translate(V(fx * HX, 0, HZ))).intersect(box(-L2, L2, -W2, W2, Z0 + 1, TOP - 1))
             P.append((f"髋窝底{fx}{sy}", liner, "skel"))
         # ---- 侧装甲板：深色、凸出 3、前后端 45° 斜（和机身切角一致），四颗螺丝
         ax0, ax1, az0, az1 = -72.0, 72.0, WAIST_TOP + 6, TOP - 20
