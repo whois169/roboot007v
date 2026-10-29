@@ -136,6 +136,8 @@ def leg_module():
         ribs = tri if ribs is None else ribs.fuse(tri)
     hipseat = rear.fuse(side).fuse(ribs)
     P.append(("髋座（铝，CNC）", soft(hipseat, 1.0), "metal", "外摆"))
+    # ---- 绕线环（打印）：髋电机外面那一圈空地（半径 49–54），髋 → 膝电机的线在里面绕 1.5 圈（像钟表发条），大腿转 ±100° 线不拉不磨
+    P.append(("绕线环（打印 PETG）", ring_y(0, 0, 108, 98, 60.0, 90.0), "skel_dk", "外摆"))
     # ---- 髋电机（定子在髋座侧板上，输出朝外）
     P.append(motor("髋电机", Y_HFE[0], +1) + ("外摆",))
     # ---- 大腿杯：杯底（接髋电机输出 + 膝电机背面）+ 杯壁 + 内板 + 外板 + 立柱

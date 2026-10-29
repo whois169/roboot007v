@@ -39,7 +39,7 @@ def solid_mass(s, rho):
 
 
 # 减重目标（下一轮出图时照这个做减重孔 / 空心壳）：实心算出来的重量 × 系数
-LIGHTEN = [("带轮", 0.34), ("大腿外层壳", 0.25), ("小腿", 0.6), ("大腿杯", 0.6), ("大腿外板", 0.6), ("骨架", 0.6), ("髋座", 0.7)]
+LIGHTEN = [("带轮", 0.34), ("大腿外层壳", 0.25), ("小腿", 0.6), ("大腿杯", 0.6), ("大腿外板", 0.6), ("髋座", 0.7)]   # 骨架铝板的减重孔已经画进去了（eng_body.finish），按实际算
 
 
 def lighten(name):
@@ -50,7 +50,7 @@ def lighten(name):
 
 
 def material(name):
-    if "（铝" in name or "铝，CNC" in name or "铝 4" in name:
+    if "（铝" in name or "铝，CNC" in name or "铝 4" in name or "角码" in name:
         return "铝"
     if "钢" in name or "轴" in name or "带轮" in name or "轴承" in name or "立柱" in name:
         return "钢"

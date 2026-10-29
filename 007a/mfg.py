@@ -81,10 +81,13 @@ if __name__ == "__main__":
     parts.append(export_other("L05", "膝轴", leg["膝轴 Φ12"], 4, "45 钢", "车削"))
     parts.append(export_other("L06", "大腿外层壳", leg["大腿外层壳（打印，完整外形）"], 4, "PETG / ASA", "3D 打印"))
     parts.append(export_other("L07", "小腿", leg["小腿（铝 + 打印壳）"], 4, "PA12-CF（或铝管 + 打印壳）", "3D 打印"))
+    parts.append(export_other("L08", "绕线环", leg["绕线环（打印 PETG）"], 4, "PETG", "3D 打印"))
+    br = [s for n, s, c in B.frame_parts(envs) if n.startswith("L 角码")]
+    parts.append(export_other("J01", "L角码", br[0], len(br), "不锈钢 / 铝（买成品，腿长 12、宽 12、厚 2，M3 孔）", "买"))
     # ---- 头支架、里面的打印件
     for n, s in H.body_side():
         if n.startswith("头支架"):
-            parts.append(export_plate("H01" if "左" in n else "H02", clean(n), s, 1, "6061-T6 铝板 3"))
+            parts.append(export_other("H01" if "左" in n else "H02", clean(n), s, 1, "5052 铝板 3（折弯）", "钣金折弯"))
     inside = {n: s for n, s, c in B.inside_parts()}
     parts.append(export_other("P01", "电池托", inside["电池托（打印 PETG，两道绑带槽）"], 1, "PETG", "3D 打印"))
     parts.append(export_other("P02", "托板插槽导轨", frame["托板插槽导轨左（打印）"], 2, "PETG", "3D 打印"))
@@ -111,7 +114,7 @@ if __name__ == "__main__":
     plt.savefig(os.path.join(DOC, "制造件总览.png"), dpi=100)
     # ---- 清单
     L = ["# 机械狗007A 制造件清单（第 2 步初版）", "", "> 由 `007a/mfg.py` 生成。文件在 `007a/out/mfg/`。铝板发 DXF 给激光切割厂；CNC / 车削件发 STEP；打印件是 STL。",
-         "> 初版：板子还没开减重孔、外壳卡扣和螺丝柱还没画（下一轮）；孔位标 ★ 的（宇树电机螺丝孔个数、舵机、IMU、485 模块）到货核对后再改。", "",
+         "> 第三轮：板上已有角码孔、减重孔、外壳 / 头 / 防撞杠 / 尾部接口板的安装孔；孔位标 ★ 的（宇树电机螺丝孔个数、舵机、IMU、485 模块）到货核对后再改。", "",
          "| 编号 | 名字 | 数量 | 材料 | 加工 | 厚 | 外形 | 文件 |", "|---|---|---|---|---|---|---|---|"]
     for p in parts:
         L.append(f"| {p['code']} | {p['name']} | {p['qty']} | {p['material']} | {p['process']} | {p['t']} | {p['size']} | {', '.join(p['files'])} |")

@@ -14,7 +14,7 @@ import cadquery as cq
 import body_v10 as BV
 import eng_body as B
 import model as M
-from model import V, box, cyl_y
+from model import V, box, cyl_x, cyl_y
 
 L2, Z0, TOP = M.L2, M.Z0, M.TOP
 ZC = M.WAIST_TOP + (TOP - M.WAIST_TOP) / 2 - 2
@@ -33,9 +33,12 @@ def body_side():
     """机身上不动的：头支架 ×2、舵机、舵盘转接件、右销。"""
     P = []
     x0 = B.X_END + B.T_END                                          # 前端板外侧
-    for sy, (ya, yb) in ((1, (30.0, 33.0)), (-1, (-69.0, -66.0))):
-        br = box(x0, PX + 4, ya, yb, PZ - 10, PZ + 10)
-        P.append((f"头支架{'左' if sy > 0 else '右'}（铝 3）", br))
+    for sy, (ya, yb), (f0, f1) in ((1, (30.0, 33.0), (33.0, 47.0)), (-1, (-69.0, -66.0), (-83.0, -69.0))):
+        br = box(x0, PX + 4, ya, yb, PZ - 10, PZ + 10).fuse(box(x0, x0 + 3, f0, f1, PZ - 12, PZ + 12))   # 折弯件：一边伸进头，一边是法兰
+        yh = (f0 + f1) / 2
+        for dz in (-6.0, 6.0):
+            br = br.cut(cyl_x(yh, PZ + dz, 3.4, x0 - 1, x0 + 4))
+        P.append((f"头支架{'左' if sy > 0 else '右'}（铝 3 折弯）", br))
     P.append(("抬头舵机 STS3032", box(PX - 17.2, PX + 6.0, 33.0, 33.0 + 28.5, PZ - 6.05, PZ + 6.05)))
     # 右转轴销 Φ5 穿过头的侧壁进法兰轴承（本来就要穿过去，不算干涉）
     return P

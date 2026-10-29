@@ -98,9 +98,6 @@ def frame_parts(envs):
     bot = box(-X_END, X_END, -Y_SR - T_SIDE, Y_SR + T_SIDE, Z_BOT, Z_BOT + T_BOT)
     for e in envs:
         bot = bot.cut(e)
-    for x in (-X_END + 20, -60.0, 60.0, X_END - 20):                 # 外壳卡扣孔（下层外壳的卡舌插进来）
-        for y in (-Y_SR + 8, Y_SR - 8):
-            bot = bot.cut(box(x - 6, x + 6, y - 1.5, y + 1.5, Z_BOT - 1, Z_BOT + T_BOT + 1))
     P.append(("A01 底板（铝 3）", bot, "metal"))
     # A02 外摆隔板 ×2：外摆电机背面拧在上面（R42.5 × 8 孔 + 中间 Φ40 过线孔）
     for fx in (1, -1):
@@ -151,11 +148,134 @@ def frame_parts(envs):
             x0, x1 = sorted((fx * (XB + 2), fx * (X_END + 10)))         # 扫过的空间 x 94.8–221.2、y ≥ 22.9（sweep_envelope 量的）；切通到边，不留细条
             y0, y1 = sorted((sy * (Y_BEAM + T_BEAM + 1), sy * (Y_SR + T_SIDE + 1)))
             tp = tp.cut(box(x0, x1, y0, y1, Z_TOPP - 1, Z_TOPP + T_TOP + 1).edges("|Z").fillet(6) if False else box(x0, x1, y0, y1, Z_TOPP - 1, Z_TOPP + T_TOP + 1))
-    for x in (-X_END + 12, -XB, 0.0, XB, X_END - 12):
-        for y in (-Y_SR + 6, Y_SR - 6):
-            tp = tp.cut(cyl_x(0, 0, 1, 0, 1).translate(V(0, 0, 0)) if False else cq.Solid.makeCylinder(1.7, 10, V(x, y, Z_TOPP - 1)))
     P.append(("A07 顶板（铝 3）", tp, "metal"))
-    return P
+    return finish(P)
+
+
+# ---------------------------------------------------------------- 连接、减重、外壳安装（第 2 步第三轮）
+BR_L, BR_W, BR_T, BR_HOLE = 12.0, 12.0, 2.0, 7.0   # L 角码：腿长 12、宽 12、厚 2，孔离角 7（M3）
+SHELL_SCREWS_TOP = [(x, y) for x in (-25.0, 25.0) for y in (-108.0, 108.0)] + [(-200.0, 0.0), (200.0, 0.0)]   # 上层外壳拧顶板（M3）
+SHELL_SCREWS_BOT = [(-200.0, 0.0), (200.0, 0.0)]                   # 下层外壳拧底板（M3），另外 4 个卡舌
+SHELL_CLIPS_BOT = [(x, sy * (Y_SR - 6)) for x in (-40.0, 40.0) for sy in (1, -1)]
+
+
+def _box2(p, q):
+    return box(min(p[0], q[0]), max(p[0], q[0]), min(p[1], q[1]), max(p[1], q[1]), min(p[2], q[2]), max(p[2], q[2]))
+
+
+def _add(a, b, k=1.0):
+    return (a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k)
+
+
+def bracket(c, da, db, L=BR_L):
+    """内角的 L 角码：c = 两块板内表面交线上一点；da 沿板 A 表面离开角，db 沿板 B 表面离开角（板 A 在 -db 那边，板 B 在 -da 那边）。
+    返回 (角码, 板 A 上的孔, 板 B 上的孔)。"""
+    w = (da[1] * db[2] - da[2] * db[1], da[2] * db[0] - da[0] * db[2], da[0] * db[1] - da[1] * db[0])
+    hw = BR_W / 2
+    c0 = _add(c, w, -hw)
+    leg_a = _box2(c0, _add(_add(_add(c, w, hw), da, L), db, BR_T))
+    leg_b = _box2(c0, _add(_add(_add(c, w, hw), db, L), da, BR_T))
+    hole = BR_HOLE if L >= BR_L else L - 4.0
+
+    def drill(pt, axis):
+        a, b = _add(pt, axis, -12), _add(pt, axis, 12)
+        if axis[0]:
+            return cyl_x(pt[1], pt[2], 3.4, min(a[0], b[0]), max(a[0], b[0]))
+        if axis[1]:
+            return cyl_y(pt[0], pt[2], 3.4, min(a[1], b[1]), max(a[1], b[1]))
+        return cq.Solid.makeCylinder(1.7, 24, V(pt[0], pt[1], pt[2] - 12))
+    ha = drill(_add(c, da, hole), db)
+    hb = drill(_add(c, db, hole), da)
+    return leg_a.fuse(leg_b).cut(ha).cut(hb), ha, hb
+
+
+def joints():
+    """[(名字, c, da, db, 板 A, 板 B, 腿长)]：每个角码。"""
+    J = []
+    zb, zt = Z_BOT + T_BOT, Z_TOPP
+    for fx in (1, -1):
+        f = "前" if fx > 0 else "后"
+        xi, xo, xe = fx * (XB - T_BH), fx * XB, fx * X_END             # 隔板朝中间那面、隔板朝腿那面、端板内面
+        ep = "A05" if fx > 0 else "A06"
+        for y in (-100.0, -45.0, 45.0, 100.0):
+            J.append((f"隔板{f}-底板", (xi, y, zb), (-fx, 0, 0), (0, 0, 1), "A01", f"A02{f}", BR_L))
+        for y in (-100.0, 0.0, 100.0):
+            J.append((f"隔板{f}-顶板", (xi, y, zt), (-fx, 0, 0), (0, 0, -1), "A07", f"A02{f}", BR_L))
+        for sy in (1, -1):
+            side = "左" if sy > 0 else "右"
+            for z in (Z0 + 70, Z0 + 115):
+                J.append((f"隔板{f}-侧梁", (xi, sy * Y_SR, z), (0, -sy, 0), (-fx, 0, 0), f"A02{f}", f"A03{side}", BR_L))
+            for z in (Z0 + 20, Z0 + 115):
+                J.append((f"纵梁-隔板{f}", (xo, sy * Y_BEAM, z), (fx, 0, 0), (0, -sy, 0), f"A04{f}{side}", f"A02{f}", BR_L))
+                J.append((f"纵梁-端板{f}", (xe, sy * Y_BEAM, z), (-fx, 0, 0), (0, -sy, 0), f"A04{f}{side}", ep, BR_L))
+            for x in (100.0, 180.0):
+                J.append((f"纵梁-底板{f}", (fx * x, sy * Y_BEAM, zb), (0, -sy, 0), (0, 0, 1), "A01", f"A04{f}{side}", BR_L))
+                J.append((f"纵梁-顶板{f}", (fx * x, sy * Y_BEAM, zt), (0, -sy, 0), (0, 0, -1), "A07", f"A04{f}{side}", BR_L))
+        J.append((f"端板{f}-底板", (xe, 0.0, zb), (-fx, 0, 0), (0, 0, 1), "A01", ep, 10.0))
+        J.append((f"端板{f}-顶板", (xe, 0.0, zt), (-fx, 0, 0), (0, 0, -1), "A07", ep, 10.0))
+    for sy in (1, -1):
+        for x in (-35.0, 35.0):
+            J.append(("侧梁-底板", (x, sy * Y_SR, zb), (0, -sy, 0), (0, 0, 1), "A01", f"A03{'左' if sy > 0 else '右'}", BR_L))
+    return J
+
+
+def _rrect(axis, c0, c1, a0, a1, b0, b1, r=8.0):
+    """沿 axis 穿过的圆角方孔（c0–c1 是穿过方向的范围）：z 轴时 a = x、b = y；y 轴时 a = x、b = z。"""
+    if axis == "z":
+        s = cq.Workplane("XY").center((a0 + a1) / 2, (b0 + b1) / 2).rect(a1 - a0, b1 - b0).extrude(c1 - c0).edges("|Z").fillet(r).val()
+        return s.translate(V(0, 0, c0))
+    s = cq.Workplane("XY").center((a0 + a1) / 2, (b0 + b1) / 2).rect(a1 - a0, b1 - b0).extrude(c1 - c0).edges("|Z").fillet(r).val()
+    s = s.rotate(V(0, 0, 0), V(1, 0, 0), 90)                        # (a, b, c) → (a, -c, b)
+    return s.translate(V(0, c1, 0))
+
+
+def finish(P):
+    """加角码、在板上打角码孔、减重孔、外壳 / 头 / 防撞杠 / 尾部接口板的安装孔。"""
+    D, order = {}, []
+    for n, s, c in P:
+        key = n.split("（")[0].split(" ")[0]
+        if key.startswith(("A03", "A04")):
+            key = n.split("（")[0].replace(" 侧梁", "").replace(" 纵梁", "")
+        if key == "A02":
+            key = n.split("（")[0].replace(" 外摆隔板", "")
+        D[key] = [n, s, c]
+        order.append(key)
+    brs = []
+    for i, (nm, c, da, db, pa, pb, L) in enumerate(joints()):
+        b, ha, hb = bracket(c, da, db, L)
+        brs.append((f"L 角码 {nm} {i}", b, "skel_dk"))
+        for key, h in ((pa, ha), (pb, hb)):
+            assert key in D, (key, list(D))
+            D[key][1] = D[key][1].cut(h)
+    zb, zt = Z_BOT, Z_TOPP
+    for fx in (1, -1):                                               # 减重孔：纵梁两个、底板腿下面四块
+        for sy in (1, -1):
+            k = f"A04{'前' if fx > 0 else '后'}{'左' if sy > 0 else '右'}"
+            y0, y1 = sorted((sy * Y_BEAM, sy * (Y_BEAM + T_BEAM)))
+            for a0, a1 in ((75.0, 140.0), (150.0, 205.0)):
+                xa, xb = sorted((fx * a0, fx * a1))
+                D[k][1] = D[k][1].cut(_rrect("y", y0 - 1, y1 + 1, xa, xb, Z0 + 30, Z0 + 100))
+            xa, xb = sorted((fx * 75.0, fx * 205.0))
+            ya, yb = sorted((sy * 30.0, sy * 100.0))
+            D["A01"][1] = D["A01"][1].cut(_rrect("z", zb - 1, zb + T_BOT + 1, xa, xb, ya, yb, 10.0))
+    for sy in (1, -1):                                               # 顶板中间（货台底下）两个
+        ya, yb = sorted((sy * 30.0, sy * 92.0))
+        D["A07"][1] = D["A07"][1].cut(_rrect("z", zt - 1, zt + T_TOP + 1, -28.0, 28.0, ya, yb, 8.0))
+    for x, y in SHELL_SCREWS_TOP:                                    # 外壳安装（M3，外壳上打印螺丝柱 + 热熔螺母）
+        D["A07"][1] = D["A07"][1].cut(cq.Solid.makeCylinder(1.7, 10, V(x, y, zt - 2)))
+    for x, y in SHELL_SCREWS_BOT:
+        D["A01"][1] = D["A01"][1].cut(cq.Solid.makeCylinder(1.7, 10, V(x, y, zb - 2)))
+    for x, y in SHELL_CLIPS_BOT:                                     # 下层外壳的卡舌插进这几个槽
+        D["A01"][1] = D["A01"][1].cut(box(x - 6, x + 6, y - 1.5, y + 1.5, zb - 1, zb + T_BOT + 1))
+    xe0, xe1 = X_END - 1, X_END + T_END + 1
+    zc = M.WAIST_TOP + (TOP - M.WAIST_TOP) / 2 - 2
+    front = [(y, Z0 + z) for y in (-75.0, 75.0) for z in (22.0, 44.0)]          # 防撞杠（相机罩、灯、热像仪都装在防撞杠上）
+    front += [(y, zc + dz) for y in (40.0, -76.0) for dz in (-6.0, 6.0)]        # 头支架法兰（每边 2 个，eng_head.body_side）
+    for y, z in front:
+        D["A05"][1] = D["A05"][1].cut(cyl_x(y, z, 3.4, xe0, xe1))
+    for y, z in [(y, zc + dz) for y in (-85.0, 85.0) for dz in (-20.0, 20.0)]:  # 尾部接口板 4 个
+        D["A06"][1] = D["A06"][1].cut(cyl_x(y, z, 3.4, -xe1, -xe0))
+    return [tuple(D[k]) for k in order] + brs
 
 
 def inside_parts():

@@ -71,486 +71,796 @@
 },
 {
 "file": "014.stl",
-"name": "电池 6S3P（65 × 129 × 70）",
-"color": "rubber"
+"name": "L 角码 隔板前-底板 0",
+"color": "skel_dk"
 },
 {
 "file": "015.stl",
-"name": "电池托（打印 PETG，两道绑带槽）",
+"name": "L 角码 隔板前-底板 1",
 "color": "skel_dk"
 },
 {
 "file": "016.stl",
-"name": "电机电源继电器 80A（带座）",
-"color": "skel"
+"name": "L 角码 隔板前-底板 2",
+"color": "skel_dk"
 },
 {
 "file": "017.stl",
-"name": "保险丝盒",
-"color": "skel"
+"name": "L 角码 隔板前-底板 3",
+"color": "skel_dk"
 },
 {
 "file": "018.stl",
-"name": "C01 电子托板（亚克力 3，插在侧梁槽里）",
-"color": "glass"
+"name": "L 角码 隔板前-顶板 4",
+"color": "skel_dk"
 },
 {
 "file": "019.stl",
-"name": "树莓派 5（带散热）",
-"color": "skel"
+"name": "L 角码 隔板前-顶板 5",
+"color": "skel_dk"
 },
 {
 "file": "020.stl",
-"name": "USB 转 4 路 485",
-"color": "skel"
+"name": "L 角码 隔板前-顶板 6",
+"color": "skel_dk"
 },
 {
 "file": "021.stl",
-"name": "USB 集线器",
-"color": "skel"
+"name": "L 角码 隔板前-侧梁 7",
+"color": "skel_dk"
 },
 {
 "file": "022.stl",
-"name": "12V 5A 降压（灯、舵机）",
-"color": "skel"
+"name": "L 角码 隔板前-侧梁 8",
+"color": "skel_dk"
 },
 {
 "file": "023.stl",
-"name": "5V 5.5A 降压（树莓派）",
-"color": "skel"
+"name": "L 角码 纵梁-隔板前 9",
+"color": "skel_dk"
 },
 {
 "file": "024.stl",
-"name": "5V 3.2A 降压（传感器）",
-"color": "skel"
+"name": "L 角码 纵梁-端板前 10",
+"color": "skel_dk"
 },
 {
 "file": "025.stl",
-"name": "IMU 超核 HI13（正中间）",
-"color": "cyan"
+"name": "L 角码 纵梁-隔板前 11",
+"color": "skel_dk"
 },
 {
 "file": "026.stl",
-"name": "电平转换",
-"color": "skel"
+"name": "L 角码 纵梁-端板前 12",
+"color": "skel_dk"
 },
 {
 "file": "027.stl",
-"name": "(1, 1)外摆电机",
+"name": "L 角码 纵梁-底板前 13",
 "color": "skel_dk"
 },
 {
 "file": "028.stl",
-"name": "(1, 1)髋座（铝，CNC）",
-"color": "metal"
+"name": "L 角码 纵梁-顶板前 14",
+"color": "skel_dk"
 },
 {
 "file": "029.stl",
-"name": "(1, 1)髋电机",
+"name": "L 角码 纵梁-底板前 15",
 "color": "skel_dk"
 },
 {
 "file": "030.stl",
-"name": "(1, 1)大腿杯 + 内板（铝，CNC）",
-"color": "skel"
+"name": "L 角码 纵梁-顶板前 16",
+"color": "skel_dk"
 },
 {
 "file": "031.stl",
-"name": "(1, 1)大腿外板（铝 4）",
-"color": "shell"
+"name": "L 角码 隔板前-侧梁 17",
+"color": "skel_dk"
 },
 {
 "file": "032.stl",
-"name": "(1, 1)大腿外层壳（打印，完整外形）",
-"color": "skel"
+"name": "L 角码 隔板前-侧梁 18",
+"color": "skel_dk"
 },
 {
 "file": "033.stl",
-"name": "(1, 1)立柱 M4 0",
-"color": "metal"
+"name": "L 角码 纵梁-隔板前 19",
+"color": "skel_dk"
 },
 {
 "file": "034.stl",
-"name": "(1, 1)立柱 M4 1",
-"color": "metal"
+"name": "L 角码 纵梁-端板前 20",
+"color": "skel_dk"
 },
 {
 "file": "035.stl",
-"name": "(1, 1)立柱 M4 2",
-"color": "metal"
+"name": "L 角码 纵梁-隔板前 21",
+"color": "skel_dk"
 },
 {
 "file": "036.stl",
-"name": "(1, 1)立柱 M4 3",
-"color": "metal"
+"name": "L 角码 纵梁-端板前 22",
+"color": "skel_dk"
 },
 {
 "file": "037.stl",
-"name": "(1, 1)膝电机",
+"name": "L 角码 纵梁-底板前 23",
 "color": "skel_dk"
 },
 {
 "file": "038.stl",
-"name": "(1, 1)转接盘 + 轴（钢，车削）",
-"color": "metal"
+"name": "L 角码 纵梁-顶板前 24",
+"color": "skel_dk"
 },
 {
 "file": "039.stl",
-"name": "(1, 1)小带轮 HTD5M 20 齿",
-"color": "metal"
+"name": "L 角码 纵梁-底板前 25",
+"color": "skel_dk"
 },
 {
 "file": "040.stl",
-"name": "(1, 1)外板轴承 6801",
-"color": "metal"
+"name": "L 角码 纵梁-顶板前 26",
+"color": "skel_dk"
 },
 {
 "file": "041.stl",
-"name": "(1, 1)张紧轮 Φ18",
-"color": "metal"
+"name": "L 角码 端板前-底板 27",
+"color": "skel_dk"
 },
 {
 "file": "042.stl",
-"name": "(1, 1)同步带 HTD5M 宽20",
-"color": "rubber"
+"name": "L 角码 端板前-顶板 28",
+"color": "skel_dk"
 },
 {
 "file": "043.stl",
-"name": "(1, 1)膝轴 Φ12",
-"color": "metal"
+"name": "L 角码 隔板后-底板 29",
+"color": "skel_dk"
 },
 {
 "file": "044.stl",
-"name": "(1, 1)膝轴承 6801 内",
-"color": "metal"
+"name": "L 角码 隔板后-底板 30",
+"color": "skel_dk"
 },
 {
 "file": "045.stl",
-"name": "(1, 1)膝轴承 6801 外",
-"color": "metal"
+"name": "L 角码 隔板后-底板 31",
+"color": "skel_dk"
 },
 {
 "file": "046.stl",
-"name": "(1, 1)大带轮 HTD5M 30 齿（小腿根）",
-"color": "metal"
+"name": "L 角码 隔板后-底板 32",
+"color": "skel_dk"
 },
 {
 "file": "047.stl",
-"name": "(1, 1)小腿（铝 + 打印壳）",
-"color": "skel"
+"name": "L 角码 隔板后-顶板 33",
+"color": "skel_dk"
 },
 {
 "file": "048.stl",
-"name": "(1, -1)外摆电机",
+"name": "L 角码 隔板后-顶板 34",
 "color": "skel_dk"
 },
 {
 "file": "049.stl",
-"name": "(1, -1)髋座（铝，CNC）",
-"color": "metal"
+"name": "L 角码 隔板后-顶板 35",
+"color": "skel_dk"
 },
 {
 "file": "050.stl",
-"name": "(1, -1)髋电机",
+"name": "L 角码 隔板后-侧梁 36",
 "color": "skel_dk"
 },
 {
 "file": "051.stl",
-"name": "(1, -1)大腿杯 + 内板（铝，CNC）",
-"color": "skel"
+"name": "L 角码 隔板后-侧梁 37",
+"color": "skel_dk"
 },
 {
 "file": "052.stl",
-"name": "(1, -1)大腿外板（铝 4）",
-"color": "shell"
+"name": "L 角码 纵梁-隔板后 38",
+"color": "skel_dk"
 },
 {
 "file": "053.stl",
-"name": "(1, -1)大腿外层壳（打印，完整外形）",
-"color": "skel"
+"name": "L 角码 纵梁-端板后 39",
+"color": "skel_dk"
 },
 {
 "file": "054.stl",
-"name": "(1, -1)立柱 M4 0",
-"color": "metal"
+"name": "L 角码 纵梁-隔板后 40",
+"color": "skel_dk"
 },
 {
 "file": "055.stl",
-"name": "(1, -1)立柱 M4 1",
-"color": "metal"
+"name": "L 角码 纵梁-端板后 41",
+"color": "skel_dk"
 },
 {
 "file": "056.stl",
-"name": "(1, -1)立柱 M4 2",
-"color": "metal"
+"name": "L 角码 纵梁-底板后 42",
+"color": "skel_dk"
 },
 {
 "file": "057.stl",
-"name": "(1, -1)立柱 M4 3",
-"color": "metal"
+"name": "L 角码 纵梁-顶板后 43",
+"color": "skel_dk"
 },
 {
 "file": "058.stl",
-"name": "(1, -1)膝电机",
+"name": "L 角码 纵梁-底板后 44",
 "color": "skel_dk"
 },
 {
 "file": "059.stl",
-"name": "(1, -1)转接盘 + 轴（钢，车削）",
-"color": "metal"
+"name": "L 角码 纵梁-顶板后 45",
+"color": "skel_dk"
 },
 {
 "file": "060.stl",
-"name": "(1, -1)小带轮 HTD5M 20 齿",
-"color": "metal"
+"name": "L 角码 隔板后-侧梁 46",
+"color": "skel_dk"
 },
 {
 "file": "061.stl",
-"name": "(1, -1)外板轴承 6801",
-"color": "metal"
+"name": "L 角码 隔板后-侧梁 47",
+"color": "skel_dk"
 },
 {
 "file": "062.stl",
-"name": "(1, -1)张紧轮 Φ18",
-"color": "metal"
+"name": "L 角码 纵梁-隔板后 48",
+"color": "skel_dk"
 },
 {
 "file": "063.stl",
-"name": "(1, -1)同步带 HTD5M 宽20",
-"color": "rubber"
+"name": "L 角码 纵梁-端板后 49",
+"color": "skel_dk"
 },
 {
 "file": "064.stl",
-"name": "(1, -1)膝轴 Φ12",
-"color": "metal"
+"name": "L 角码 纵梁-隔板后 50",
+"color": "skel_dk"
 },
 {
 "file": "065.stl",
-"name": "(1, -1)膝轴承 6801 内",
-"color": "metal"
+"name": "L 角码 纵梁-端板后 51",
+"color": "skel_dk"
 },
 {
 "file": "066.stl",
-"name": "(1, -1)膝轴承 6801 外",
-"color": "metal"
+"name": "L 角码 纵梁-底板后 52",
+"color": "skel_dk"
 },
 {
 "file": "067.stl",
-"name": "(1, -1)大带轮 HTD5M 30 齿（小腿根）",
-"color": "metal"
+"name": "L 角码 纵梁-顶板后 53",
+"color": "skel_dk"
 },
 {
 "file": "068.stl",
-"name": "(1, -1)小腿（铝 + 打印壳）",
-"color": "skel"
+"name": "L 角码 纵梁-底板后 54",
+"color": "skel_dk"
 },
 {
 "file": "069.stl",
-"name": "(-1, 1)外摆电机",
+"name": "L 角码 纵梁-顶板后 55",
 "color": "skel_dk"
 },
 {
 "file": "070.stl",
-"name": "(-1, 1)髋座（铝，CNC）",
-"color": "metal"
+"name": "L 角码 端板后-底板 56",
+"color": "skel_dk"
 },
 {
 "file": "071.stl",
-"name": "(-1, 1)髋电机",
+"name": "L 角码 端板后-顶板 57",
 "color": "skel_dk"
 },
 {
 "file": "072.stl",
-"name": "(-1, 1)大腿杯 + 内板（铝，CNC）",
-"color": "skel"
+"name": "L 角码 侧梁-底板 58",
+"color": "skel_dk"
 },
 {
 "file": "073.stl",
-"name": "(-1, 1)大腿外板（铝 4）",
-"color": "shell"
+"name": "L 角码 侧梁-底板 59",
+"color": "skel_dk"
 },
 {
 "file": "074.stl",
-"name": "(-1, 1)大腿外层壳（打印，完整外形）",
-"color": "skel"
+"name": "L 角码 侧梁-底板 60",
+"color": "skel_dk"
 },
 {
 "file": "075.stl",
-"name": "(-1, 1)立柱 M4 0",
-"color": "metal"
+"name": "L 角码 侧梁-底板 61",
+"color": "skel_dk"
 },
 {
 "file": "076.stl",
-"name": "(-1, 1)立柱 M4 1",
-"color": "metal"
-},
-{
-"file": "077.stl",
-"name": "(-1, 1)立柱 M4 2",
-"color": "metal"
-},
-{
-"file": "078.stl",
-"name": "(-1, 1)立柱 M4 3",
-"color": "metal"
-},
-{
-"file": "079.stl",
-"name": "(-1, 1)膝电机",
-"color": "skel_dk"
-},
-{
-"file": "080.stl",
-"name": "(-1, 1)转接盘 + 轴（钢，车削）",
-"color": "metal"
-},
-{
-"file": "081.stl",
-"name": "(-1, 1)小带轮 HTD5M 20 齿",
-"color": "metal"
-},
-{
-"file": "082.stl",
-"name": "(-1, 1)外板轴承 6801",
-"color": "metal"
-},
-{
-"file": "083.stl",
-"name": "(-1, 1)张紧轮 Φ18",
-"color": "metal"
-},
-{
-"file": "084.stl",
-"name": "(-1, 1)同步带 HTD5M 宽20",
+"name": "电池 6S3P（65 × 129 × 70）",
 "color": "rubber"
 },
 {
+"file": "077.stl",
+"name": "电池托（打印 PETG，两道绑带槽）",
+"color": "skel_dk"
+},
+{
+"file": "078.stl",
+"name": "电机电源继电器 80A（带座）",
+"color": "skel"
+},
+{
+"file": "079.stl",
+"name": "保险丝盒",
+"color": "skel"
+},
+{
+"file": "080.stl",
+"name": "C01 电子托板（亚克力 3，插在侧梁槽里）",
+"color": "glass"
+},
+{
+"file": "081.stl",
+"name": "树莓派 5（带散热）",
+"color": "skel"
+},
+{
+"file": "082.stl",
+"name": "USB 转 4 路 485",
+"color": "skel"
+},
+{
+"file": "083.stl",
+"name": "USB 集线器",
+"color": "skel"
+},
+{
+"file": "084.stl",
+"name": "12V 5A 降压（灯、舵机）",
+"color": "skel"
+},
+{
 "file": "085.stl",
-"name": "(-1, 1)膝轴 Φ12",
-"color": "metal"
+"name": "5V 5.5A 降压（树莓派）",
+"color": "skel"
 },
 {
 "file": "086.stl",
-"name": "(-1, 1)膝轴承 6801 内",
-"color": "metal"
+"name": "5V 3.2A 降压（传感器）",
+"color": "skel"
 },
 {
 "file": "087.stl",
-"name": "(-1, 1)膝轴承 6801 外",
-"color": "metal"
+"name": "IMU 超核 HI13（正中间）",
+"color": "cyan"
 },
 {
 "file": "088.stl",
-"name": "(-1, 1)大带轮 HTD5M 30 齿（小腿根）",
-"color": "metal"
+"name": "电平转换",
+"color": "skel"
 },
 {
 "file": "089.stl",
-"name": "(-1, 1)小腿（铝 + 打印壳）",
-"color": "skel"
+"name": "(1, 1)外摆电机",
+"color": "skel_dk"
 },
 {
 "file": "090.stl",
-"name": "(-1, -1)外摆电机",
-"color": "skel_dk"
-},
-{
-"file": "091.stl",
-"name": "(-1, -1)髋座（铝，CNC）",
+"name": "(1, 1)髋座（铝，CNC）",
 "color": "metal"
 },
 {
-"file": "092.stl",
-"name": "(-1, -1)髋电机",
+"file": "091.stl",
+"name": "(1, 1)髋电机",
 "color": "skel_dk"
 },
 {
-"file": "093.stl",
-"name": "(-1, -1)大腿杯 + 内板（铝，CNC）",
+"file": "092.stl",
+"name": "(1, 1)大腿杯 + 内板（铝，CNC）",
 "color": "skel"
 },
 {
-"file": "094.stl",
-"name": "(-1, -1)大腿外板（铝 4）",
+"file": "093.stl",
+"name": "(1, 1)大腿外板（铝 4）",
 "color": "shell"
 },
 {
-"file": "095.stl",
-"name": "(-1, -1)大腿外层壳（打印，完整外形）",
+"file": "094.stl",
+"name": "(1, 1)大腿外层壳（打印，完整外形）",
 "color": "skel"
 },
 {
+"file": "095.stl",
+"name": "(1, 1)立柱 M4 0",
+"color": "metal"
+},
+{
 "file": "096.stl",
-"name": "(-1, -1)立柱 M4 0",
+"name": "(1, 1)立柱 M4 1",
 "color": "metal"
 },
 {
 "file": "097.stl",
-"name": "(-1, -1)立柱 M4 1",
+"name": "(1, 1)立柱 M4 2",
 "color": "metal"
 },
 {
 "file": "098.stl",
-"name": "(-1, -1)立柱 M4 2",
+"name": "(1, 1)立柱 M4 3",
 "color": "metal"
 },
 {
 "file": "099.stl",
-"name": "(-1, -1)立柱 M4 3",
-"color": "metal"
-},
-{
-"file": "100.stl",
-"name": "(-1, -1)膝电机",
+"name": "(1, 1)膝电机",
 "color": "skel_dk"
 },
 {
+"file": "100.stl",
+"name": "(1, 1)转接盘 + 轴（钢，车削）",
+"color": "metal"
+},
+{
 "file": "101.stl",
-"name": "(-1, -1)转接盘 + 轴（钢，车削）",
+"name": "(1, 1)小带轮 HTD5M 20 齿",
 "color": "metal"
 },
 {
 "file": "102.stl",
-"name": "(-1, -1)小带轮 HTD5M 20 齿",
+"name": "(1, 1)外板轴承 6801",
 "color": "metal"
 },
 {
 "file": "103.stl",
-"name": "(-1, -1)外板轴承 6801",
+"name": "(1, 1)张紧轮 Φ18",
 "color": "metal"
 },
 {
 "file": "104.stl",
-"name": "(-1, -1)张紧轮 Φ18",
-"color": "metal"
-},
-{
-"file": "105.stl",
-"name": "(-1, -1)同步带 HTD5M 宽20",
+"name": "(1, 1)同步带 HTD5M 宽20",
 "color": "rubber"
 },
 {
+"file": "105.stl",
+"name": "(1, 1)膝轴 Φ12",
+"color": "metal"
+},
+{
 "file": "106.stl",
-"name": "(-1, -1)膝轴 Φ12",
+"name": "(1, 1)膝轴承 6801 内",
 "color": "metal"
 },
 {
 "file": "107.stl",
-"name": "(-1, -1)膝轴承 6801 内",
+"name": "(1, 1)膝轴承 6801 外",
 "color": "metal"
 },
 {
 "file": "108.stl",
-"name": "(-1, -1)膝轴承 6801 外",
+"name": "(1, 1)大带轮 HTD5M 30 齿（小腿根）",
 "color": "metal"
 },
 {
 "file": "109.stl",
+"name": "(1, 1)小腿（铝 + 打印壳）",
+"color": "skel"
+},
+{
+"file": "110.stl",
+"name": "(1, -1)外摆电机",
+"color": "skel_dk"
+},
+{
+"file": "111.stl",
+"name": "(1, -1)髋座（铝，CNC）",
+"color": "metal"
+},
+{
+"file": "112.stl",
+"name": "(1, -1)髋电机",
+"color": "skel_dk"
+},
+{
+"file": "113.stl",
+"name": "(1, -1)大腿杯 + 内板（铝，CNC）",
+"color": "skel"
+},
+{
+"file": "114.stl",
+"name": "(1, -1)大腿外板（铝 4）",
+"color": "shell"
+},
+{
+"file": "115.stl",
+"name": "(1, -1)大腿外层壳（打印，完整外形）",
+"color": "skel"
+},
+{
+"file": "116.stl",
+"name": "(1, -1)立柱 M4 0",
+"color": "metal"
+},
+{
+"file": "117.stl",
+"name": "(1, -1)立柱 M4 1",
+"color": "metal"
+},
+{
+"file": "118.stl",
+"name": "(1, -1)立柱 M4 2",
+"color": "metal"
+},
+{
+"file": "119.stl",
+"name": "(1, -1)立柱 M4 3",
+"color": "metal"
+},
+{
+"file": "120.stl",
+"name": "(1, -1)膝电机",
+"color": "skel_dk"
+},
+{
+"file": "121.stl",
+"name": "(1, -1)转接盘 + 轴（钢，车削）",
+"color": "metal"
+},
+{
+"file": "122.stl",
+"name": "(1, -1)小带轮 HTD5M 20 齿",
+"color": "metal"
+},
+{
+"file": "123.stl",
+"name": "(1, -1)外板轴承 6801",
+"color": "metal"
+},
+{
+"file": "124.stl",
+"name": "(1, -1)张紧轮 Φ18",
+"color": "metal"
+},
+{
+"file": "125.stl",
+"name": "(1, -1)同步带 HTD5M 宽20",
+"color": "rubber"
+},
+{
+"file": "126.stl",
+"name": "(1, -1)膝轴 Φ12",
+"color": "metal"
+},
+{
+"file": "127.stl",
+"name": "(1, -1)膝轴承 6801 内",
+"color": "metal"
+},
+{
+"file": "128.stl",
+"name": "(1, -1)膝轴承 6801 外",
+"color": "metal"
+},
+{
+"file": "129.stl",
+"name": "(1, -1)大带轮 HTD5M 30 齿（小腿根）",
+"color": "metal"
+},
+{
+"file": "130.stl",
+"name": "(1, -1)小腿（铝 + 打印壳）",
+"color": "skel"
+},
+{
+"file": "131.stl",
+"name": "(-1, 1)外摆电机",
+"color": "skel_dk"
+},
+{
+"file": "132.stl",
+"name": "(-1, 1)髋座（铝，CNC）",
+"color": "metal"
+},
+{
+"file": "133.stl",
+"name": "(-1, 1)髋电机",
+"color": "skel_dk"
+},
+{
+"file": "134.stl",
+"name": "(-1, 1)大腿杯 + 内板（铝，CNC）",
+"color": "skel"
+},
+{
+"file": "135.stl",
+"name": "(-1, 1)大腿外板（铝 4）",
+"color": "shell"
+},
+{
+"file": "136.stl",
+"name": "(-1, 1)大腿外层壳（打印，完整外形）",
+"color": "skel"
+},
+{
+"file": "137.stl",
+"name": "(-1, 1)立柱 M4 0",
+"color": "metal"
+},
+{
+"file": "138.stl",
+"name": "(-1, 1)立柱 M4 1",
+"color": "metal"
+},
+{
+"file": "139.stl",
+"name": "(-1, 1)立柱 M4 2",
+"color": "metal"
+},
+{
+"file": "140.stl",
+"name": "(-1, 1)立柱 M4 3",
+"color": "metal"
+},
+{
+"file": "141.stl",
+"name": "(-1, 1)膝电机",
+"color": "skel_dk"
+},
+{
+"file": "142.stl",
+"name": "(-1, 1)转接盘 + 轴（钢，车削）",
+"color": "metal"
+},
+{
+"file": "143.stl",
+"name": "(-1, 1)小带轮 HTD5M 20 齿",
+"color": "metal"
+},
+{
+"file": "144.stl",
+"name": "(-1, 1)外板轴承 6801",
+"color": "metal"
+},
+{
+"file": "145.stl",
+"name": "(-1, 1)张紧轮 Φ18",
+"color": "metal"
+},
+{
+"file": "146.stl",
+"name": "(-1, 1)同步带 HTD5M 宽20",
+"color": "rubber"
+},
+{
+"file": "147.stl",
+"name": "(-1, 1)膝轴 Φ12",
+"color": "metal"
+},
+{
+"file": "148.stl",
+"name": "(-1, 1)膝轴承 6801 内",
+"color": "metal"
+},
+{
+"file": "149.stl",
+"name": "(-1, 1)膝轴承 6801 外",
+"color": "metal"
+},
+{
+"file": "150.stl",
+"name": "(-1, 1)大带轮 HTD5M 30 齿（小腿根）",
+"color": "metal"
+},
+{
+"file": "151.stl",
+"name": "(-1, 1)小腿（铝 + 打印壳）",
+"color": "skel"
+},
+{
+"file": "152.stl",
+"name": "(-1, -1)外摆电机",
+"color": "skel_dk"
+},
+{
+"file": "153.stl",
+"name": "(-1, -1)髋座（铝，CNC）",
+"color": "metal"
+},
+{
+"file": "154.stl",
+"name": "(-1, -1)髋电机",
+"color": "skel_dk"
+},
+{
+"file": "155.stl",
+"name": "(-1, -1)大腿杯 + 内板（铝，CNC）",
+"color": "skel"
+},
+{
+"file": "156.stl",
+"name": "(-1, -1)大腿外板（铝 4）",
+"color": "shell"
+},
+{
+"file": "157.stl",
+"name": "(-1, -1)大腿外层壳（打印，完整外形）",
+"color": "skel"
+},
+{
+"file": "158.stl",
+"name": "(-1, -1)立柱 M4 0",
+"color": "metal"
+},
+{
+"file": "159.stl",
+"name": "(-1, -1)立柱 M4 1",
+"color": "metal"
+},
+{
+"file": "160.stl",
+"name": "(-1, -1)立柱 M4 2",
+"color": "metal"
+},
+{
+"file": "161.stl",
+"name": "(-1, -1)立柱 M4 3",
+"color": "metal"
+},
+{
+"file": "162.stl",
+"name": "(-1, -1)膝电机",
+"color": "skel_dk"
+},
+{
+"file": "163.stl",
+"name": "(-1, -1)转接盘 + 轴（钢，车削）",
+"color": "metal"
+},
+{
+"file": "164.stl",
+"name": "(-1, -1)小带轮 HTD5M 20 齿",
+"color": "metal"
+},
+{
+"file": "165.stl",
+"name": "(-1, -1)外板轴承 6801",
+"color": "metal"
+},
+{
+"file": "166.stl",
+"name": "(-1, -1)张紧轮 Φ18",
+"color": "metal"
+},
+{
+"file": "167.stl",
+"name": "(-1, -1)同步带 HTD5M 宽20",
+"color": "rubber"
+},
+{
+"file": "168.stl",
+"name": "(-1, -1)膝轴 Φ12",
+"color": "metal"
+},
+{
+"file": "169.stl",
+"name": "(-1, -1)膝轴承 6801 内",
+"color": "metal"
+},
+{
+"file": "170.stl",
+"name": "(-1, -1)膝轴承 6801 外",
+"color": "metal"
+},
+{
+"file": "171.stl",
 "name": "(-1, -1)大带轮 HTD5M 30 齿（小腿根）",
 "color": "metal"
 },
 {
-"file": "110.stl",
+"file": "172.stl",
 "name": "(-1, -1)小腿（铝 + 打印壳）",
 "color": "skel"
 }
