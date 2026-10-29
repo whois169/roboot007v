@@ -40,7 +40,7 @@ def plan_stairs(h=0.175, t=0.26, n=4, mode="up"):
     feet0 = [p0 + f for f in RS.stand_feet_body(H)]
     for f in feet0:
         f[2] = T.gnd(f[0]) + RS.FOOT_R
-    m, ph, plan, order = RS.crawl(s, T, xg, None, H=H, D=t / 2, direction=dr, dry=True)
+    m, ph, plan = RS.crawl(s, T, xg, None, H=H, D=t, direction=dr, dry=True)
     return T, p0, feet0, plan
 
 
@@ -52,6 +52,8 @@ def poses(p0, feet0, plan):
         for u in (0.0, 0.5, 1.0):                                    # 挪机身
             yield p + (p1 - p) * u, th + (th1 - th) * u, feet, None
         p, th = p1, th1
+        if i is None:
+            break
         old = feet[i]
         for q in (np.array([old[0], old[1], (old[2] + z_top) / 2]), np.array([old[0], old[1], z_top]),
                   np.array([(old[0] + new[0]) / 2, old[1], z_top]), np.array([new[0], old[1], z_top]),

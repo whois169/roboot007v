@@ -170,8 +170,12 @@ class Sim:
         """一个控制周期：期望机身姿势 + 每只脚的世界坐标目标 → 关节目标 → PD + 前馈 → 电机扭矩（加上限）→ 仿真 n_sub 步。"""
         d = self.d
         q_des = np.zeros(12)
+        p_now, R_now = d.qpos[0:3].copy(), quat_mat(d.qpos[3:7])
         for i, l in enumerate(LEGS):
-            pb = R_des.T @ (feet_w_des[i] - p_des)
+            if stance[i]:
+                pb = R_des.T @ (feet_w_des[i] - p_des)              # 撑着的腿：按期望机身姿势算（机身姿势就靠它们撑出来）
+            else:
+                pb = R_now.T @ (feet_w_des[i] - p_now)              # 跨的腿：按机身实际姿势算，脚才落到世界坐标里规划的那个点
             q_des[3 * i:3 * i + 3] = ik(l, pb)
         q = d.qpos[self.qadr]
         dq = d.qvel[self.vadr]
@@ -375,8 +379,9 @@ def sc_trot(gif, v_top=0.5, T=0.36, H=0.25, clear=0.07, payload=5.0):
 A_MAX = 0.5                              # 静步挪机身的最大加速度 m/s²（重心“等效”多挪 a·h/g ≈ 1.4 cm）
 MARGIN = 0.05                            # 静步时重心离支撑三角形每条边至少 5 cm
 M_OK = 0.02                              # 落脚点余量到 20 mm 就算够，再多不如脚放在髋下面
-KMIN, KMAX = 40.0, 160.0                 # 膝内角范围（度），同 stair_calc.py
-R_KNEE, R_THIGH, R_SHANK = 0.034, 0.032, 0.018   # 膝（大带轮 + 皮带 + 壳，半径约 31.5）、大腿、小腿的“粗细”（m），离台阶要大于这个
+KMIN, KMAX = 40.0, 165.0                 # 膝内角范围（度）：stair_calc.py 用 160，这里放到 165（离伸直还有 15°，宇树 Go1 也这样用）
+GAP = 0.005                              # 腿的真实外形（髋盘 + 大腿 + 膝圆头 + 小腿）离台阶至少 5 mm
+FOOT_SKIP = 0.030                        # 脚球心 30 mm 以内的小腿不算（那是脚，本来就踩在地上）
 
 
 def tri_margin(tri, c):
@@ -397,37 +402,68 @@ def reach(k):
     return math.sqrt(L1 ** 2 + LSH ** 2 - 2 * L1 * LSH * math.cos(math.radians(k)))
 
 
-def seg_dist(p, a, b):
-    ab = b - a
-    u = float(np.clip(np.dot(p - a, ab) / max(np.dot(ab, ab), 1e-12), 0, 1))
-    return float(np.linalg.norm(p - (a + u * ab)))
+def _outline():
+    """model.py / eng_leg.py 的真实腿外形（侧面），站立姿势下取轮廓上的点（每 4 mm 一个），存成两个“局部坐标”：
+    大腿：u 沿 髋 → 膝、v 垂直；小腿：u 沿 膝 → 脚球心、v 垂直（m）。"""
+    sys.path.insert(0, ROOT)
+    import model as M
+    import eng_leg as E
+    M.RK, M.HEX_A, M.HUB_CUT = E.RK_NEW, E.HEX_A_NEW, E.HEX_A_NEW + 3.0
+    thigh, shank, knee, foot = M.leg_2d()
+
+    def dense(poly):
+        pts = []
+        for k in range(len(poly)):
+            a_, b_ = np.array(poly[k]) / 1000, np.array(poly[(k + 1) % len(poly)]) / 1000
+            n = max(int(np.linalg.norm(b_ - a_) / 0.004), 1)
+            pts += [a_ + (b_ - a_) * t for t in np.arange(n) / n]
+        return np.array(pts)
+
+    def local(pts, o, d):
+        u = d / np.linalg.norm(d)
+        v = np.array([-u[1], u[0]])
+        return np.stack([(pts - o) @ u, (pts - o) @ v], axis=1)
+    th = local(dense(thigh), np.zeros(2), K0)
+    sh = local(dense(shank), K0, F0 - K0)
+    sh = sh[np.linalg.norm(K0 + sh[:, :1] * (F0 - K0) / np.linalg.norm(F0 - K0)
+                           + sh[:, 1:] * np.array([-(F0 - K0)[1], (F0 - K0)[0]]) / np.linalg.norm(F0 - K0) - F0, axis=1) > FOOT_SKIP]
+    return th, sh
 
 
-def prof_dist(p, prof, gnd):
-    """侧面 2D 点到地形轮廓的距离（在地面以下为负）。只看附近 0.6 m 的线段。"""
-    d = min(seg_dist(p, np.array(prof[k]), np.array(prof[k + 1])) for k in range(len(prof) - 1)
-            if min(prof[k][0], prof[k + 1][0]) < p[0] + 0.6 and max(prof[k][0], prof[k + 1][0]) > p[0] - 0.6)
-    return -d if p[1] < gnd(p[0]) else d
+TH_PTS, SH_PTS = _outline()
 
 
-def leg_check(hip, foot, prof, gnd):
-    """侧面 2D：髋、脚（球心）→ 余量（m，负 = 不行）：够不够得着 / 膝角范围、膝 / 大腿 / 小腿离台阶。"""
+def knee_of(hip, foot):
+    """侧面 2D：髋、脚球心 → 膝（膝朝后那个解）。"""
     t = foot - hip
-    d = float(np.linalg.norm(t))
-    m = min(d - reach(KMIN), reach(KMAX) - d)
-    if m < -0.05:
-        return m
-    d = float(np.clip(d, abs(L1 - LSH) + 1e-4, L1 + LSH - 1e-4))
+    d = float(np.clip(np.linalg.norm(t), abs(L1 - LSH) + 1e-4, L1 + LSH - 1e-4))
     a = math.acos((L1 ** 2 + d ** 2 - LSH ** 2) / (2 * L1 * d))
     for sgn in (1, -1):
         K = hip + L1 * np.array([math.cos(ang(t) + sgn * a), math.sin(ang(t) + sgn * a)])
         if (t[0] * (K - hip)[1] - t[1] * (K - hip)[0]) * CROSS0 > 0:
             break
-    m = min(m, prof_dist(K, prof, gnd) - R_KNEE)
-    for u in (0.3, 0.55, 0.8):
-        m = min(m, prof_dist(hip + (K - hip) * u, prof, gnd) - R_THIGH)
-        m = min(m, prof_dist(K + (foot - K) * u, prof, gnd) - R_SHANK)
-    return m
+    return K
+
+
+def leg_points(hip, foot):
+    """这个姿势下腿外形上的所有点（侧面 2D，世界坐标）。"""
+    K = knee_of(hip, foot)
+    out = []
+    for pts, o, d in ((TH_PTS, hip, K - hip), (SH_PTS, K, foot - K)):
+        u = d / np.linalg.norm(d)
+        v = np.array([-u[1], u[0]])
+        out.append(o + pts[:, :1] * u + pts[:, 1:] * v)
+    return np.vstack(out)
+
+
+def leg_check(hip, foot, T):
+    """侧面 2D：髋、脚（球心）→ 余量（m，负 = 不行）：够不够得着 / 膝角范围；真实腿外形离地形 ≥ GAP。"""
+    t = foot - hip
+    d = float(np.linalg.norm(t))
+    m = min(d - reach(KMIN), reach(KMAX) - d)
+    if m < -0.05:
+        return m
+    return min(m, float(T.sdist(leg_points(hip, foot)).min()) - GAP)
 
 
 class Terrain:
@@ -436,7 +472,23 @@ class Terrain:
         self.segs, self.env, self.zones = segs, env, zones
         self.prof = []
         for a, b, z in segs:
-            self.prof += [(a, z), (b, z)]
+            self.prof += [(max(a, -3.0), z), (min(b, 3.0), z)]
+        P = np.array(self.prof)
+        self._A, self._B = P[:-1], P[1:]
+        self._x0 = np.array([a for a, b, z in segs])
+        self._z = np.array([z for a, b, z in segs])
+
+    def sdist(self, P):
+        """一堆侧面点（N×2）到地形轮廓的距离（在地面以下为负）。"""
+        A, B = self._A, self._B
+        AB = B - A
+        u = np.clip(((P[:, None, :] - A[None]) * AB[None]).sum(-1) / np.maximum((AB * AB).sum(-1), 1e-12)[None], 0, 1)
+        d = np.linalg.norm(P[:, None, :] - (A[None] + u[..., None] * AB[None]), axis=-1).min(1)
+        return np.where(P[:, 1] < self.gnd_v(P[:, 0]), -d, d)
+
+    def gnd_v(self, x):
+        k = np.clip(np.searchsorted(self._x0, x, side="right") - 1, 0, len(self.segs) - 1)
+        return self._z[k]
 
     def gnd(self, x):
         for a, b, z in self.segs:
@@ -460,132 +512,191 @@ def stairs(h, t, n, x0=0.45):
     return Terrain(segs, env, zones)
 
 
-def plan_crawl(T, feet0, x_start, x_goal, com_fn, H, D, direction, phase, order, clear=0.05, max_steps=400):
-    """静步规划（纯几何，不跑物理）。返回 [(腿序号, 机身位置, 俯仰, 新落脚点, 抬脚高度, 余量, 腿余量, 稳定余量)]。
-    节奏：按 order 一次跨一条腿，每跨一条机身往前 D/4（匀速，不来回晃）。
-    机身高度、俯仰跟 stair_calc.py：低的那头的髋在包络线上 H，另一头也想 H，但机身最多斜 20°。
-    落脚点：每条腿单独做动态规划 —— 把整段楼梯所有“跨的时刻 × 候选落脚点（每 2 cm）”都算一遍，
-      挑一串落脚点，让整段路上（站着的时候 + 跨的时候）膝 / 大腿 / 小腿离台阶、膝角范围的最小余量最大；一样好就挑离髋下面近的。
-    重心：跨之前机身左右挪，让重心（按这个姿势真算，腿很重）离另外三只脚的三角形每条边 ≥ MARGIN。"""
+def body_pose_fn(T, H):
+    """机身高度、俯仰跟 stair_calc.py：低的那头的髋在包络线上 H，另一头也想 H，但机身最多斜 20°。"""
     TH = math.radians(20)
-    dx = direction * D / 4
-    CAP = 0.03
 
     def body_pose(x):
-        """低的那头的髋（往上走时是后髋，往下 / 倒着上是前髋）在包络线上 H；另一头最多仰 / 俯 20°。"""
         zr = T.env(x - HX) + H
         zf = T.env(x + HX) + H
         th = float(np.clip(math.atan2(zf - zr, 2 * HX), -TH, TH))
         return (zr + HX * math.tan(th), th) if zr <= zf else (zf - HX * math.tan(th), th)
+    return body_pose
 
+
+def hip_fn(body_pose):
     def hip2d(leg, x):
         z, th = body_pose(x)
         h = np.array([x, 0, z]) + rpy_mat(0, -th) @ np.array([SIDE[leg][0] * HX, 0, 0])
         return np.array([h[0], h[2]])
+    return hip2d
 
-    # 1 节奏：第 k 步跨 order[k % 4]，跨的时候机身在 xs[k]
-    xs = []
-    while len(xs) < max_steps:
-        x = x_start + direction * phase + (len(xs) + 1) * dx
-        if direction * (x_goal - x) <= 0:
-            break
-        xs.append(x)
-    K = len(xs)
-    feet_x = {}
-    leg_margin = {}
-    for leg in order:
+
+def leg_dp(T, leg, f_init, x_start, swings, x_end, hip2d, clear, CAP=0.03):
+    """一条腿的落脚点（动态规划）：这条腿在机身走到 swings[m] 时跨，跨完一直撑到下一次跨（机身从 swings[m] 走到 swings[m+1]）。
+    把每次跨的“候选落脚点（每 2 cm）”都算一遍，挑一串让整段路上（撑着 + 跨的时候）真实腿外形离台阶、膝角范围的最小余量最大的；
+    一样好（都 ≥ CAP）就挑离髋下面近的。返回 (落脚点列表, 最小余量)。"""
+    def xs_between(a, b):
+        n = max(int(abs(b - a) / 0.015), 1)
+        return [a + (b - a) * u for u in np.linspace(0, 1, n + 1)]
+
+    def stance(m, f):
+        fp = np.array([f, T.gnd(f) + FOOT_R])
+        b = swings[m + 1] if m + 1 < len(swings) else x_end
+        return min(leg_check(hip2d(leg, x), fp, T) for x in xs_between(swings[m], b))
+
+    def swing(m, f0, f1):
+        ss = np.linspace(min(f0, f1) - 0.03, max(f0, f1) + 0.03, 20)
+        zt = max(T.gnd(x) for x in ss) + FOOT_R + clear
+        hp = hip2d(leg, swings[m])
+        return min(leg_check(hp, np.array([f0, zt]), T), leg_check(hp, np.array([f1, zt]), T))
+
+    if not swings:
+        fp = np.array([f_init, T.gnd(f_init) + FOOT_R])
+        return [], min(leg_check(hip2d(leg, x), fp, T) for x in xs_between(x_start, x_end))
+    m0 = min(leg_check(hip2d(leg, x), np.array([f_init, T.gnd(f_init) + FOOT_R]), T) for x in xs_between(x_start, swings[0]))
+    prev = {f_init: ((min(m0, CAP), 0.0), None)}
+    hist = []
+    for m in range(len(swings)):
+        b = swings[m + 1] if m + 1 < len(swings) else x_end
+        mid = hip2d(leg, (swings[m] + b) / 2)[0]
+        cs = []
+        for a_, b_ in T.zones:
+            cs += [x for x in np.arange(max(a_, mid - 0.24), min(b_, mid + 0.24) + 1e-9, 0.02)]
+        cur = {}
+        for f in cs:
+            sm = stance(m, f)
+            best = None
+            for f0, (val, _) in prev.items():
+                if abs(f - f0) > 0.36 or min(val[0], sm) < (best[0][0] if best else -1e9):
+                    continue
+                v = (min(val[0], sm, swing(m, f0, f), CAP), val[1] - abs(f - mid))
+                if best is None or v > best[0]:
+                    best = (v, f0)
+            if best is None:
+                f0, (val, _) = max(prev.items(), key=lambda kv: kv[1][0])
+                best = ((min(val[0], sm, -0.1), val[1]), f0)
+            cur[f] = best
+        hist.append(cur)
+        prev = cur
+    f = max(prev, key=lambda kk: prev[kk][0])
+    margin = prev[f][0][0]
+    seq = []
+    for m in range(len(swings) - 1, -1, -1):
+        seq.append(f)
+        f = hist[m][f][1]
+    return list(reversed(seq)), margin
+
+
+def plan_crawl(T, feet0, x_start, x_goal, com_fn, H, D, direction, ph_r, ph_f, clear=0.05, dp_cache=None):
+    """静步规划（纯几何，不跑物理）。返回 [(腿序号, 机身位置, 俯仰, 新落脚点, 抬脚高度, 余量, 腿余量, 稳定余量)]。
+    节奏：机身每走 D，后面两条腿在 x_start + ph_r + kD 处（机身停住）先左后右各跨一次，前面两条腿在 x_start + ph_f + kD 处各跨一次。
+      ph_r、ph_f 分开挑 —— 前腿、后腿在楼梯上最舒服的跨步时机不一样（stair_calc.py 也是这样分开算的）。
+    落脚点：每条腿单独动态规划（leg_dp）。
+    重心：跨之前机身左右挪（不够稳再前后挪 ±6 cm），让重心（按这个姿势真算，腿很重）离另外三只脚的三角形每条边 ≥ MARGIN。
+    左右挪最多 ±12 cm、前后最多 ±10 cm；同一处跨的一对腿先跨哪条，挑两条都稳的顺序。"""
+    body_pose = body_pose_fn(T, H)
+    hip2d = hip_fn(body_pose)
+    dp_cache = {} if dp_cache is None else dp_cache
+
+    def swings_of(ph):
+        out, k = [], 0
+        while True:
+            x = x_start + direction * (ph + k * D)
+            if direction * (x_goal - x) <= 0 or k > 200:
+                return out
+            out.append(x)
+            k += 1
+    plan_leg = {}
+    for leg in LEGS:
+        ph = ph_f if leg[0] == "F" else ph_r
         i = LEGS.index(leg)
-        js = [k for k in range(K) if order[k % 4] == leg]
-        if not js:
-            feet_x[i] = []
-            continue
-        # 每次跨完以后站到下一次抬起（或者走完）
-        ends = js[1:] + [K - 1]
+        key = (leg[0], round(ph, 4), round(H, 4), round(clear, 4), round(D, 4))   # 左右两条腿在侧面一样，算一次
+        if key not in dp_cache:
+            sw = swings_of(ph)
+            dp_cache[key] = (sw,) + leg_dp(T, leg, feet0[i][0], x_start, sw, x_goal, hip2d, clear)
+        plan_leg[leg] = dp_cache[key]
+    events = []
+    for leg in LEGS:
+        sw, fs, _ = plan_leg[leg]
+        for m, (x, f) in enumerate(zip(sw, fs)):
+            events.append((direction * x, 0 if leg[1] == "L" else 1, LEGS.index(leg), x, f))
+    events.sort()
+    # 同一处跨的一对腿（左右），先跨哪条：挑两条都跨得稳的那个顺序（只看支撑三角形，机身左右挪 ±12 cm）
+    feet_t = [f.copy() for f in feet0]
 
-        def cands(m):
-            mid = hip2d(leg, (xs[js[m]] + xs[ends[m]]) / 2)[0]
-            out = []
-            for a, b in T.zones:
-                out += [x for x in np.arange(max(a, mid - 0.24), min(b, mid + 0.24) + 1e-9, 0.02)]
-            return out, mid
+    def quick_stab(i, xb, ft):
+        tri = np.array([ft[j][:2] for j in range(4) if j != i])
+        return max(tri_margin(tri, np.array([xb + ddx, y])) for ddx in (-0.08, -0.04, 0.0, 0.04, 0.08) for y in np.arange(-0.12, 0.1201, 0.02))
+    k = 0
+    while k < len(events):
+        if k + 1 < len(events) and abs(events[k][3] - events[k + 1][3]) < 1e-9:
+            best_o = None
+            for a, b in ((k, k + 1), (k + 1, k)):
+                ft = [f.copy() for f in feet_t]
+                m = 1e9
+                for e in (events[a], events[b]):
+                    m = min(m, quick_stab(e[2], e[3], ft))
+                    ft[e[2]] = np.array([e[4], ft[e[2]][1], 0.0])
+                if best_o is None or m > best_o[0]:
+                    best_o = (m, a, b)
+            events[k], events[k + 1] = events[best_o[1]], events[best_o[2]]
+            for e in events[k:k + 2]:
+                feet_t[e[2]] = np.array([e[4], feet_t[e[2]][1], 0.0])
+            k += 2
+        else:
+            feet_t[events[k][2]] = np.array([events[k][4], feet_t[events[k][2]][1], 0.0])
+            k += 1
 
-        def stance(m, f):
-            fp = np.array([f, T.gnd(f) + FOOT_R])
-            return min(leg_check(hip2d(leg, xs[k]), fp, T.prof, T.gnd) for k in range(js[m], ends[m] + 1))
+    def legs_ok(x, i, feet):
+        return min(leg_check(hip2d(LEGS[j], x), np.array([feet[j][0], feet[j][2]]), T) for j in range(4) if j != i)
 
-        def swing(m, f0, f1):
-            ss = np.linspace(min(f0, f1) - 0.03, max(f0, f1) + 0.03, 20)
-            zt = max(T.gnd(x) for x in ss) + FOOT_R + clear
-            hp = hip2d(leg, xs[js[m]])
-            return min(leg_check(hp, np.array([f0, zt]), T.prof, T.gnd), leg_check(hp, np.array([f1, zt]), T.prof, T.gnd))
-        f_init = feet0[i][0]
-        m0 = min(leg_check(hip2d(leg, xs[k]), np.array([f_init, T.gnd(f_init) + FOOT_R]), T.prof, T.gnd) for k in range(0, js[0] + 1))
-        prev = {f_init: ((min(m0, CAP), 0.0), None)}                    # 落脚点 → ((余量, -偏离), 上一个)
-        hist = []
-        for m in range(len(js)):
-            cs, mid = cands(m)
-            cur = {}
-            for f in cs:
-                sm = stance(m, f)
-                best = None
-                for f0, (val, _) in prev.items():
-                    if abs(f - f0) > 0.36 or min(val[0], sm) < (best[0][0] if best else -1e9):
-                        continue
-                    v = (min(val[0], sm, swing(m, f0, f), CAP), val[1] - abs(f - mid))
-                    if best is None or v > best[0]:
-                        best = (v, f0)
-                if best is None:                                        # 都太远：随便接一个最好的（会被记成很差）
-                    f0, (val, _) = max(prev.items(), key=lambda kv: kv[1][0])
-                    best = ((min(val[0], sm, -0.1), val[1]), f0)
-                cur[f] = best
-            hist.append(cur)
-            prev = cur
-        f = max(prev, key=lambda kk: prev[kk][0])
-        leg_margin[i] = prev[f][0][0]
-        seq = []
-        for m in range(len(js) - 1, -1, -1):
-            seq.append(f)
-            f = hist[m][f][1]
-        feet_x[i] = list(reversed(seq))
-    # 2 按规划的落脚点走一遍：算每一步的机身位置（左右挪到稳）、抬脚高度、余量
     feet = [f.copy() for f in feet0]
-    cnt = {i: 0 for i in range(4)}
     out = []
     y_prev = 0.0
-    for k in range(K):
-        leg = order[k % 4]
-        i = LEGS.index(leg)
-        xb = xs[k]
+    for _, _, i, xb, xc in events:
+        leg = LEGS[i]
         sup = [j for j in range(4) if j != i]
         tri = np.array([feet[j][:2] for j in sup])
         old = feet[i]
         lifted = [f.copy() for f in feet]
         lifted[i] = old + np.array([0, 0, 0.06])
-        ys = np.arange(-0.09, 0.0901, 0.005)                           # 机身只左右挪：挑够稳（≥ MARGIN）且离上一步最近的
-        mg = np.array([tri_margin(tri, np.array([xb, y])) for y in ys])
-        okk = mg >= MARGIN
-        y = ys[okk][np.argmin(np.abs(ys[okk] - y_prev))] if okk.any() else ys[np.argmax(mg)]
-        want = np.array([xb, y])
-        stab = float(tri_margin(tri, want))
+        best = None
+        for ddx in sorted(np.arange(-0.10, 0.1001, 0.01), key=abs):
+            ys = np.arange(-0.12, 0.1201, 0.005)
+            mg = np.array([tri_margin(tri, np.array([xb + ddx, y])) for y in ys])
+            okk = mg >= MARGIN
+            y = ys[okk][np.argmin(np.abs(ys[okk] - y_prev))] if okk.any() else ys[np.argmax(mg)]
+            cand = (float(tri_margin(tri, np.array([xb + ddx, y]))), ddx, y)
+            if cand[0] >= MARGIN:
+                if ddx == 0 or legs_ok(xb + ddx, i, feet) >= min(0.0, legs_ok(xb, i, feet)):
+                    best = cand
+                    break
+            elif best is None or cand[0] > best[0]:
+                best = cand
+        stab, ddx, y = best
+        want = np.array([xb + ddx, y])
         y_prev = y
         bxy = want.copy()
         for _ in range(3):                                              # 机身放哪，重心（抬着这条腿）才正好在 want
             z, th = body_pose(bxy[0])
             bxy += want - com_fn(np.array([bxy[0], bxy[1], z]), th, lifted)
         z, th = body_pose(bxy[0])
-        xc = feet_x[i][cnt[i]]
-        cnt[i] += 1
         ss = np.linspace(min(old[0], xc) - 0.03, max(old[0], xc) + 0.03, 20)
         z_top = max(T.gnd(x) for x in ss) + FOOT_R + clear
         new = np.array([xc, old[1], T.gnd(xc) + FOOT_R])
-        lm = leg_margin[i]
+        lm = min(plan_leg[leg][2], legs_ok(bxy[0], i, feet),
+                 leg_check(hip2d(leg, bxy[0]), np.array([old[0], z_top]), T), leg_check(hip2d(leg, bxy[0]), np.array([xc, z_top]), T))
         out.append((i, np.array([bxy[0], bxy[1], z]), th, new, z_top, min(lm, stab - MARGIN + M_OK), lm, stab))
         feet[i] = new
+    # 收尾：最后一次跨完，机身走到终点（四只脚撑着）
+    z, th = body_pose(x_goal)
+    out.append((None, np.array([x_goal, 0.0, z]), th, None, None, min(legs_ok(x_goal, -1, feet), M_OK), legs_ok(x_goal, -1, feet), 1.0))
     return out
 
 
-def crawl(s, T, x_goal, rec, H=0.25, D=0.13, direction=1, phases=None, t_shift=0.5, t_swing=0.7, clear=0.05, dry=False, gait=None):
-    """静步：先规划（试几个起步相位，挑整段余量最大的），再在物理仿真里一步一步做。"""
+def crawl(s, T, x_goal, rec, H=0.25, D=0.26, direction=1, t_shift=0.5, t_swing=0.7, clear=0.05, dry=False, dHs=(0.0, 0.015, 0.03, 0.045, 0.06), ph_step=0.02):
+    """静步：先规划（前腿、后腿的跨步时机 × 机身高度 × 抬脚高度都试一遍，挑整段余量最大的），再在物理仿真里一步一步做。"""
     feet0 = [f.copy() for f in s.foot_world()]
     for f in feet0:
         f[2] = T.gnd(f[0]) + FOOT_R
@@ -603,19 +714,37 @@ def crawl(s, T, x_goal, rec, H=0.25, D=0.13, direction=1, phases=None, t_shift=0
         mujoco.mj_kinematics(s.m, dd)
         mujoco.mj_comPos(s.m, dd)
         return dd.subtree_com[s.m.body("base").id][:2].copy()
-    gaits = [["RL", "FL", "RR", "FR"], ["RL", "RR", "FL", "FR"]]       # 普通静步（左后 左前 右后 右前）/ 一对一对跨（后面一对 → 前面一对）
-    if direction < 0:
-        gaits = [["FL", "RL", "FR", "RR"], ["FL", "FR", "RL", "RR"]]
-    gaits = gaits[gait:gait + 1] if gait is not None else gaits
     best = None
-    for order in gaits:
-        for ph in (phases if phases is not None else np.arange(0, D / 2 + 1e-9, 0.02)):
-            plan = plan_crawl(T, feet0, x0, x_goal, com_fn, H, D, direction, ph, order, clear)
-            m = min(p[5] for p in plan)
-            if best is None or m > best[0] + 1e-4:
-                best = (m, ph, plan, order)
-    m_plan, ph, plan, order = best
-    s.gait = order
+    phs = np.arange(0.0, D - 1e-9, ph_step)
+    for dh in dHs:
+        for cl in sorted({clear, 0.035}):
+            cache = {}
+            body_pose = body_pose_fn(T, H + dh)
+            hip2d = hip_fn(body_pose)
+            # 前腿、后腿各自挑最好的几个时机（腿余量只跟自己的时机有关），再组合起来看稳不稳
+            score = {}
+            for ph in phs:
+                for side, leg in (("R", "RL"), ("F", "FL")):
+                    key = (side, round(ph, 4), round(H + dh, 4), round(cl, 4), round(D, 4))
+                    sw = []
+                    k = 0
+                    while True:
+                        x = x0 + direction * (ph + k * D)
+                        if direction * (x_goal - x) <= 0 or k > 200:
+                            break
+                        sw.append(x)
+                        k += 1
+                    cache[key] = (sw,) + leg_dp(T, leg, feet0[LEGS.index(leg)][0], x0, sw, x_goal, hip2d, cl)
+                    score[(side, ph)] = cache[key][2]
+            top_r = sorted(phs, key=lambda p: -score[("R", p)])[:3]
+            top_f = sorted(phs, key=lambda p: -score[("F", p)])[:3]
+            for pr in top_r:
+                for pf in top_f:
+                    plan = plan_crawl(T, feet0, x0, x_goal, com_fn, H + dh, D, direction, pr, pf, cl, cache)
+                    m = min(p[5] for p in plan)
+                    if best is None or m > best[0] + 1e-4:
+                        best = (m, (pr, pf, dh, cl), plan)
+    m_plan, ph, plan = best
     if dry:
         return best
     feet_w = [f.copy() for f in feet0]
@@ -639,6 +768,8 @@ def crawl(s, T, x_goal, rec, H=0.25, D=0.13, direction=1, phases=None, t_shift=0
             pitch = th0 + (th_new - th0) * kk
             s.step(p, rpy_mat(0, -pitch), feet_w, [1, 1, 1, 1])
         run(Tsh, shift)
+        if i is None:
+            break
         old = feet_w[i].copy()
         R = rpy_mat(0, -pitch)
         st = [1, 1, 1, 1]
@@ -659,12 +790,19 @@ def crawl(s, T, x_goal, rec, H=0.25, D=0.13, direction=1, phases=None, t_shift=0
             s.step(p, R, tg, st)
         run(t_swing, swing)
         feet_w[i] = new
+        if os.environ.get("CRAWL_DEBUG"):
+            Rn = quat_mat(s.d.qpos[3:7])
+            act = s.foot_world()
+            slip = max(np.linalg.norm((act[j] - feet_w[j])[:2]) for j in range(4))
+            print(f"  步 {LEGS[i]} 机身 计划 {p1.round(3)} 实际 {s.d.qpos[0:3].round(3)}  俯仰 计划 {math.degrees(th_new):.1f} 实际 "
+                  f"{math.degrees(math.asin(np.clip(Rn[2, 0], -1, 1))):.1f}  横滚 {math.degrees(math.atan2(Rn[2, 1], Rn[2, 2])):.1f}  "
+                  f"脚偏 {slip * 1000:.0f} mm  规划余量 {m_leg * 1000:+.0f} 稳 {stab * 1000:+.0f}", flush=True)
     t0 = s.d.time                                                     # 收尾：四只脚着地站 1 秒
     while s.d.time - t0 < 1.0:
         s.step(p, rpy_mat(0, -pitch), feet_w, [1, 1, 1, 1])
         rec.tick()
     s.plan = plan
-    return len(plan), m_plan, ph
+    return len(plan) - 1, m_plan, ph
 
 
 def sc_stairs(gif, h=0.175, t=0.26, n=4, mode="up", name="住宅"):
@@ -693,7 +831,7 @@ def sc_stairs(gif, h=0.175, t=0.26, n=4, mode="up", name="住宅"):
     while s.d.time < 0.5:
         s.step(p0, np.eye(3), feet_w, [1, 1, 1, 1])
         rec.tick()
-    steps, m_plan, ph = crawl(s, T, x_goal, rec, H=H, D=t / 2, direction=direction)
+    steps, m_plan, ph = crawl(s, T, x_goal, rec, H=H, D=t / 2, direction=direction)   # 机身每走半个踏步，四条腿各跨一次
     z_goal = top if mode in ("up", "back") else 0.0
     ok = direction * (s.d.qpos[0] - x_goal) > -0.2 and abs(s.d.qpos[2] - H - z_goal) < 0.08
     how = dict(up="正着往上", back="倒着往上（屁股朝楼梯，膝朝后的腿这样更顺）", down="正着往下")[mode]
@@ -843,4 +981,7 @@ if __name__ == "__main__":
               f"电机最高 {r['motor_speed']:.1f}/{W_M:.1f} rad/s  顶满 {r['sat']:.1f}%  横滚 {r['roll']:.1f}° 俯仰 {r['pitch']:.1f}°  "
               f"碰 {r['hit']}  稳定裕度 {r['margin_min']}  膝角 {r['knee_min']:.0f}–{r['knee_max']:.0f}°  功率 {r['P_avg']:.0f} W  走了 {r['dist']:.2f} m  "
               f"{'ok=' + str(r.get('ok')) if 'ok' in r else ''} {r.get('climbed', '')} {'实测 %.2f m/s' % r['v_meas'] if 'v_meas' in r else ''}", flush=True)
+    mine = {n: results[n] for n in names}                                # 几个场景分开同时跑时，写之前再读一遍，只更新自己跑的
+    results = json.load(open(rp, encoding="utf-8")) if os.path.exists(rp) else {}
+    results.update(mine)
     json.dump(results, open(rp, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
