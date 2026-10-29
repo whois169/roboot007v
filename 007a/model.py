@@ -180,6 +180,27 @@ def leg_2d(foot=(0.0, -HIP_Z)):
     return thigh, shank, knee, foot
 
 
+Y_STEP = 146.0                                   # 大腿台阶：外层完整外形从这里开始（eng_leg.py 算的）
+PD_S_, PD_B_ = 20 * 5 / math.pi, 30 * 5 / math.pi  # 小 / 大带轮节圆（HTD5M 20 / 30 齿）
+
+
+def belt_case(knee, m=10.0):
+    """大腿内层：两个带轮节圆外扩 m 的外切轮廓（凸包）。"""
+    kx, kz = knee
+    pts = sorted({(round(r * math.cos(2 * math.pi * i / 48) + cx, 3), round(r * math.sin(2 * math.pi * i / 48) + cz, 3))
+                  for i in range(48) for cx, cz, r in ((0.0, 0.0, PD_S_ / 2 + m), (kx, kz, PD_B_ / 2 + m))})
+    lo, up = [], []
+    for p in pts:
+        while len(lo) >= 2 and (lo[-1][0] - lo[-2][0]) * (p[1] - lo[-2][1]) - (lo[-1][1] - lo[-2][1]) * (p[0] - lo[-2][0]) <= 0:
+            lo.pop()
+        lo.append(p)
+    for p in reversed(pts):
+        while len(up) >= 2 and (up[-1][0] - up[-2][0]) * (p[1] - up[-2][1]) - (up[-1][1] - up[-2][1]) * (p[0] - up[-2][0]) <= 0:
+            up.pop()
+        up.append(p)
+    return lo[:-1] + up[:-1]
+
+
 def leg_parts(fx, sy):
     """一条腿（fx = 1 前 / -1 后，sy = 1 左 / -1 右）的零件，已放到机身上。"""
     thigh, shank, knee, foot = leg_2d()
@@ -193,7 +214,8 @@ def leg_parts(fx, sy):
     yc = LEG_Y                                                     # 大腿中面（左边的腿；右边镜像）
     y_out = yc + T_THIGH / 2
     kx, kz = knee
-    th = prism_xz(thigh, yc - T_THIGH / 2, y_out)
+    # 第 2 步：大腿分两层——外层（y 146 以外）是完整外形；内层只包住皮带（两个带轮外扩 10 的外切），外摆 ±15° 时不碰机身
+    th = prism_xz(thigh, Y_STEP, y_out).fuse(prism_xz(belt_case(knee), yc - T_THIGH / 2, Y_STEP + 1))
     slot = cq.Solid.makeCylinder(RK + 2, T_SHANK + 2, V(kx, yc - T_SHANK / 2 - 1, kz), V(0, 1, 0))   # 膝盖叉口：小腿插进去
     th = soft(th.cut(slot.fuse(prism_xz(shank, yc - T_SHANK / 2 - 1, yc + T_SHANK / 2 + 1))), 2.5)
     P.append(("大腿", place(th, 0), "skel"))

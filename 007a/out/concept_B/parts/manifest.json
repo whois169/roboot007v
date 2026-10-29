@@ -1,0 +1,512 @@
+[
+{
+"file": "000.stl",
+"name": "折线深色带",
+"color": "skel_dk"
+},
+{
+"file": "001.stl",
+"name": "折线灯1",
+"color": "cyan"
+},
+{
+"file": "002.stl",
+"name": "折线灯-1",
+"color": "cyan"
+},
+{
+"file": "003.stl",
+"name": "面罩",
+"color": "glass"
+},
+{
+"file": "004.stl",
+"name": "眼睛-30",
+"color": "eye"
+},
+{
+"file": "005.stl",
+"name": "眼睛30",
+"color": "eye"
+},
+{
+"file": "006.stl",
+"name": "屏幕下沿灯",
+"color": "cyan"
+},
+{
+"file": "007.stl",
+"name": "髋窝底11",
+"color": "skel_dk"
+},
+{
+"file": "008.stl",
+"name": "髋窝底-11",
+"color": "skel_dk"
+},
+{
+"file": "009.stl",
+"name": "髋窝底1-1",
+"color": "skel_dk"
+},
+{
+"file": "010.stl",
+"name": "髋窝底-1-1",
+"color": "skel_dk"
+},
+{
+"file": "011.stl",
+"name": "机身上壳",
+"color": "shell"
+},
+{
+"file": "012.stl",
+"name": "机身下壳",
+"color": "skel"
+},
+{
+"file": "013.stl",
+"name": "货台底垫",
+"color": "rubber"
+},
+{
+"file": "014.stl",
+"name": "货台筋0",
+"color": "rubber"
+},
+{
+"file": "015.stl",
+"name": "货台筋1",
+"color": "rubber"
+},
+{
+"file": "016.stl",
+"name": "货台筋2",
+"color": "rubber"
+},
+{
+"file": "017.stl",
+"name": "货台筋3",
+"color": "rubber"
+},
+{
+"file": "018.stl",
+"name": "货台筋4",
+"color": "rubber"
+},
+{
+"file": "019.stl",
+"name": "货台筋5",
+"color": "rubber"
+},
+{
+"file": "020.stl",
+"name": "货台筋6",
+"color": "rubber"
+},
+{
+"file": "021.stl",
+"name": "货台筋7",
+"color": "rubber"
+},
+{
+"file": "022.stl",
+"name": "尾灯1",
+"color": "red"
+},
+{
+"file": "023.stl",
+"name": "尾灯-1",
+"color": "red"
+},
+{
+"file": "024.stl",
+"name": "急停",
+"color": "estop"
+},
+{
+"file": "025.stl",
+"name": "雷达罩",
+"color": "glass"
+},
+{
+"file": "026.stl",
+"name": "前左大腿",
+"color": "skel"
+},
+{
+"file": "027.stl",
+"name": "前左大腿外盖板",
+"color": "shell"
+},
+{
+"file": "028.stl",
+"name": "前左髋台阶",
+"color": "metal"
+},
+{
+"file": "029.stl",
+"name": "前左髋盖",
+"color": "skel_dk"
+},
+{
+"file": "030.stl",
+"name": "前左髋光环",
+"color": "cyan"
+},
+{
+"file": "031.stl",
+"name": "前左髋中心盖",
+"color": "metal"
+},
+{
+"file": "032.stl",
+"name": "前左髋螺栓0",
+"color": "metal"
+},
+{
+"file": "033.stl",
+"name": "前左髋螺栓1",
+"color": "metal"
+},
+{
+"file": "034.stl",
+"name": "前左髋螺栓2",
+"color": "metal"
+},
+{
+"file": "035.stl",
+"name": "前左髋螺栓3",
+"color": "metal"
+},
+{
+"file": "036.stl",
+"name": "前左髋螺栓4",
+"color": "metal"
+},
+{
+"file": "037.stl",
+"name": "前左髋螺栓5",
+"color": "metal"
+},
+{
+"file": "038.stl",
+"name": "前左小腿",
+"color": "skel"
+},
+{
+"file": "039.stl",
+"name": "前左小腿盖板146",
+"color": "shell"
+},
+{
+"file": "040.stl",
+"name": "前左小腿盖板162",
+"color": "shell"
+},
+{
+"file": "041.stl",
+"name": "前左膝轴",
+"color": "metal"
+},
+{
+"file": "042.stl",
+"name": "前左膝盖帽外",
+"color": "skel_dk"
+},
+{
+"file": "043.stl",
+"name": "前左膝光点",
+"color": "cyan"
+},
+{
+"file": "044.stl",
+"name": "前左脚垫",
+"color": "rubber"
+},
+{
+"file": "045.stl",
+"name": "前右大腿",
+"color": "skel"
+},
+{
+"file": "046.stl",
+"name": "前右大腿外盖板",
+"color": "shell"
+},
+{
+"file": "047.stl",
+"name": "前右髋台阶",
+"color": "metal"
+},
+{
+"file": "048.stl",
+"name": "前右髋盖",
+"color": "skel_dk"
+},
+{
+"file": "049.stl",
+"name": "前右髋光环",
+"color": "cyan"
+},
+{
+"file": "050.stl",
+"name": "前右髋中心盖",
+"color": "metal"
+},
+{
+"file": "051.stl",
+"name": "前右髋螺栓0",
+"color": "metal"
+},
+{
+"file": "052.stl",
+"name": "前右髋螺栓1",
+"color": "metal"
+},
+{
+"file": "053.stl",
+"name": "前右髋螺栓2",
+"color": "metal"
+},
+{
+"file": "054.stl",
+"name": "前右髋螺栓3",
+"color": "metal"
+},
+{
+"file": "055.stl",
+"name": "前右髋螺栓4",
+"color": "metal"
+},
+{
+"file": "056.stl",
+"name": "前右髋螺栓5",
+"color": "metal"
+},
+{
+"file": "057.stl",
+"name": "前右小腿",
+"color": "skel"
+},
+{
+"file": "058.stl",
+"name": "前右小腿盖板146",
+"color": "shell"
+},
+{
+"file": "059.stl",
+"name": "前右小腿盖板162",
+"color": "shell"
+},
+{
+"file": "060.stl",
+"name": "前右膝轴",
+"color": "metal"
+},
+{
+"file": "061.stl",
+"name": "前右膝盖帽外",
+"color": "skel_dk"
+},
+{
+"file": "062.stl",
+"name": "前右膝光点",
+"color": "cyan"
+},
+{
+"file": "063.stl",
+"name": "前右脚垫",
+"color": "rubber"
+},
+{
+"file": "064.stl",
+"name": "后左大腿",
+"color": "skel"
+},
+{
+"file": "065.stl",
+"name": "后左大腿外盖板",
+"color": "shell"
+},
+{
+"file": "066.stl",
+"name": "后左髋台阶",
+"color": "metal"
+},
+{
+"file": "067.stl",
+"name": "后左髋盖",
+"color": "skel_dk"
+},
+{
+"file": "068.stl",
+"name": "后左髋光环",
+"color": "cyan"
+},
+{
+"file": "069.stl",
+"name": "后左髋中心盖",
+"color": "metal"
+},
+{
+"file": "070.stl",
+"name": "后左髋螺栓0",
+"color": "metal"
+},
+{
+"file": "071.stl",
+"name": "后左髋螺栓1",
+"color": "metal"
+},
+{
+"file": "072.stl",
+"name": "后左髋螺栓2",
+"color": "metal"
+},
+{
+"file": "073.stl",
+"name": "后左髋螺栓3",
+"color": "metal"
+},
+{
+"file": "074.stl",
+"name": "后左髋螺栓4",
+"color": "metal"
+},
+{
+"file": "075.stl",
+"name": "后左髋螺栓5",
+"color": "metal"
+},
+{
+"file": "076.stl",
+"name": "后左小腿",
+"color": "skel"
+},
+{
+"file": "077.stl",
+"name": "后左小腿盖板146",
+"color": "shell"
+},
+{
+"file": "078.stl",
+"name": "后左小腿盖板162",
+"color": "shell"
+},
+{
+"file": "079.stl",
+"name": "后左膝轴",
+"color": "metal"
+},
+{
+"file": "080.stl",
+"name": "后左膝盖帽外",
+"color": "skel_dk"
+},
+{
+"file": "081.stl",
+"name": "后左膝光点",
+"color": "cyan"
+},
+{
+"file": "082.stl",
+"name": "后左脚垫",
+"color": "rubber"
+},
+{
+"file": "083.stl",
+"name": "后右大腿",
+"color": "skel"
+},
+{
+"file": "084.stl",
+"name": "后右大腿外盖板",
+"color": "shell"
+},
+{
+"file": "085.stl",
+"name": "后右髋台阶",
+"color": "metal"
+},
+{
+"file": "086.stl",
+"name": "后右髋盖",
+"color": "skel_dk"
+},
+{
+"file": "087.stl",
+"name": "后右髋光环",
+"color": "cyan"
+},
+{
+"file": "088.stl",
+"name": "后右髋中心盖",
+"color": "metal"
+},
+{
+"file": "089.stl",
+"name": "后右髋螺栓0",
+"color": "metal"
+},
+{
+"file": "090.stl",
+"name": "后右髋螺栓1",
+"color": "metal"
+},
+{
+"file": "091.stl",
+"name": "后右髋螺栓2",
+"color": "metal"
+},
+{
+"file": "092.stl",
+"name": "后右髋螺栓3",
+"color": "metal"
+},
+{
+"file": "093.stl",
+"name": "后右髋螺栓4",
+"color": "metal"
+},
+{
+"file": "094.stl",
+"name": "后右髋螺栓5",
+"color": "metal"
+},
+{
+"file": "095.stl",
+"name": "后右小腿",
+"color": "skel"
+},
+{
+"file": "096.stl",
+"name": "后右小腿盖板146",
+"color": "shell"
+},
+{
+"file": "097.stl",
+"name": "后右小腿盖板162",
+"color": "shell"
+},
+{
+"file": "098.stl",
+"name": "后右膝轴",
+"color": "metal"
+},
+{
+"file": "099.stl",
+"name": "后右膝盖帽外",
+"color": "skel_dk"
+},
+{
+"file": "100.stl",
+"name": "后右膝光点",
+"color": "cyan"
+},
+{
+"file": "101.stl",
+"name": "后右脚垫",
+"color": "rubber"
+}
+]

@@ -46,6 +46,7 @@ Y_TOUT = (Y_PUL[1] + 1.0, Y_PUL[1] + 5.0)        # 大腿外板
 Y_LEG = (Y_PUL[0] + Y_PUL[1]) / 2                # 腿平面（皮带中线）
 CUP_OD = MD + 8.0                                # 大腿杯外径（包住膝电机）
 CAV_R = CUP_OD / 2 + 6.0                         # 机身侧面窝的半径（杯外面留 6）
+PIT_R, PIT_D = 62.0, 5.0                         # 外观上的髋窝（body_v10.py）
 
 # 外观跟着改：膝圆头要装下 30 齿大轮，髋盘要包住大腿杯
 RK_NEW = PD_B / 2 + BELT_T + 4.0                 # 大轮节圆半径 + 皮带厚 + 壁
@@ -142,10 +143,12 @@ def leg_module():
     cup = bolt_ring(cup, OUT_PCD / 2, OUT_N, 4.4, *Y_CUP_BOT)
     cup = bolt_ring(cup, BACK_R, BACK_N, 3.4, *Y_CUP_BOT, a0=math.pi / BACK_N)
     cup = cup.fuse(ring_y(0, 0, CUP_OD, CUP_OD - 6, Y_CUP_BOT[1], Y_TIN[0]))
-    tin = prism_xz(thigh2d, *Y_TIN).cut(cyl_y(0, 0, MBOSS_D + 4, Y_TIN[0] - 1, Y_TIN[1] + 1)).cut(cyl_y(kx, kz, 21, Y_TIN[0] - 1, Y_TIN[1] + 1))
+    tin = prism_xz(M.belt_case(knee), *Y_TIN)                          # 内板只包住皮带（外摆时不碰机身）.cut(cyl_y(0, 0, MBOSS_D + 4, Y_TIN[0] - 1, Y_TIN[1] + 1)).cut(cyl_y(kx, kz, 21, Y_TIN[0] - 1, Y_TIN[1] + 1))
     P.append(("大腿杯 + 内板（铝，CNC）", soft(cup.fuse(tin), 0.8), "skel", "大腿"))
     tout = prism_xz(thigh2d, *Y_TOUT).cut(cyl_y(0, 0, 21, Y_TOUT[0] - 1, Y_TOUT[1] + 1)).cut(cyl_y(kx, kz, 21, Y_TOUT[0] - 1, Y_TOUT[1] + 1))
     P.append(("大腿外板（铝 4）", soft(tout, 0.8), "shell", "大腿"))
+    shell = prism_xz(thigh2d, M.Y_STEP, Y_TOUT[0]).cut(prism_xz(M.belt_case(knee, 4.0), M.Y_STEP - 1, Y_TOUT[0] + 1))
+    P.append(("大腿外层壳（打印，完整外形）", soft(shell, 0.8), "skel", "大腿"))
     # 立柱：髋后上方 2 根 + 中段 2 根（避开皮带）
     ux, uz = kx / math.hypot(kx, kz), kz / math.hypot(kx, kz)
     nx, nz = -uz, ux
@@ -199,26 +202,35 @@ def body_half_width(z):
 
 
 def abd_check(thigh2d, knee):
+    """分两层查：内板（只包皮带）在 Y_TIN，外层完整外形从 M.Y_STEP 开始。"""
+    return _abd(((Y_TIN[0], M.belt_case(knee)), (M.Y_STEP, thigh2d)))
+
+
+def _abd(layers):
     """外摆转 θ（+ = 脚往外）时，大腿内板上每个点离机身侧面多远（窝里面的不算）。返回 [(θ, 最小间隙)]。"""
-    pts = []
-    for i in range(len(thigh2d)):
-        (x0, z0), (x1, z1) = thigh2d[i], thigh2d[(i + 1) % len(thigh2d)]
-        for t in (0, 0.25, 0.5, 0.75):
-            pts.append((x0 + (x1 - x0) * t, z0 + (z1 - z0) * t))
+    lp = []
+    for y, poly in layers:
+        for i in range(len(poly)):
+            (x0, z0), (x1, z1) = poly[i], poly[(i + 1) % len(poly)]
+            for t in (0, 0.25, 0.5, 0.75):
+                lp.append((y, x0 + (x1 - x0) * t, z0 + (z1 - z0) * t))
     res = []
     for deg in range(-30, 31, 5):
         th = math.radians(deg)
         gap = 1e9
-        for x, z in pts:
-            for y in (Y_TIN[0], Y_TOUT[1]):
+        for y, x, z in lp:
+            if True:
                 dy, dz = y - Y_HAA, z
                 y2 = Y_HAA + dy * math.cos(th) - dz * math.sin(th)
                 z2 = dy * math.sin(th) + dz * math.cos(th)
                 hw = body_half_width(z2)
                 if hw is None or abs(x) > M.L2 - M.HIP_X + 4:
                     continue
-                if math.hypot(x, z2) < CAV_R and y2 > Y_SIDE[0]:
+                r = math.hypot(x, z2)
+                if r < CAV_R and y2 > Y_SIDE[0]:
                     continue                                        # 在窝里
+                if r < PIT_R:
+                    hw = min(hw, W2 - PIT_D)                        # 机身侧面的髋窝
                 gap = min(gap, y2 - hw)
         res.append((deg, gap))
     return res
