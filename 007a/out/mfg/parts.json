@@ -1,0 +1,241 @@
+[
+ {
+  "code": "A01",
+  "name": "A01底板",
+  "qty": 1,
+  "material": "6061-T6 铝板",
+  "process": "激光切割",
+  "t": 3.0,
+  "size": "452 × 232",
+  "files": [
+   "A01_A01底板.dxf",
+   "A01_A01底板.step"
+  ]
+ },
+ {
+  "code": "A02",
+  "name": "A02外摆隔板前",
+  "qty": 2,
+  "material": "6061-T6 铝板",
+  "process": "激光切割",
+  "t": 5.0,
+  "size": "126 × 232",
+  "files": [
+   "A02_A02外摆隔板前.dxf",
+   "A02_A02外摆隔板前.step"
+  ]
+ },
+ {
+  "code": "A03",
+  "name": "A03侧梁左",
+  "qty": 2,
+  "material": "6061-T6 铝板",
+  "process": "激光切割",
+  "t": 3.0,
+  "size": "101 × 126",
+  "files": [
+   "A03_A03侧梁左.dxf",
+   "A03_A03侧梁左.step"
+  ]
+ },
+ {
+  "code": "A04",
+  "name": "A04纵梁前左",
+  "qty": 4,
+  "material": "6061-T6 铝板",
+  "process": "激光切割",
+  "t": 4.0,
+  "size": "171 × 126",
+  "files": [
+   "A04_A04纵梁前左.dxf",
+   "A04_A04纵梁前左.step"
+  ]
+ },
+ {
+  "code": "A05",
+  "name": "A05前端板",
+  "qty": 1,
+  "material": "6061-T6 铝板",
+  "process": "激光切割",
+  "t": 4.0,
+  "size": "126 × 226",
+  "files": [
+   "A05_A05前端板.dxf",
+   "A05_A05前端板.step"
+  ]
+ },
+ {
+  "code": "A06",
+  "name": "A06后端板",
+  "qty": 1,
+  "material": "6061-T6 铝板",
+  "process": "激光切割",
+  "t": 4.0,
+  "size": "126 × 226",
+  "files": [
+   "A06_A06后端板.dxf",
+   "A06_A06后端板.step"
+  ]
+ },
+ {
+  "code": "A07",
+  "name": "A07顶板",
+  "qty": 1,
+  "material": "6061-T6 铝板",
+  "process": "激光切割",
+  "t": 3.0,
+  "size": "452 × 232",
+  "files": [
+   "A07_A07顶板.dxf",
+   "A07_A07顶板.step"
+  ]
+ },
+ {
+  "code": "L01",
+  "name": "大腿外板",
+  "qty": 4,
+  "material": "6061-T6 铝板 4（左右各 2，镜像）",
+  "process": "激光切割",
+  "t": 4.0,
+  "size": "230 × 236",
+  "files": [
+   "L01_大腿外板.dxf",
+   "L01_大腿外板.step"
+  ]
+ },
+ {
+  "code": "L02",
+  "name": "大腿杯和内板",
+  "qty": 4,
+  "material": "6061-T6",
+  "process": "CNC",
+  "t": "—",
+  "size": "224 × 46 × 231",
+  "files": [
+   "L02_大腿杯和内板.step"
+  ]
+ },
+ {
+  "code": "L03",
+  "name": "髋座",
+  "qty": 4,
+  "material": "6061-T6",
+  "process": "CNC",
+  "t": "—",
+  "size": "124 × 54 × 110",
+  "files": [
+   "L03_髋座.step"
+  ]
+ },
+ {
+  "code": "L04",
+  "name": "转接盘和轴",
+  "qty": 4,
+  "material": "45 钢",
+  "process": "车削",
+  "t": "—",
+  "size": "59 × 33 × 59",
+  "files": [
+   "L04_转接盘和轴.step"
+  ]
+ },
+ {
+  "code": "L05",
+  "name": "膝轴",
+  "qty": 4,
+  "material": "45 钢",
+  "process": "车削",
+  "t": "—",
+  "size": "12 × 38 × 12",
+  "files": [
+   "L05_膝轴.step"
+  ]
+ },
+ {
+  "code": "L06",
+  "name": "大腿外层壳",
+  "qty": 4,
+  "material": "PETG / ASA",
+  "process": "3D 打印",
+  "t": "—",
+  "size": "230 × 23 × 236",
+  "files": [
+   "L06_大腿外层壳.stl"
+  ]
+ },
+ {
+  "code": "L07",
+  "name": "小腿",
+  "qty": 4,
+  "material": "PA12-CF（或铝管 + 打印壳）",
+  "process": "3D 打印",
+  "t": "—",
+  "size": "149 × 16 × 122",
+  "files": [
+   "L07_小腿.stl"
+  ]
+ },
+ {
+  "code": "H01",
+  "name": "头支架左",
+  "qty": 1,
+  "material": "6061-T6 铝板 3",
+  "process": "激光切割",
+  "t": 3.0,
+  "size": "24 × 20",
+  "files": [
+   "H01_头支架左.dxf",
+   "H01_头支架左.step"
+  ]
+ },
+ {
+  "code": "H02",
+  "name": "头支架右",
+  "qty": 1,
+  "material": "6061-T6 铝板 3",
+  "process": "激光切割",
+  "t": 3.0,
+  "size": "24 × 20",
+  "files": [
+   "H02_头支架右.dxf",
+   "H02_头支架右.step"
+  ]
+ },
+ {
+  "code": "P01",
+  "name": "电池托",
+  "qty": 1,
+  "material": "PETG",
+  "process": "3D 打印",
+  "t": "—",
+  "size": "73 × 137 × 25",
+  "files": [
+   "P01_电池托.stl"
+  ]
+ },
+ {
+  "code": "P02",
+  "name": "托板插槽导轨",
+  "qty": 2,
+  "material": "PETG",
+  "process": "3D 打印",
+  "t": "—",
+  "size": "101 × 6 × 9",
+  "files": [
+   "P02_托板插槽导轨.stl"
+  ]
+ },
+ {
+  "code": "C01",
+  "name": "电子托板",
+  "qty": 1,
+  "material": "黑色亚克力 3",
+  "process": "激光切割",
+  "t": 3.0,
+  "size": "99 × 226",
+  "files": [
+   "C01_电子托板.dxf",
+   "C01_电子托板.step"
+  ]
+ }
+]

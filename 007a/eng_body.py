@@ -148,7 +148,7 @@ def frame_parts(envs):
     tp = box(-X_END, X_END, -Y_SR - T_SIDE, Y_SR + T_SIDE, Z_TOPP, Z_TOPP + T_TOP)
     for fx in (1, -1):                                               # 四个髋上面开方口（髋座外摆时从这里过），口子四角倒圆
         for sy in (1, -1):
-            x0, x1 = sorted((fx * (XB + 2), fx * (X_END - 2)))          # 扫过的空间 x 94.8–221.2、y ≥ 22.9（sweep_envelope 量的）
+            x0, x1 = sorted((fx * (XB + 2), fx * (X_END + 10)))         # 扫过的空间 x 94.8–221.2、y ≥ 22.9（sweep_envelope 量的）；切通到边，不留细条
             y0, y1 = sorted((sy * (Y_BEAM + T_BEAM + 1), sy * (Y_SR + T_SIDE + 1)))
             tp = tp.cut(box(x0, x1, y0, y1, Z_TOPP - 1, Z_TOPP + T_TOP + 1).edges("|Z").fillet(6) if False else box(x0, x1, y0, y1, Z_TOPP - 1, Z_TOPP + T_TOP + 1))
     for x in (-X_END + 12, -XB, 0.0, XB, X_END - 12):

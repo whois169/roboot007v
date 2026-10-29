@@ -352,7 +352,7 @@ def body_parts():
     # ---- 头：深色屏幕模块从前脸往前伸 30，前面切角（像头盔面罩）；两侧金属圆盖 = 抬头低头的转轴
     hx0, hx1 = L2 + 4, L2 + 4 + HD
     zb, zt = zc - HH / 2, zc + HH / 2
-    prof = [(hx0 - 10, zb), (hx1 - CH_MID, zb), (hx1, zb + CH_MID), (hx1, zt - CH_MID), (hx1 - CH_MID, zt), (hx0 - 10, zt)]   # 上沿、下巴都是 45° × 18
+    prof = [(hx0 + 6, zb), (hx1 - CH_MID, zb), (hx1, zb + CH_MID), (hx1, zt - CH_MID), (hx1 - CH_MID, zt), (hx0 + 6, zt), (hx0 - 9, zc)]   # 上沿、下巴都是 45° × 18；后沿收成尖（在影线缝里，抬头低头 ±20° 不碰机身，eng_head.py）
     head = prism_xz(prof, -HW / 2, HW / 2)
     for sy in (1, -1):                                             # 前面两侧切掉一个斜角（收窄）
         tri = cq.Workplane("XY").polyline([(hx1 - 12, sy * (HW / 2 + 1)), (hx1 + 12, sy * (HW / 2 + 1)),
@@ -362,8 +362,8 @@ def body_parts():
     head = head.cut(box(hx1 - 3, hx1 + 1, -sw / 2, sw / 2, zc - sh / 2, zc + sh / 2))
     P.append(("头", head, "skel_dk"))
     for sy in (1, -1):                                             # 头两侧的鳍（装转轴的“耳朵”）
-        fin = prism_xz([(hx0 - 6, zc - 22), (hx0 + 14, zc - 22), (hx0 + 22, zc + 10), (hx0 + 4, zc + 26), (hx0 - 6, zc + 26)],
-                       *sorted((sy * HW / 2, sy * (HW / 2 + 6))))
+        fin = prism_xz([(hx0 + 2, zc - 22), (hx0 + 14, zc - 22), (hx0 + 22, zc + 10), (hx0 + 4, zc + 26), (hx0 + 2, zc + 26)],
+                       *sorted((sy * HW / 2, sy * (HW / 2 + 4))))     # 鳍薄到 4、后沿往前挪：整个在影线缝里，转起来不碰
         P.append((f"头鳍{sy}", soft(fin, 1.2), "shell"))
     P.append(("屏幕", box(hx1 - 3, hx1 - 1.5, -sw / 2, sw / 2, zc - sh / 2, zc + sh / 2), "glass"))
     for ey in (-30, 30):
