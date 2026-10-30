@@ -61,7 +61,7 @@ for (x, y), c, t in [((-L2 - 4, 0), C["power"], "急停 → 继电器线圈"),
                      ((-L2 - 4, 44), C["power"], "总开关"), ((-L2 - 4, -41), C["power"], "充电口 XT60 → 电池")]:
     line([(x, y), (-B.X_END, y * 0.15), (-60, y * 0.15), (0, -100) if "充电" in t else (0, 100) if "急停" in t or "开关" in t else (0, 67)], c, 1.5, "--")
     ax.text(x - 4, y, t, fontsize=8, va="center", ha="right")
-for k, t in (("power", "电源"), ("bus", "电机 CAN 总线 + 电源（16 AWG）"), ("usb", "USB"), ("sig", "信号（I2C / I2S / 串口 / 舵机总线）")):
+for k, t in (("power", "电源"), ("bus", "电机 485 总线 + 电源（16 AWG）"), ("usb", "USB"), ("sig", "信号（I2C / I2S / 串口 / 舵机总线）")):
     ax.plot([], [], color=C[k], lw=2, label=t)
 ax.legend(loc="lower center", ncol=4, fontsize=9, bbox_to_anchor=(0.5, -0.08))
 ax.set_title("007A 走线（俯视示意）：每条腿一路 485（外摆 → 髋 → 膝 串起来），线从外摆隔板中间的孔过", fontsize=12)

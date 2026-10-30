@@ -16,7 +16,7 @@ RHO = dict(铝=2.70e-6, 钢=7.85e-6, 亚克力=1.19e-6, 打印=1.27e-6 * 0.45)  
 BOUGHT = [
     ("电池 6S3P P42A（18 节 × 70 g + 保护板 + 线）", 1.40, 0.0, 0.0, M.Z0 + 45, "估"),
     ("树莓派 5 + 散热", 0.06, 0.0, 67.0, B.TRAY_Z + 15, "官方约 46 g + 散热"),
-    ("USB 转 CAN ×4、集线器、降压×3", 0.15, 0.0, -40.0, B.TRAY_Z + 12, "估"),
+    ("USB 转 4 路 485、集线器、降压×3", 0.12, 0.0, -40.0, B.TRAY_Z + 12, "估"),
     ("IMU HI13", 0.011, 0.0, 0.0, B.TRAY_Z + 10, "官网 < 11 g"),
     ("继电器、保险丝盒、分流器、线束", 0.35, 0.0, 0.0, M.Z0 + 30, "估"),
     ("深度相机 Gemini 335", 0.097, M.L2 + 15, 0.0, M.Z0 + 33, "官网 97 g"),
@@ -26,7 +26,7 @@ BOUGHT = [
     ("外壳（打印，上层 + 下层 + 腰 + 头 + 防撞杠）", 1.30, 0.0, 0.0, M.Z0 + 85, "估：按 2 mm 壁"),
     ("喇叭×2、功放、麦克风、急停、开关、充电口", 0.15, 0.0, 0.0, M.Z0 + 90, "估"),
 ]
-MOTOR_KG = 0.396                                    # v19：SteadyWin GIM8108-8 带驱动 396 g（网上参数）；宇树 GO-M8010-6 是 530 g
+MOTOR_KG = 0.530                                    # v20：宇树 GO-M8010-6 约 530 g（店铺参数）；v19 的 SteadyWin 是 396 g
 
 
 def solid_mass(s, rho):
@@ -78,7 +78,7 @@ if __name__ == "__main__":
             for n, s, c, g in B.leg_parts_world(fx, sy):
                 if "电机" in n and "座" not in n:
                     bb = s.BoundingBox()
-                    items.append((f"腿{fx}{sy} {n}（SteadyWin 396 g）", MOTOR_KG, (bb.center.x, bb.center.y, bb.center.z)))
+                    items.append((f"腿{fx}{sy} {n}（宇树 530 g）", MOTOR_KG, (bb.center.x, bb.center.y, bb.center.z)))
                     legs_kg += MOTOR_KG
                     continue
                 if "皮带" in n or "同步带" in n:

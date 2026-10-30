@@ -9,7 +9,7 @@
   A05 前端板 / A06 后端板 4 mm（头、相机罩、防撞杠、尾部接口板都拧在上面）
   A07 顶板 3 mm（货台底下，货物的力走这里；四周 M3 孔拧上层外壳）
 中间（两块隔板之间）：下层电池（6S3P，65 × 129 × 70，打印电池托 + 两条绑带），两边是继电器、保险丝盒、分流器；
-上层亚克力电子托板 C01（插在侧梁的槽里）：树莓派 5、USB 转 CAN ×4、USB 集线器、三块降压、IMU（正中间）。
+上层亚克力电子托板 C01（插在侧梁的槽里）：树莓派 5、USB 转 4 路 485、USB 集线器、三块降压、IMU（正中间）。
 每条腿：外摆 ±20° 扫过的空间（加 3 mm 余量）不能碰任何骨架 / 电池 / 电子件。
 用法：python 007a/eng_body.py → 007a/out/eng_parts（给 blender/render.py）、007a/out/eng_report.txt、docs/机械狗007A/骨架_俯视.png
 """
@@ -29,7 +29,7 @@ HAA_SWING = 20.0                                   # 外摆 ±20°
 MARGIN = 3.0
 
 # ---------------------------------------------------------------- 骨架尺寸
-XB = HX - (E.CAV_R + 4.0) - (E.MH - E.MBACK_H)     # 外摆电机安装耳 = 隔板外侧面（v19：背面台阶 + 驱动从隔板的 Φ62 孔伸进机身 20）
+XB = HX - (E.CAV_R + 4.0) - (E.MH - E.MBACK_H)     # 外摆电机背面 = 隔板外侧面（v20 宇树：背面凸台从隔板的 Φ64 孔伸进机身 8）
 T_BH, T_BOT, T_SIDE, T_BEAM, T_END, T_TOP = 5.0, 3.0, 3.0, 4.0, 4.0, 3.0
 Z_BOT = Z0 + 2.0                                   # 底板下表面（下层外壳里面）
 Z_TOPP = TOP - 6.0 - T_TOP                         # 顶板下表面（货台凹 6 底下；髋座外摆 20° 最高到 z 离底 130）
@@ -42,7 +42,7 @@ TRAY_Z = Z_BOT + T_BOT + BAT[2] + 8.0              # 电子托板下表面
 # 托板上的板子：(名字, x 中心, y 中心, 长 x, 宽 y, 高, 状态)
 BOARDS = [                                         # v19：外摆电机长了 12.7，两块隔板之间只剩 80，板子沿 y 排（托板 78 × 226）
     ("树莓派 5（带散热）", 0.0, 70.0, 56.0, 85.0, 22.0, "已确认"),
-    ("USB 转 CAN ×4（2 × 2 叠）", 0.0, -36.0, 60.0, 45.0, 15.0, "★要图"),
+    ("USB 转 4 路 485（宇树）", 0.0, -36.0, 60.0, 45.0, 15.0, "★要图"),
     ("USB 集线器", -15.0, -85.0, 40.0, 30.0, 12.0, "到货实测"),
     ("12V 5A 降压（抬头舵机）", 22.0, -85.0, 26.0, 20.0, 15.0, "到货实测"),
     ("5V 5.5A 降压（树莓派）", -25.0, 14.0, 25.4, 25.4, 9.5, "已确认"),
@@ -98,7 +98,7 @@ def frame_parts(envs):
     for e in envs:
         bot = bot.cut(e)
     P.append(("A01 底板（铝 3）", bot, "metal"))
-    # A02 外摆隔板 ×2：外摆电机背面拧在上面（R42.5 × 8 孔 + 中间 Φ40 过线孔）
+    # A02 外摆隔板 ×2：外摆电机背面拧在上面（8-M3.5 在 R42.5 + 中间 Φ64 让背面凸台）
     for fx in (1, -1):
         x0 = fx * XB
         bh = box(*sorted((x0, x0 - fx * T_BH)), -Y_SR - T_SIDE, Y_SR + T_SIDE, Z_BOT + T_BOT, Z_TOPP)
@@ -107,7 +107,7 @@ def frame_parts(envs):
             bh = bh.cut(cyl_x(yc, HZ, E.MBACK_D + 2, -300, 300).intersect(box(*sorted((x0 - fx * 10, x0 + fx * 5)), -200, 200, 0, 600)))
             for k in range(E.BACK_N):
                 a = 2 * math.pi * k / E.BACK_N
-                bh = bh.cut(cyl_x(yc + E.BACK_R * math.cos(a), HZ + E.BACK_R * math.sin(a), 3.4, -300, 300).intersect(
+                bh = bh.cut(cyl_x(yc + E.BACK_R * math.cos(a), HZ + E.BACK_R * math.sin(a), E.BACK_HOLE, -300, 300).intersect(
                     box(*sorted((x0 - fx * 10, x0 + fx * 5)), -200, 200, 0, 600)))
         bh = bh.cut(box(*sorted((x0 - fx * 10, x0 + fx * 5)), -12, 12, Z_BOT + T_BOT + 20, Z_BOT + T_BOT + 50))   # 中间走线孔（前后的线过来）
         P.append((f"A02 外摆隔板{'前' if fx > 0 else '后'}（铝 5）", bh, "metal"))
@@ -289,7 +289,7 @@ def inside_parts():
     for n, x, y, sx, sy_, sz in SIDE_PARTS:
         P.append((n, box(x - sx / 2, x + sx / 2, y - sy_ / 2, y + sy_ / 2, bz, bz + sz), "skel"))
     tray = box(-XB + T_BH + 1, XB - T_BH - 1, -Y_SR, Y_SR, TRAY_Z, TRAY_Z + 3)
-    xk = XB - T_BH - E.MBACK_H - 2.0                                 # v19：外摆电机背面台阶 + 驱动伸进机身 20，托板四个角让开（中间 |y| < 38 不让）
+    xk = XB - T_BH - E.MBACK_H - 2.0                                 # 外摆电机背面凸台伸进机身（v20 宇树 8），托板四个角让开（中间 |y| < 38 不让）
     for fx in (1, -1):
         for sy in (1, -1):
             tray = tray.cut(box(*sorted((fx * xk, fx * (XB + 5))), *sorted((sy * 38.0, sy * (Y_SR + 5))), TRAY_Z - 1, TRAY_Z + 4))
