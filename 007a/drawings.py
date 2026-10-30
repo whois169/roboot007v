@@ -1,6 +1,6 @@
 """007A 第 4 步：零件图（给人看的，一个零件一页）→ docs/机械狗007A/零件图.pdf，外加每页一张 PNG（007a/out/drawings/）。
 
-  - 铝板 / 亚克力（激光切割）：展开外形 + 总长宽 + 厚 + 孔表（按孔径分组：个数、每个孔中心坐标，原点 = 左下角）
+  - 铝板 / 亚克力（激光切割）：孔位图——展开外形 + 总长宽 + 厚，每个孔编号，孔位表列出每个孔的直径和中心坐标（原点 = 左下角），孔多就接续页
   - CNC / 车削 / 折弯件：三视图（主视 / 俯视 / 左视，画棱线）+ 外形尺寸
   - 标题栏：编号、名字、材料、加工、数量、单位 mm、版本 v19（省钱版）、★ = 到货 / 拿到 STEP 后要核的
 工厂加工用 007a/out/mfg/ 里的 DXF / STEP（mfg.py），这些图是核对、沟通用的。
@@ -79,46 +79,59 @@ def plate_page(pdf, code, name, s, qty, mat, note=""):
         a = np.array(pts)
         ax.plot(a[:, 0], a[:, 1], "k-", lw=0.8)
     groups = collections.OrderedDict()
-    for x, y, d in sorted(holes, key=lambda h: (-h[2], h[0], h[1])):
+    for x, y, d in sorted(holes, key=lambda h: (-h[2], round(h[1], 1), h[0])):
         groups.setdefault(round(d, 1), []).append((x, y))
-    letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"
     colors = plt.cm.tab10.colors
+    rows = []                                                          # 孔位表：每个孔一个编号
     for gi, (d, pts) in enumerate(groups.items()):
         for x, y in pts:
-            ax.add_patch(plt.Circle((x, y), d / 2, fill=False, lw=0.8, ec=colors[gi % 10]))
-        ax.plot([p[0] for p in pts], [p[1] for p in pts], "+", ms=3, c=colors[gi % 10], mew=0.5)
+            rows.append((len(rows) + 1, d, x, y, colors[gi % 10]))
+    fs = 5.5 if len(rows) > 40 else 7
+    for i, d, x, y, c in rows:
+        ax.add_patch(plt.Circle((x, y), d / 2, fill=False, lw=0.8, ec=c))
+        ax.plot([x], [y], "+", ms=3, c=c, mew=0.5)
+        ax.text(x + d / 2 + 1, y + d / 2 + 1, str(i), fontsize=fs, color=c)
     dim(ax, (0, 0), (L, 0), -max(L, W) * 0.06, f"{L:.1f}")
     dim(ax, (0, 0), (0, W), -max(L, W) * 0.06, f"{W:.1f}", horiz=False)
+    ax.plot([0], [0], "o", ms=4, c="#c33")
+    ax.text(0, 0, " 原点", fontsize=7, color="#c33", va="top")
     ax.set_aspect("equal")
     ax.margins(0.12)
     ax.axis("off")
-    ax.set_title(f"{code}  {name}   厚 {t:.1f}   ×{qty}", fontsize=13, loc="left")
-    # 孔表
-    tx = fig.add_axes([0.67, 0.16, 0.31, 0.76])
-    tx.axis("off")
-    lines = ["孔表（原点 = 左下角，单位 mm）", ""]
-    for gi, (d, pts) in enumerate(groups.items()):
-        lines.append(f"{letters[gi % len(letters)]}  Φ{d:g}  × {len(pts)}")
-        if len(pts) <= 12:
-            lines += [f"     ({x:.1f}, {y:.1f})" for x, y in pts]
-        else:
-            lines.append(f"     坐标见 DXF（{len(pts)} 个）")
-    total = sum(len(p) for p in groups.values())
-    lines += ["", f"共 {total} 个孔", "", "未注倒角：去毛刺", "DXF 文件：007a/out/mfg/" + f"{code}_{clean(name)}.dxf"]
-    y = 1.0
-    for i, s_ in enumerate(lines):
-        col = "k"
-        if s_[:1] in letters and "Φ" in s_:
-            col = colors[letters.index(s_[0]) % 10]
-        tx.text(0, y, s_, fontsize=7.5 if s_.startswith("     ") else 9, color=col, va="top", transform=tx.transAxes, family="Microsoft YaHei")
-        y -= 0.022 if s_.startswith("     ") else 0.03
-        if y < 0:
-            tx.text(0, y, "……（太多了，见 DXF）", fontsize=8, transform=tx.transAxes)
-            break
+    ax.set_title(f"{code}  {name}   厚 {t:.1f}   ×{qty}   （孔位图：原点 = 左下角红点，单位 mm）", fontsize=12, loc="left")
+    # 孔位表：本页右边放 46 行，多的接下一页
+    summary = "  ".join(f"Φ{d:g}×{len(p)}" for d, p in groups.items())
+
+    def table(fig_, rows_, x0, w, title):
+        tx = fig_.add_axes([x0, 0.16, w, 0.78])
+        tx.axis("off")
+        tx.text(0, 1.0, title, fontsize=9, va="top", transform=tx.transAxes)
+        ncol = max(1, int(round(w / 0.155)))
+        per = 46
+        for k, (i, d, x, y, c) in enumerate(rows_):
+            col, r = divmod(k, per)
+            if col >= ncol:
+                break
+            tx.text(col / ncol, 0.95 - r * 0.0205, f"{i:>3}  Φ{d:<4g} ({x:6.1f}, {y:6.1f})", fontsize=6.6, color=c, va="top",
+                    transform=tx.transAxes, family="Consolas")
+        return ncol * per
+    n1 = table(fig, rows, 0.67, 0.31, f"孔位表（共 {len(rows)} 个：{summary}）")
+    rest = rows[n1:]
+    fig.text(0.67, 0.12, "未注倒角：去毛刺；DXF：007a/out/mfg/" + f"{code}_{clean(name)}.dxf", fontsize=7, color="#555")
     title_block(fig, code, name, mat, "激光切割", qty, note)
     pdf.savefig(fig)
     fig.savefig(os.path.join(OUT, f"{code}_{clean(name)}.png"), dpi=110)
     plt.close(fig)
+    page = 2
+    while rest:                                                        # 孔太多：接着出孔位表
+        fig = plt.figure(figsize=(11.69, 8.27))
+        n = table(fig, rest, 0.04, 0.92, f"{code} {name} 孔位表（续 {page}）")
+        rest = rest[n:]
+        title_block(fig, code, name, mat, "激光切割", qty)
+        pdf.savefig(fig)
+        fig.savefig(os.path.join(OUT, f"{code}_{clean(name)}_孔位表{page}.png"), dpi=110)
+        plt.close(fig)
+        page += 1
 
 
 def edges_of(s):
@@ -178,7 +191,7 @@ def main():
     inside = {n: s for n, s, c in B.inside_parts()}
     P, _, _ = E.leg_module()
     leg = {n: s for n, s, c, g in P}
-    star_motor = "★ 电机安装孔、输出盘孔照宇树画的，拿到 SteadyWin GIM8108-8 的 STEP 后要改"
+    star_motor = "电机孔按 SteadyWin《GIM8108-8 安装尺寸图》V1.0（2025-07-18）：耳 8-M3 在 Φ92，输出 6-M3 在 Φ25 + 3-Φ4 销在 Φ20.4；★ 驱动板厚度到货量"
     with PdfPages(os.path.join(DOC, "零件图.pdf")) as pdf:
         # 封面
         fig = plt.figure(figsize=(11.69, 8.27))
@@ -197,7 +210,7 @@ def main():
         for code, n, q in [("A01", "A01 底板（铝 3）", 1), ("A02", "A02 外摆隔板前（铝 5）", 2), ("A03", "A03 侧梁左（铝 3）", 2),
                            ("A04", "A04 纵梁前左（铝 4）", 4), ("A05", "A05 前端板（铝 4）", 1), ("A06", "A06 后端板（铝 4）", 1),
                            ("A07", "A07 顶板（铝 3）", 1)]:
-            note = star_motor.replace("电机安装孔、输出盘孔", "外摆电机背面安装孔（R40 × 8）") if code == "A02" else ""
+            note = "外摆电机安装耳 8-M3 在 Φ92（官方尺寸图），中间 Φ62 孔让背面台阶 + 驱动穿过去" if code == "A02" else ("头弧形滑道：两条同心弧形槽（R29–41.5），中间横梁拧头支架" if code == "A05" else "")
             plate_page(pdf, code, clean(n), frame[n], q, "6061-T6 铝板", note)
             print("  ", code)
         plate_page(pdf, "L01", "大腿外板", leg["大腿外板（铝 4）"], 4, "6061-T6 铝板 4（左右各 2，镜像）")

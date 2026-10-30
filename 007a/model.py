@@ -23,7 +23,7 @@ V = cq.Vector
 BODY_L, BODY_W, BODY_H = 480.0, 260.0, 140.0          # v12：机身高 185 → 160 → 140
 L2, W2 = BODY_L / 2, BODY_W / 2
 HIP_X = 160.0                                   # 髋往后收：头要在最前面（v2，用户：腿不能超过头）
-MOTOR_D, MOTOR_H = 92.0, 55.0                    # v19 省钱版：关节电机 SteadyWin GIM8108-8（带 24 V 驱动 GDZ468，Φ92 × 55）；v18 以前是宇树 GO-M8010-6（Φ96.5 × 42.3）
+MOTOR_D, MOTOR_H = 97.0, 55.0                    # v19 省钱版：关节电机 SteadyWin GIM8108-8 + GDZ468 驱动（官方安装尺寸图 V1.0：壳 Φ92、安装耳最大 Φ97，带驱动长 55）；v18 以前是宇树 GO-M8010-6（Φ96.5 × 42.3）
 LEG_DY = 2 * (MOTOR_H - 42.3)                    # 髋、膝两个电机叠在机身侧面，每个厚 12.7 → 腿平面往外挪 25.4
 SEAM = 2.0
 
@@ -277,6 +277,60 @@ CH_BIG, CH_MID, CH_PLAN, EDGE = 18.0, 18.0, 10.0, 1.5
 SEAM_X = 120.0
 
 
+HEAD_UP, HEAD_DOWN = 40.0, 20.0                  # v19：头抬 40°（屏幕离地约 30 cm，1.5 m 外站着的人要抬约 40° 才对着脸）、低 20°
+# v19 弧形滑道（用户：头加厚了，后面要有弧形滑道，看上去没有大缝）：头的后上、后下是以转轴为圆心的弧形裙边（R 37–40），
+# 机身前脸挖同心的弧形窝（R 41.5），头怎么转缝都是 1.5；A05 前端板上开两条同心弧形槽让裙边穿过去
+HEAD_R_OUT, HEAD_R_IN, HEAD_GAP, HEAD_SKIRT = 40.0, 37.0, 1.5, 60.0   # 裙边外半径、内半径（壁 3）、缝、裙边往后包多少度
+HEAD_HW = 150.0                                  # 头宽（= 屏幕 124 + 26）
+
+
+def head_pivot():
+    return L2 + 10.0, WAIST_TOP + (TOP - WAIST_TOP) / 2 - 2
+
+
+def _sector(r0, r1, a0, a1, y0, y1, n=24):
+    """绕转轴（y 方向）的环形扇面：半径 r0–r1，角度 a0–a1（度，从正上方往后量，往前为负）。"""
+    px, pz = head_pivot()
+    pts = []
+    for k in range(n + 1):
+        a = math.radians(a0 + (a1 - a0) * k / n)
+        pts.append((px - r1 * math.sin(a), pz + r1 * math.cos(a)))
+    for k in range(n, -1, -1):
+        a = math.radians(a0 + (a1 - a0) * k / n)
+        pts.append((px - r0 * math.sin(a), pz + r0 * math.cos(a)))
+    return prism_xz(pts, y0, y1)
+
+
+def head_skirts():
+    """头后面上下两片弧形裙边（跟头一起转）。上面那片从正上方往后包 HEAD_SKIRT 度，下面那片从正下方往后包。"""
+    up = _sector(HEAD_R_IN, HEAD_R_OUT, 0.0, HEAD_SKIRT, -HEAD_HW / 2, HEAD_HW / 2)
+    px, pz = head_pivot()
+    down = up.mirror("XY", V(0, 0, pz))
+    return up.fuse(down)
+
+
+def head_socket():
+    """机身前脸给头挖的弧形窝（同心，半径大 HEAD_GAP，宽每边多 2.5）。"""
+    px, pz = head_pivot()
+    return cyl_y(px, pz, 2 * (HEAD_R_OUT + HEAD_GAP), -HEAD_HW / 2 - 2.5, HEAD_HW / 2 + 2.5)
+
+
+def head_ring_slot():
+    """骨架（A05 前端板、A04 纵梁前端）上让头转过去的同心弧形槽（R 29–41.5：裙边 + 头两侧壁靠转轴那块，抬 40° 时会扫到 R 31 以外）。
+    中间留下的横梁（A05 上 z ±19）拧头支架；屏幕板、舵机的线也从槽里走。"""
+    px, pz = head_pivot()
+    return ring_y(px, pz, 2 * (HEAD_R_OUT + HEAD_GAP), 2 * 29.0, -HEAD_HW / 2 - 2.5, HEAD_HW / 2 + 2.5)
+
+
+def head_hollow(wall=3.0):
+    """头里面掏空（壁 wall）：前面屏幕模块的内腔 + 转轴后面 R < HEAD_R_IN 全空（后面敞开，头支架从这里伸进来）。"""
+    px, pz = head_pivot()
+    hh = 80.0
+    inner = box(px, L2 + 4 + 30.0 - wall, -HEAD_HW / 2 + wall, HEAD_HW / 2 - wall, pz - hh / 2 + wall, pz + hh / 2 - wall)
+    return inner.fuse(cyl_y(px, pz, 2 * HEAD_R_IN, -HEAD_HW / 2 + wall, HEAD_HW / 2 - wall)).fuse(
+        box(px - 60, px, -HEAD_HW / 2 + wall, HEAD_HW / 2 - wall, pz - 30, pz + 30))
+
+
 def plan_chamfer(s, ch=CH_PLAN):
     """俯视的四个转角切 45°（竖直的棱）。"""
     for sx in (1, -1):
@@ -337,9 +391,7 @@ def body_parts():
     for x in (BX0 - 9, BX1 + 9):                                   # 前后沿的绑带孔
         for y in (-60, 0, 60):
             slab = slab.cut(soft(box(x - 3, x + 3, y - 14, y + 14, TOP - 8, TOP + 5), 1.5))
-    gap = box(L2 - 6, L2 + 10, -HW / 2 - 4, HW / 2 + 4, zc - HH / 2 - 4, zc + HH / 2 + 4)
-    slab = slab.cut(gap)
-    P.append(("头影线缝底", box(L2 - 6, L2 - 5, -HW / 2 - 4, HW / 2 + 4, zc - HH / 2 - 4, zc + HH / 2 + 4), "skel_dk"))
+    slab = slab.cut(head_socket())                                 # v19：头的弧形窝（缝 1.5，抬头低头都一样）
     P.append(("上层甲板壳", slab, "shell"))
     P.append(("货台底垫", box(BX0 + 4, BX1 - 4, -BW / 2 + 4, BW / 2 - 4, TOP - BD, TOP - BD + 2), "rubber"))
     for k in range(9):                                             # 防滑筋
@@ -360,8 +412,8 @@ def body_parts():
     # ---- 头：深色屏幕模块从前脸往前伸 30，前面切角（像头盔面罩）；两侧金属圆盖 = 抬头低头的转轴
     hx0, hx1 = L2 + 4, L2 + 4 + HD
     zb, zt = zc - HH / 2, zc + HH / 2
-    prof = [(hx0 + 6, zb), (hx1 - CH_MID, zb), (hx1, zb + CH_MID), (hx1, zt - CH_MID), (hx1 - CH_MID, zt), (hx0 + 6, zt), (hx0 - 9, zc)]   # 上沿、下巴都是 45° × 18；后沿收成尖（在影线缝里，抬头低头 ±20° 不碰机身，eng_head.py）
-    head = prism_xz(prof, -HW / 2, HW / 2)
+    prof = [(hx0 + 6, zb), (hx1 - CH_MID, zb), (hx1, zb + CH_MID), (hx1, zt - CH_MID), (hx1 - CH_MID, zt), (hx0 + 6, zt)]   # 上沿、下巴都是 45° × 18；转轴（x = hx0 + 6）后面是弧形裙边
+    head = prism_xz(prof, -HW / 2, HW / 2).fuse(head_skirts())
     for sy in (1, -1):                                             # 前面两侧切掉一个斜角（收窄）
         tri = cq.Workplane("XY").polyline([(hx1 - 12, sy * (HW / 2 + 1)), (hx1 + 12, sy * (HW / 2 + 1)),
                                             (hx1 + 12, sy * (HW / 2 - 13))]).close().extrude(HH + 20).val()
@@ -369,18 +421,14 @@ def body_parts():
     head = soft(head, 1.5)
     head = head.cut(box(hx1 - 3, hx1 + 1, -sw / 2, sw / 2, zc - sh / 2, zc + sh / 2))
     P.append(("头", head, "skel_dk"))
-    for sy in (1, -1):                                             # 头两侧的鳍（装转轴的“耳朵”）
-        fin = prism_xz([(hx0 + 2, zc - 22), (hx0 + 14, zc - 22), (hx0 + 22, zc + 10), (hx0 + 4, zc + 26), (hx0 + 2, zc + 26)],
-                       *sorted((sy * HW / 2, sy * (HW / 2 + 4))))     # 鳍薄到 4、后沿往前挪：整个在影线缝里，转起来不碰
-        P.append((f"头鳍{sy}", soft(fin, 1.2), "shell"))
     P.append(("屏幕", box(hx1 - 3, hx1 - 1.5, -sw / 2, sw / 2, zc - sh / 2, zc + sh / 2), "glass"))
     for ey in (-30, 30):
         eye = cq.Workplane("YZ").rect(30, 24).extrude(0.4).edges("|X").fillet(6).val().translate(V(hx1 - 1.4, ey, zc + 4))
         P.append((f"眼睛{ey}", eye, "eye"))
     P.append(("屏幕下沿灯", box(hx1 - 1.3, hx1 - 0.9, -40, 40, zc - sh / 2 + 8, zc - sh / 2 + 10), "cyan"))
     for sy in (1, -1):
-        P.append((f"头转轴盖{sy}", soft(cyl_y(hx0 + 6, zc, 20, *sorted((sy * (HW / 2 + 6), sy * (HW / 2 + 9)))), 0.8), "metal"))
-        P.append((f"头转轴光环{sy}", ring_y(hx0 + 6, zc, 28, 23, *sorted((sy * (HW / 2 + 6), sy * (HW / 2 + 6.6)))), "cyan"))
+        P.append((f"头转轴盖{sy}", soft(cyl_y(hx0 + 6, zc, 20, *sorted((sy * HW / 2, sy * (HW / 2 + 1.5)))), 0.5), "metal"))   # 贴在头侧面（v19 去掉鳍）
+        P.append((f"头转轴光环{sy}", ring_y(hx0 + 6, zc, 28, 23, *sorted((sy * HW / 2, sy * (HW / 2 + 0.6)))), "cyan"))
     # 激光雷达：人面对它看的左上角（= 机器人自己的右边，-y），照用户的前脸图
     lx, ly = L2 - 46, -(W2 - 50)
     P.append(("雷达座", soft(plan_chamfer(box(lx - 26, lx + 26, ly - 26, ly + 26, TOP, TOP + 10)), 1.0), "skel_dk"))

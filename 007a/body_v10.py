@@ -183,6 +183,8 @@ def body_parts():
             tub = tub.cut(box(x - 18, x + 18, y - 6, y + 6, Z0 - 1, Z0 + 10))
             P.append((f"卡口底{x:.0f}{y:.0f}", box(x - 18, x + 18, y - 6, y + 6, Z0 + 9, Z0 + 10), "skel_dk"))
             P.append((f"卡口横销{x:.0f}{y:.0f}", cq.Solid.makeCylinder(2.5, 12, V(x, y - 6, Z0 + 4), V(0, 1, 0)), "metal"))
+    sock = M.head_socket()                                           # v19：头的弧形窝（同心，缝 1.5）
+    up, tub, waist = up.cut(sock), tub.cut(sock), waist.cut(sock)
     P += [("上层甲板壳", up, "shell"), ("下层底盘", tub, "shell"), ("黑腰", waist, "skel_dk")]
     return P
 

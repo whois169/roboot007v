@@ -115,7 +115,7 @@ if __name__ == "__main__":
     # ---- 清单
     L = ["# 机械狗007A 制造件清单（第 4 步，v19 省钱版）", "", "> 由 `007a/mfg.py` 生成。文件在 `007a/out/mfg/`。铝板发 DXF 给激光切割厂；CNC / 车削件发 STEP；打印件是 STL。",
          "> 每个件一页的零件图（尺寸、孔表、三视图）在 `零件图.pdf`（`007a/drawings.py`）；外壳等打印件见 `打印件清单.md`（`007a/print_parts.py`）。",
-         "> 孔位标 ★ 的（SteadyWin 电机安装孔和输出盘孔、舵机、IMU、USB 转 CAN）拿到 STEP / 到货核对后再改。", "",
+         "> 电机孔已按 SteadyWin 官方安装尺寸图画；孔位标 ★ 的（舵机、IMU、USB 转 CAN、驱动板厚度）到货核对后再改。", "",
          "| 编号 | 名字 | 数量 | 材料 | 加工 | 厚 | 外形 | 文件 |", "|---|---|---|---|---|---|---|---|"]
     for p in parts:
         L.append(f"| {p['code']} | {p['name']} | {p['qty']} | {p['material']} | {p['process']} | {p['t']} | {p['size']} | {', '.join(p['files'])} |")

@@ -22,10 +22,16 @@ from model import V, box, cyl_x, cyl_y, prism_xz, ring_y, soft
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # ---------------------------------------------------------------- 电机（宇树 GO-M8010-6）
-MD, MH = M.MOTOR_D, M.MOTOR_H                    # v19：SteadyWin GIM8108-8 + GDZ468 驱动（Φ92 × 55，网上参数）
-MBOSS_D, MBOSS_H = 59.0, 6.6                     # ★ 输出盘照宇树画的，等 SteadyWin 的 STEP 再改
-OUT_PCD, OUT_N, OUT_HOLE = 34.5, 6, 4.0          # 输出盘 M4 × 6 在 Φ34.5（★ v19 换电机后都要按 SteadyWin STEP 重核）
-BACK_R, BACK_N = 40.0, 8                         # 背面安装孔（★ v19：Φ92 电机先按 R40 画，按 STEP 核）
+# v19：SteadyWin GIM8108-8，按官方《GIM8108-8 安装尺寸图》V1.0（2025-07-18）：
+#   壳 Φ92、两面安装耳 8-M3 深 6 在 Φ92 圆上（耳最大 Φ97）；壳长 24
+#   输出面：凸台 Φ57 长 11，上面 6-M3 深 5 在 Φ25 圆上 + 3-Φ4 定位销孔在 Φ20.4 圆上
+#   背面：Φ60 台阶（Φ50 止口）+ GDZ468 驱动板（★ 驱动厚度按带驱动总长 55 反推，到货量）
+MD, MH = M.MOTOR_D, M.MOTOR_H                    # 外形按耳朵算 Φ97，总长 55
+MBOSS_D, MBOSS_H = 57.0, 11.0                    # 输出凸台
+MBACK_D, MBACK_H = 60.0, 20.0                    # 背面台阶 + 驱动（安装耳那个面到电机最后面 20）
+OUT_PCD, OUT_N, OUT_HOLE = 25.0, 6, 3.0          # 输出盘 6-M3 在 Φ25
+PIN_PCD, PIN_N, PIN_D = 20.4, 3, 4.0              # 输出盘 3-Φ4 定位销
+BACK_R, BACK_N = 46.0, 8                         # 安装耳 8-M3 在 Φ92（R46）
 
 # ---------------------------------------------------------------- 皮带（HTD5M）
 PITCH = 5.0
@@ -36,8 +42,8 @@ BELT_W, BELT_T = 20.0, 3.6
 # ---------------------------------------------------------------- y 分层（机身坐标，左腿）
 W2 = M.W2                                        # 机身侧面 y = 130
 Y_HAA = 70.0                                     # 外摆轴的 y（外摆电机 Φ96.5 要整个装在机身里：70 + 48 = 118 < 下层底盘内壁 121）
-Y_SIDE = (44.0, 50.0)                            # 髋座侧板（托髋电机背面）
-Y_HFE = (50.0, 50.0 + MH)                        # 髋电机（输出朝外，输出面 92.3）
+Y_HFE = (50.0, 50.0 + MH)                        # 髋电机（输出朝外）
+Y_SIDE = (Y_HFE[0] + MBACK_H - 6.0, Y_HFE[0] + MBACK_H)   # 髋座侧板：贴在髋电机的安装耳上（背面台阶 + 驱动从中间 Φ62 孔穿过去）
 Y_CUP_BOT = (Y_HFE[1], Y_HFE[1] + 5.0)           # 大腿杯底（夹在髋电机输出和膝电机背面之间）
 Y_KFE = (Y_CUP_BOT[1], Y_CUP_BOT[1] + MH)        # 膝电机（跟大腿一起转，输出朝外）
 Y_TIN = (Y_KFE[1] - 5.0, Y_KFE[1] - 1.0)         # 大腿内板（让开膝电机输出盘）
@@ -45,7 +51,7 @@ Y_ADP = (Y_KFE[1], Y_KFE[1] + 4.0)               # 转接盘（接膝电机输�
 Y_PUL = (Y_ADP[1] + 1.0, Y_ADP[1] + 1.0 + BELT_W + 3.0)   # 小带轮（含挡边）
 Y_TOUT = (Y_PUL[1] + 1.0, Y_PUL[1] + 5.0)        # 大腿外板
 Y_LEG = (Y_PUL[0] + Y_PUL[1]) / 2                # 腿平面（皮带中线）
-CUP_OD = MD + 8.0                                # 大腿杯外径（包住膝电机）
+CUP_OD = MD + 8.0                                # 大腿杯外径（包住膝电机，含安装耳）
 CAV_R = CUP_OD / 2 + 6.0                         # 机身侧面窝的半径（杯外面留 6）
 PIT_R, PIT_D = 62.0, 5.0                         # 外观上的髋窝（body_v10.py）
 
@@ -55,15 +61,27 @@ HEX_A_NEW = CUP_OD / 2 + 2.0
 
 
 def motor(name, y0, out_dir, color="skel_dk"):
-    """宇树电机：机壳 Φ96.5 + 输出盘 Φ59 凸出 6.6；out_dir = +1 输出朝 +y。"""
-    body_y = (y0, y0 + MH - MBOSS_H) if out_dir > 0 else (y0 + MBOSS_H, y0 + MH)
-    boss_y = (y0 + MH - MBOSS_H, y0 + MH) if out_dir > 0 else (y0, y0 + MBOSS_H)
-    m = soft(cyl_y(0, 0, MD, *body_y), 1.5).fuse(cyl_y(0, 0, MBOSS_D, *boss_y))
-    yo = boss_y[1] if out_dir > 0 else boss_y[0]
-    for k in range(OUT_N):                                         # 输出盘螺丝孔
+    """SteadyWin GIM8108-8 + 驱动：背面台阶 Φ60 × 20 → 壳 Φ97（含耳）× 24 → 输出凸台 Φ57 × 11；out_dir = +1 输出朝 +y。"""
+    segs = [(MBACK_D, MBACK_H), (MD, MH - MBACK_H - MBOSS_H), (MBOSS_D, MBOSS_H)]
+    if out_dir < 0:
+        segs = segs[::-1]
+    y, m = y0, None
+    for d, h in segs:
+        c = cyl_y(0, 0, d, y, y + h)
+        m = c if m is None else m.fuse(c)
+        y += h
+    yo = y0 + MH if out_dir > 0 else y0                                # 输出面
+    for k in range(OUT_N):                                             # 输出盘 6-M3 深 5
         a = 2 * math.pi * k / OUT_N
-        m = m.cut(cyl_y(OUT_PCD / 2 * math.cos(a), OUT_PCD / 2 * math.sin(a), OUT_HOLE, yo - 6 * out_dir if out_dir > 0 else yo, yo if out_dir > 0 else yo + 6))
+        y_a, y_b = (yo - 5, yo + 0.1) if out_dir > 0 else (yo - 0.1, yo + 5)
+        m = m.cut(cyl_y(OUT_PCD / 2 * math.cos(a), OUT_PCD / 2 * math.sin(a), OUT_HOLE, y_a, y_b))
     return name, m, color
+
+
+def out_holes(plate, y0, y1, cx=0.0, cz=0.0):
+    """接电机输出盘的件：6-Φ3.4（M3）在 Φ25 + 3-Φ4 销孔在 Φ20.4。"""
+    plate = bolt_ring(plate, OUT_PCD / 2, OUT_N, 3.4, y0, y1, cx=cx, cz=cz)
+    return bolt_ring(plate, PIN_PCD / 2, PIN_N, PIN_D, y0, y1, a0=math.pi / 6, cx=cx, cz=cz)
 
 
 def bolt_ring(plate, r, n, d, y0, y1, a0=0.0, cx=0.0, cz=0.0):
@@ -115,20 +133,25 @@ def leg_module():
     P = []
     # ---- 外摆电机（机身上），轴朝前后，在髋后面；输出朝前
     xa1 = -(CAV_R + 4.0)                                           # 外摆输出面
-    haa = soft(cyl_x(Y_HAA, 0, MD, xa1 - MH, xa1 - MBOSS_H), 1.5).fuse(cyl_x(Y_HAA, 0, MBOSS_D, xa1 - MBOSS_H, xa1))
+    haa = cyl_x(Y_HAA, 0, MBACK_D, xa1 - MH, xa1 - MH + MBACK_H).fuse(cyl_x(Y_HAA, 0, MD, xa1 - MH + MBACK_H, xa1 - MBOSS_H)).fuse(
+        cyl_x(Y_HAA, 0, MBOSS_D, xa1 - MBOSS_H, xa1))
+    xe = xa1 - MH + MBACK_H                                         # 外摆电机安装耳那个面（拧在 A02 隔板上）
     P.append(("外摆电机", haa, "skel_dk", "机身"))
-    seat = box(xa1 - MH - 6, xa1 - MH, Y_HAA - 55, Y_HAA + 45, -55, 55)
-    seat = seat.cut(cyl_x(Y_HAA, 0, 40, xa1 - MH - 7, xa1 - MH + 1))
+    seat = box(xe - 6, xe, Y_HAA - 55, Y_HAA + 45, -55, 55)
+    seat = seat.cut(cyl_x(Y_HAA, 0, MBACK_D + 2, xe - 7, xe + 1))
     for k in range(BACK_N):
         a = 2 * math.pi * k / BACK_N
-        seat = seat.cut(cyl_x(Y_HAA + BACK_R * math.cos(a), BACK_R * math.sin(a), 3.4, xa1 - MH - 7, xa1 - MH + 1))
+        seat = seat.cut(cyl_x(Y_HAA + BACK_R * math.cos(a), BACK_R * math.sin(a), 3.4, xe - 7, xe + 1))
     P.append(("外摆电机座（铝板 6）", seat, "metal", "机身"))
     # ---- 髋座（跟外摆转）：后板 + 侧板 + 前板（带短轴，前面进机身隔板的轴承 6001）
     rear = box(xa1, xa1 + 6, Y_SIDE[0], Y_HFE[1] + 6, -55, 55)
     for k in range(OUT_N):
         a = 2 * math.pi * k / OUT_N
-        rear = rear.cut(cyl_x(Y_HAA + OUT_PCD / 2 * math.cos(a), OUT_PCD / 2 * math.sin(a), 4.4, xa1 - 1, xa1 + 7))
-    side = box(xa1, -xa1, *Y_SIDE, -55, 55).cut(cyl_y(0, 0, 40, Y_SIDE[0] - 1, Y_SIDE[1] + 1))
+        rear = rear.cut(cyl_x(Y_HAA + OUT_PCD / 2 * math.cos(a), OUT_PCD / 2 * math.sin(a), 3.4, xa1 - 1, xa1 + 7))
+    for k in range(PIN_N):
+        a = math.pi / 6 + 2 * math.pi * k / PIN_N
+        rear = rear.cut(cyl_x(Y_HAA + PIN_PCD / 2 * math.cos(a), PIN_PCD / 2 * math.sin(a), PIN_D, xa1 - 1, xa1 + 7))
+    side = box(xa1, -xa1, *Y_SIDE, -55, 55).cut(cyl_y(0, 0, MBACK_D + 2, Y_SIDE[0] - 1, Y_SIDE[1] + 1))
     side = bolt_ring(side, BACK_R, BACK_N, 3.4, *Y_SIDE)
     ribs = None                                                     # 上下两块三角筋（后板和侧板之间）
     for zz in (49.0, -55.0):
@@ -137,15 +160,17 @@ def leg_module():
         ribs = tri if ribs is None else ribs.fuse(tri)
     hipseat = rear.fuse(side).fuse(ribs)
     P.append(("髋座（铝，CNC）", soft(hipseat, 1.0), "metal", "外摆"))
-    # ---- 绕线环（打印）：髋电机外面那一圈空地（半径 49–54），髋 → 膝电机的线在里面绕 1.5 圈（像钟表发条），大腿转 ±100° 线不拉不磨
-    P.append(("绕线环（打印 PETG）", ring_y(0, 0, 108, 98, 60.0, 90.0), "skel_dk", "外摆"))
+    # ---- 绕线环（打印）：髋电机外面那一圈空地（半径 51–56），髋 → 膝电机的线在里面绕 1.5 圈（像钟表发条），大腿转 ±100° 线不拉不磨
+    P.append(("绕线环（打印 PETG）", ring_y(0, 0, 112, 102, Y_SIDE[1] + 1, Y_SIDE[1] + 31), "skel_dk", "外摆"))
     # ---- 髋电机（定子在髋座侧板上，输出朝外）
     P.append(motor("髋电机", Y_HFE[0], +1) + ("外摆",))
     # ---- 大腿杯：杯底（接髋电机输出 + 膝电机背面）+ 杯壁 + 内板 + 外板 + 立柱
     cup = cyl_y(0, 0, CUP_OD, *Y_CUP_BOT)
-    cup = bolt_ring(cup, OUT_PCD / 2, OUT_N, 4.4, *Y_CUP_BOT)
-    cup = bolt_ring(cup, BACK_R, BACK_N, 3.4, *Y_CUP_BOT, a0=math.pi / BACK_N)
+    cup = out_holes(cup, *Y_CUP_BOT)                                   # 杯底拧髋电机输出盘
     cup = cup.fuse(ring_y(0, 0, CUP_OD, CUP_OD - 6, Y_CUP_BOT[1], Y_TIN[0]))
+    yk = Y_KFE[0] + MBACK_H                                            # 膝电机安装耳那个面：杯里一圈法兰托住它（背面台阶 + 驱动从 Φ62 孔里过）
+    flange = bolt_ring(ring_y(0, 0, CUP_OD - 5, MBACK_D + 2, yk - 5, yk), BACK_R, BACK_N, 3.4, yk - 5, yk)
+    cup = cup.fuse(flange)
     tin = prism_xz(M.belt_case(knee), *Y_TIN)                          # 内板只包住皮带（外摆时不碰机身）.cut(cyl_y(0, 0, MBOSS_D + 4, Y_TIN[0] - 1, Y_TIN[1] + 1)).cut(cyl_y(kx, kz, 21, Y_TIN[0] - 1, Y_TIN[1] + 1))
     P.append(("大腿杯 + 内板（铝，CNC）", soft(cup.fuse(tin), 0.8), "skel", "大腿"))
     tout = prism_xz(thigh2d, *Y_TOUT).cut(cyl_y(0, 0, 21, Y_TOUT[0] - 1, Y_TOUT[1] + 1)).cut(cyl_y(kx, kz, 21, Y_TOUT[0] - 1, Y_TOUT[1] + 1))
@@ -168,7 +193,7 @@ def leg_module():
     P.append(motor("膝电机", Y_KFE[0], +1) + ("大腿",))
     # ---- 转接盘 + 转接轴 + 小带轮
     adp = cyl_y(0, 0, MBOSS_D, *Y_ADP).fuse(cyl_y(0, 0, 12, Y_ADP[1], Y_TOUT[1]))
-    P.append(("转接盘 + 轴（钢，车削）", bolt_ring(adp, OUT_PCD / 2, OUT_N, 4.4, *Y_ADP), "metal", "大腿"))
+    P.append(("转接盘 + 轴（钢，车削）", out_holes(adp, *Y_ADP), "metal", "大腿"))
     pul_s = cyl_y(0, 0, PD_S - 1.1, Y_PUL[0] + 1.5, Y_PUL[1] - 1.5).fuse(cyl_y(0, 0, PD_S + 5, Y_PUL[0], Y_PUL[0] + 1.5)).fuse(
         cyl_y(0, 0, PD_S + 5, Y_PUL[1] - 1.5, Y_PUL[1]))
     P.append((f"小带轮 HTD5M {Z_S} 齿", pul_s, "metal", "大腿"))

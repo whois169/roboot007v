@@ -150,12 +150,11 @@ def main():
     hx = BV.L2
     head = look["头"]
     hb = bbox(head)
-    head = head.cut(box(L2 - 20, hb[1] - 2, -150 / 2 + 2, 150 / 2 - 2, hb[4] + 2, hb[5] - 2))   # 同 eng_head.py：壁 2，后面敞开
-    save(f"S{k:02d}", "头壳", head, "ASA 深灰", 1, "屏幕玻璃（亚克力 2 mm 烟黑）从前面嵌进去；后面敞开，头支架从影线缝伸进来")
+    head = head.cut(M.head_hollow(3.0))                                # 同 eng_head.py：壁 3，后面敞开，上下弧形裙边
+    import eng_head
+    head = head.cut(eng_head.bracket_clearance())                       # 头抬 40° 时让开右支架的法兰
+    save(f"S{k:02d}", "头壳", head, "ASA 深灰", 1, "壁厚 3，后面上下两片弧形裙边（滑道，跟机身缝 1.5）；屏幕玻璃（亚克力 2 mm 烟黑）从前面嵌进去；后面敞开，头支架从影线缝伸进来")
     k += 1
-    for nm in ("头鳍1", "头鳍-1"):
-        save(f"S{k:02d}", nm, look[nm], "ASA 浅灰", 1)
-        k += 1
     for name, mat, note in SMALL:
         save(f"S{k:02d}", name, look[name], mat, 1, note)
         k += 1

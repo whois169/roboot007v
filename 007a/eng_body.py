@@ -29,7 +29,7 @@ HAA_SWING = 20.0                                   # 外摆 ±20°
 MARGIN = 3.0
 
 # ---------------------------------------------------------------- 骨架尺寸
-XB = HX + E.CAV_R * 0 - (E.CAV_R + 4.0) - E.MH     # 外摆电机背面 = 隔板外侧面（前腿那边 x = 55.7）
+XB = HX - (E.CAV_R + 4.0) - (E.MH - E.MBACK_H)     # 外摆电机安装耳 = 隔板外侧面（v19：背面台阶 + 驱动从隔板的 Φ62 孔伸进机身 20）
 T_BH, T_BOT, T_SIDE, T_BEAM, T_END, T_TOP = 5.0, 3.0, 3.0, 4.0, 4.0, 3.0
 Z_BOT = Z0 + 2.0                                   # 底板下表面（下层外壳里面）
 Z_TOPP = TOP - 6.0 - T_TOP                         # 顶板下表面（货台凹 6 底下；髋座外摆 20° 最高到 z 离底 130）
@@ -104,7 +104,7 @@ def frame_parts(envs):
         bh = box(*sorted((x0, x0 - fx * T_BH)), -Y_SR - T_SIDE, Y_SR + T_SIDE, Z_BOT + T_BOT, Z_TOPP)
         for sy in (1, -1):
             yc = sy * E.Y_HAA
-            bh = bh.cut(cyl_x(yc, HZ, 40, -300, 300).intersect(box(*sorted((x0 - fx * 10, x0 + fx * 5)), -200, 200, 0, 600)))
+            bh = bh.cut(cyl_x(yc, HZ, E.MBACK_D + 2, -300, 300).intersect(box(*sorted((x0 - fx * 10, x0 + fx * 5)), -200, 200, 0, 600)))
             for k in range(E.BACK_N):
                 a = 2 * math.pi * k / E.BACK_N
                 bh = bh.cut(cyl_x(yc + E.BACK_R * math.cos(a), HZ + E.BACK_R * math.sin(a), 3.4, -300, 300).intersect(
@@ -136,7 +136,7 @@ def frame_parts(envs):
             ep = ep.cut(e)
         if fx > 0:
             ep = ep.cut(box(x0 - 1, x1 + 1, -50, 50, Z0 + 16, Z0 + 50))   # 深度相机、探照灯、热像仪的线从这里进
-            ep = ep.cut(box(x0 - 1, x1 + 1, -60, 60, Z0 + 56, Z0 + 120))  # 头（屏幕 + 抬头舵机）的窗口
+            ep = ep.cut(M.head_ring_slot())                                # v19：头弧形裙边穿过去的两条同心弧形槽（中间留一条横梁，头支架拧在上面；线也从槽里走）
         else:
             ep = ep.cut(box(x0 - 1, x1 + 1, -70, 70, Z0 + 69, Z0 + 117))  # 尾部接口板（急停、开关、充电口）
         P.append((f"{nm}（铝 4）", ep, "metal"))
@@ -288,9 +288,16 @@ def inside_parts():
     P.append(("电池托（打印 PETG，两道绑带槽）", cr, "skel_dk"))
     for n, x, y, sx, sy_, sz in SIDE_PARTS:
         P.append((n, box(x - sx / 2, x + sx / 2, y - sy_ / 2, y + sy_ / 2, bz, bz + sz), "skel"))
-    P.append(("C01 电子托板（亚克力 3，插在侧梁槽里）", box(-XB + T_BH + 1, XB - T_BH - 1, -Y_SR, Y_SR, TRAY_Z, TRAY_Z + 3), "glass"))
+    tray = box(-XB + T_BH + 1, XB - T_BH - 1, -Y_SR, Y_SR, TRAY_Z, TRAY_Z + 3)
+    xk = XB - T_BH - E.MBACK_H - 2.0                                 # v19：外摆电机背面台阶 + 驱动伸进机身 20，托板四个角让开（中间 |y| < 38 不让）
+    for fx in (1, -1):
+        for sy in (1, -1):
+            tray = tray.cut(box(*sorted((fx * xk, fx * (XB + 5))), *sorted((sy * 38.0, sy * (Y_SR + 5))), TRAY_Z - 1, TRAY_Z + 4))
+    P.append(("C01 电子托板（亚克力 3，插在侧梁槽里）", tray, "glass"))
     for n, x, y, sx, sy_, sz, st in BOARDS:
         P.append((n, box(x - sx / 2, x + sx / 2, y - sy_ / 2, y + sy_ / 2, TRAY_Z + 3 + 4, TRAY_Z + 7 + sz), "cyan" if "IMU" in n else "skel"))
+    ring = M.head_ring_slot()                                         # v19：A04 纵梁前端也让开头的弧形裙边
+    P = [(n, s.cut(ring) if n.startswith("A04") and "前" in n else s, c) for n, s, c in P]
     return P
 
 
