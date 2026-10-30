@@ -39,7 +39,7 @@ SENSORS = [
          holes="开孔 Φ22.5，面板厚 1–6", mount="尾部接口板 y = -40"),
     dict(name="总开关", model="GQ16F 自锁带灯", src="厂家图纸（ref/switch/）", dims="头 Φ18，螺母 19，面板后 26", holes="开孔 Φ16.2", mount="尾部接口板正中"),
     dict(name="充电口", model="Amass XT60E1-F", src="Amass 产品规格书（ref/xt60/）", dims="27.1 × 12.1 × 16.7",
-         holes="★ 固定孔距 20.5 按外形推的，到货卡尺量", mount="尾部接口板 y = +42，2 颗 M2.5 自攻"),
+         holes="后身截面 15.5 × 8.1（店铺 XT60 图纸，开孔 16.2 × 8.6）；★ 法兰固定孔距 20.5 按外形推的，到货卡尺量", mount="尾部接口板 y = +42，2 颗 M2.5 自攻"),
     dict(name="树莓派 5", model="Raspberry Pi 5", src="树莓派官方机械图", dims="85 × 56", holes="4-M2.5，孔距 58 × 49，离边 3.5", mount="C01 托板，M2.5 铜柱 ×4"),
     dict(name="5V 5.5A 降压", model="Pololu D36V50F5", src="Pololu 官方尺寸图（007v/ref/pololu/dims_4091.jpg）",
          dims="25.4 × 25.4", holes="3-Φ2.18（三个角，离边约 2）", mount="C01 托板，M2 铜柱 ×3"),
@@ -47,7 +47,10 @@ SENSORS = [
          dims="20.32 × 17.78", holes="2-Φ2.18（对角）", mount="C01 托板，M2 铜柱 ×2"),
     dict(name="功放", model="Adafruit MAX98357A（3006）", src="Adafruit 官方 3D 模型 3006 MAX98357.step（007a/ref/adafruit/）",
          dims="17.78 × 19.05", holes="2-Φ2.5，孔距 12.7，离一边 2.54", mount="C01 托板，M2.5 铜柱 ×2"),
-    dict(name="IMU", model="超核 HI13", src="超核官网（只有外形）", dims="26 × 24 × 12", holes="★ 官网没给安装孔", mount="打印卡座 P03（卡槽 + 扎带），2 颗 M3 拧 C01"),
+    dict(name="IMU", model="超核 HI12M0-MI1-000（UART + CAN）", src="店铺详情页尺寸图（★ 尺寸表被截掉，D1 / E1 / 孔径没拿到）", dims="★", holes="★ 3 个孔（上中一个、下两角）",
+         mount="先用打印卡座 P03（卡槽 + 扎带），拿到尺寸表改成螺丝孔"),
+    dict(name="抬头舵机", model="飞特 STS3032", src="店铺详情页尺寸图", dims="23 × 12 × 27.5；耳总长 32，离底 20.5–22；花键 25T Φ4.95，顶离底 31.9",
+         holes="4-Φ2.5（★ 孔距 28 × 8 按 4-R2 同心推的；输出轴离机身一头 8.21 ★）", mount="打印舵机座 P04，后耳 2 颗 M2 自攻，座子 2 颗 M3 拧左头支架"),
     dict(name="USB 转 4 路 485", model="宇树", src="★ 没图", dims="★", holes="★", mount="C01 托板扎带孔，到货再定"),
 ]
 
@@ -158,7 +161,7 @@ def tail_panel():
         pl = pl.cut(cyl_x(y, z, 4.0, -X_A05 - 6, -X_A05 + 1))                # M3 热熔螺母孔
     pl = pl.cut(cyl_x(ESTOP_Y, ZC, 22.5, TP_X0 - 1, TP_X1 + 1))
     pl = pl.cut(cyl_x(SWITCH_Y, ZC, 16.2, TP_X0 - 1, TP_X1 + 1))
-    pl = pl.cut(box(TP_X0 - 1, TP_X1 + 1, XT60_Y - 4.3, XT60_Y + 4.3, ZC - 8.1, ZC + 8.1))   # ★ XT60 后身 8.1 × 15.8 按外形推的
+    pl = pl.cut(box(TP_X0 - 1, TP_X1 + 1, XT60_Y - 4.3, XT60_Y + 4.3, ZC - 8.1, ZC + 8.1))   # XT60 后身 8.1 × 15.5（店铺图纸）+ 余量
     for dz in (-10.25, 10.25):
         pl = pl.cut(cyl_x(XT60_Y, ZC + dz, 2.2, TP_X0 - 1, TP_X1 + 1))    # M2.5 自攻
     bodies = [("急停 XB2BS542C", cyl_x(ESTOP_Y, ZC, 40, TP_X0 - 32, TP_X0).fuse(box(TP_X1, TP_X1 + 66.5 - 4, ESTOP_Y - 15, ESTOP_Y + 15, ZC - 20, ZC + 20)), "estop"),
@@ -298,6 +301,11 @@ def fasteners():
         F.append((f"尾部接口板 M3×8 (y{y:+.0f},z{z - ZC:+.0f})", (-X_A05 + 4.0, y, z), (-1, 0, 0), 8, 1.7, [("A06", "clear"), ("尾部接口板", "insert")]))
     for hx, hy in LD19_HOLES:
         F.append((f"雷达 M2×8 ({hx:+.1f},{hy:+.1f})", (RADAR[0] + hx, RADAR[1] + hy, TOP + 3.0), (0, 0, -1), 8, 0.85, [("上层甲板壳", "grip")]))
+    import eng_head as H
+    for x, z in H.CRADLE_SCREWS:
+        F.append((f"舵机座 M3×8 (x{x:.0f})", (x, 35.0, z), (0, -1, 0), 8, 1.7, [("舵机座", "clear"), ("头支架左", "clear")]))
+    for dz in (-4.0, 4.0):
+        F.append((f"舵机后耳 M2×6 (z{dz:+.0f})", (H.SV_XC - H.SV_EAR / 2 + 2.0, H.SV_Y0 + H.SV_EAR_Y + 1.5, H.PZ + dz), (0, -1, 0), 6, 0.85, [("舵机座", "grip")]))
     for x, y in IMU_SCREWS:
         F.append((f"IMU 卡座 M3×8 ({x:+.0f})", (x, y, B.TRAY_Z), (0, 0, 1), 7.5, 1.7, [("C01", "clear"), ("IMU 卡座", "insert")]))
     for n, cx, cy, lx, ly, h, holes, d, st in TRAY_BOARDS:
