@@ -8,7 +8,8 @@
     下层底下皮薄（2 mm），在 SHELL_SCREWS_BOT 开 Φ3.4 通孔，M3 圆头螺丝从下面拧进底板的螺纹孔。
   - 头：照 eng_head.py 做成 2 mm 壁、后面敞开的壳。
   - 腿上打印的：大腿外层壳、小腿、绕线环（工程件，eng_leg.py），外观盖板（大腿外盖板、小腿盖板、髋盖、膝盖帽、脚垫 TPU）。
-  - 其他小件：侧装甲板、前防撞杠、深度相机罩、热像仪座、雷达护圈、护角（TPU）、急停座、麦克风座。
+  - 其他小件：侧装甲板、前防撞杠（v20：相机罩、热像仪座、探照灯筒、台阶测距窗做在一起）、雷达护圈、护角（TPU）、尾部接口板、麦克风座、IMU 卡座。
+  - v20：上层壳加螺丝柱（热熔螺母）、雷达柱、麦克风槽、喇叭卡圈（mounts.top_features）；接缝贴小凸台打 Φ3.2 销孔；最后逐颗螺丝查孔位（docs/机械狗007A/孔位核对.md）。
 输出：007a/out/print/*.stl（每块一个，按装配位置，切片软件里自己摆平）+ print_list.json；docs/机械狗007A/打印件清单.md
 用法：python 007a/print_parts.py
 """
@@ -21,6 +22,7 @@ import body_v10 as BV
 import eng_body as B
 import eng_leg as E
 import model as M
+import mounts as T
 from model import V, box, cyl_y
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -36,8 +38,11 @@ FRAME = box(-B.X_END - B.T_END - 0.5, B.X_END + B.T_END + 0.5, -B.Y_SR - B.T_SID
 
 # (外观里的名字, 材料, 颜色说明, 数量, 拆块方式)
 BIG = [("上层甲板壳", "ASA 浅灰", "xy"), ("黑腰", "ASA 深灰", "x"), ("下层底盘", "ASA 浅灰", "x")]
-SMALL = [("侧装甲板1", "ASA 深灰", "左"), ("侧装甲板-1", "ASA 深灰", "右"), ("前防撞杠", "ASA 深灰", ""), ("深度相机罩", "ASA 深灰", ""),
-         ("热像仪座", "ASA 深灰", ""), ("雷达护圈", "ASA 深灰", ""), ("急停座", "ASA 深灰", ""), ("麦克风座", "ASA 深灰", "")]
+SMALL = [("侧装甲板1", "ASA 深灰", "左"), ("侧装甲板-1", "ASA 深灰", "右"),
+         ("前防撞杠", "ASA 深灰", "v20 一件：深度相机罩 + 热像仪座 + 探照灯筒 + 2 个台阶测距窗；背面 4 个 M3 热熔螺母（拧 A05）+ 走线槽；传感器孔位见 mounts.py"),
+         ("雷达护圈", "ASA 深灰", "中间方口套住 LD19 安装脚；底面 2 个 M2.5 自攻孔（从壳里往上拧）"),
+         ("尾部接口板", "ASA 深灰", "4 厚：急停 Φ22.5、开关 Φ16.2、充电口（★ XT60 开孔到货核）；背面 4 根柱子 M3 热熔螺母（拧 A06）"),
+         ("麦克风座", "ASA 深灰", ""), ("探照灯压圈（打印）", "ASA 深灰", "压住透镜，胶粘")]
 CORNERS = ("护角11", "护角1-1", "护角-11", "护角-1-1")
 LEG_APP = ("大腿外盖板", "小腿盖板", "髋盖", "膝盖帽外", "脚垫")
 
@@ -70,8 +75,29 @@ def fits(s):
     return d[1] <= BED and d[2] <= BED, (x1 - x0, y1 - y0, z1 - z0)
 
 
+def lug(s, look, start, d, lim=60.0):
+    """从 start 沿 d 找到壳内壁，往里贴一块小凸台（沿 d 厚 8，另外两个方向 12 × 10；壳只有 2.5，销孔打不下）。返回 (壳, 销中心)。"""
+    for i in range(int(lim / 0.5)):
+        q = V(start[0] + d[0] * i * 0.5, start[1] + d[1] * i * 0.5, start[2] + d[2] * i * 0.5)
+        if s.isInside(q, 0.01):
+            break
+    else:
+        return s, None
+    c = q - V(*d) * 3.5
+    ext = []
+    for i, k in enumerate(d):
+        if abs(k) > 0.5:
+            ext.append(4.0)                                             # 沿 d：厚 8
+        elif i == 2:
+            ext.append(5.0)
+        else:
+            ext.append(6.0)                                             # 跨接缝那个方向 12
+    blk = box(c.x - ext[0], c.x + ext[0], c.y - ext[1], c.y + ext[1], c.z - ext[2], c.z + ext[2]).intersect(look).cut(FRAME)
+    return s.fuse(blk), c
+
+
 def pins(piece_a, piece_b, axis, at, cands):
-    """接缝面上打定位销孔：候选点两边都有料（实心）才打。"""
+    """接缝面上打定位销孔：候选点两边都有料（实心）才打。v20：Φ3.2 × 12（Φ3 × 10 钢销）。"""
     hole_a, hole_b = [], []
     for u, w in cands:
         p = V(at, u, w) if axis == "x" else V(u, at, w)
@@ -80,24 +106,47 @@ def pins(piece_a, piece_b, axis, at, cands):
         ok_b = piece_a.isInside(p - da) or piece_b.isInside(p - da)
         if ok_a and ok_b:
             d = V(1, 0, 0) if axis == "x" else V(0, 1, 0)
-            c = cq.Solid.makeCylinder(2.1, 12, p - d * 6, d)
+            c = cq.Solid.makeCylinder(1.6, 12, p - d * 6, d)
             hole_a.append(c)
     for c in hole_a:
         piece_a, piece_b = piece_a.cut(c), piece_b.cut(c)
     return piece_a, piece_b, len(hole_a)
 
 
-def split(name, s, how):
-    """按 x = 0（和 y = 0）拆；接缝 0.2（打印公差），每条缝打销孔。"""
+def split(name, s, how, look=None):
+    """按 x = 0（和 y = 0）拆；接缝 0.2（打印公差），每条缝打销孔。v20：给了 look（外形）就先在接缝处贴小凸台，销孔打在凸台里。"""
     zmid = (bbox(s)[4] + bbox(s)[5]) / 2
     pieces = [("", s)]
     n_pin = 0
+    xc, yc = [], []
+    if look is not None:
+        zt = bbox(s)[5]
+        for sy in (1, -1):
+            for z in (zmid - 12, zmid + 12):
+                s, c = lug(s, look, (0, 0, z), (0, sy, 0), lim=W2 + 10)
+                if c is not None:
+                    xc.append((c.y, c.z))
+            s, c = lug(s, look, (0, sy * 70.0, zt + 5), (0, 0, -1))
+            if c is not None:
+                xc.append((c.y, c.z))
+        if "y" in how:
+            for sx in (1, -1):
+                for z in (zmid - 12, zmid + 12):
+                    s, c = lug(s, look, (0, 0, z), (sx, 0, 0), lim=L2 + 10)
+                    if c is not None:
+                        yc.append((c.x, c.z))
+                for x in (100.0, 180.0):
+                    s, c = lug(s, look, (sx * x, 0, zt + 5), (0, 0, -1))
+                    if c is not None:
+                        yc.append((c.x, c.z))
     if "x" in how:
         a = s.intersect(box(0.1, 1e3, -1e3, 1e3, -1e3, 1e3))
         b = s.intersect(box(-1e3, -0.1, -1e3, 1e3, -1e3, 1e3))
         side = W2 - 6.0                                                # 侧壁中间
         cands = [(sy * side, z) for sy in (1, -1) for z in (zmid - 15, zmid + 15)] + [(sy * 60, bbox(s)[5] - 3) for sy in (1, -1)] + \
                 [(sy * 60, bbox(s)[4] + 1.2) for sy in (1, -1)]
+        if look is not None:
+            cands = xc
         a, b, k = pins(a, b, "x", 0.0, cands)
         n_pin += k
         pieces = [("前", a), ("后", b)]
@@ -108,6 +157,8 @@ def split(name, s, how):
             r = p.intersect(box(-1e3, 1e3, -1e3, -0.1, -1e3, 1e3))
             sx = 1 if tag == "前" else -1
             cands = [(sx * x, z) for x in (L2 - 6.0, 120.0) for z in (zmid - 15, zmid + 15)] + [(sx * x, bbox(s)[5] - 3) for x in (60.0, 180.0)]
+            if look is not None:
+                cands = [(u, w) for u, w in yc if u * sx > 0]
             l, r, k = pins(l, r, "y", 0.0, cands)
             n_pin += k
             out += [(tag + "左", l), (tag + "右", r)]
@@ -141,11 +192,16 @@ def main():
                          vol=round(s.Volume() / 1000, 1), note=note))
         print(f"  {code} {name} ×{qty}  {d[0]:.0f} × {d[1]:.0f} × {d[2]:.0f}  {'✓' if ok else '超出打印机'}  {s.Volume() / 1000:.0f} cm³")
     k = 1
+    whole = {}
     for name, mat, how in BIG:
-        h = screw_holes(name, hollow(name, look[name]))
-        parts, n_pin = split(name, h, how)
+        h = hollow(name, look[name])
+        if name == "上层甲板壳":
+            h = T.top_features(h, look[name])                           # v20：外壳螺丝柱、雷达柱、麦克风槽、喇叭卡圈（mounts.py）
+        h = screw_holes(name, h)
+        whole[name] = h
+        parts, n_pin = split(name, h, how, look[name] if name == "上层甲板壳" else None)
         for tag, p in parts:
-            save(f"S{k:02d}", f"{name}{tag}", p, mat, 1, f"接缝 {n_pin} 个 Φ4.2×6 销孔，配 Φ4×10 钢销 + 胶")
+            save(f"S{k:02d}", f"{name}{tag}", p, mat, 1, f"整圈接缝一共 {n_pin} 个 Φ3.2 销孔（Φ3 × 10 钢销）+ 胶" if n_pin else "接缝只有胶（壳太薄打不了销）")
             k += 1
     hx = BV.L2
     head = look["头"]
@@ -157,7 +213,12 @@ def main():
     k += 1
     for name, mat, note in SMALL:
         save(f"S{k:02d}", name, look[name], mat, 1, note)
+        whole[name] = look[name]
         k += 1
+    cr, _ = T.imu_cradle(B.TRAY_Z + 3)
+    save(f"S{k:02d}", "IMU 卡座", cr, "PETG", 1, "IMU 卡槽 24.4 × 26.4（超核官网外形，没给安装孔）+ 扎带槽；2 个 M3 热熔螺母（从托板下面拧）")
+    whole["IMU 卡座"] = cr
+    k += 1
     save(f"S{k:02d}", "护角", look[CORNERS[0]], "TPU 95A 黑", 4, "四个角一样（左右镜像打：切片里镜像）")
     k += 1
     # 腿：工程件（大腿外层壳、小腿、绕线环）+ 外观盖板
@@ -173,6 +234,7 @@ def main():
         save(f"S{k:02d}", key, look[nm], mat, qty, "小腿两面各一块" if key == "小腿盖板" else "")
         k += 1
     json.dump(rows, open(os.path.join(OUT, "print_list.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    hole_report(whole)
     too_big = [r["name"] for r in rows if not r["fits"]]
     with open(os.path.join(DOC, "打印件清单.md"), "w", encoding="utf-8") as f:
         f.write("# 机械狗007A 3D 打印件清单（第 4 步，v19 省钱版）\n\n")
@@ -185,6 +247,29 @@ def main():
         tot = sum(r["vol"] * r["qty"] for r in rows)
         f.write(f"\n合计约 {tot:.0f} cm³（实心体积；按 15–20 % 填充、3 圈壁，耗材约 {tot * 0.45 * 1.2 / 1000:.1f} kg）。超出打印机的：{', '.join(too_big) or '没有'}\n")
     print("超出 256 的：", too_big or "没有")
+
+
+def hole_report(whole):
+    """v20：每一颗螺丝查一遍（mounts.check）：铝板 / 托板的孔 + 打印件的孔和螺丝柱对不对得上。"""
+    envs = [B.sweep_envelope(fx, sy) for fx in (1, -1) for sy in (1, -1)]
+    parts = {n: sh for n, sh, c in B.frame_parts(envs) if n[:3] in ("A01", "A05", "A06", "A07")}
+    parts.update({n: sh for n, sh, c in B.inside_parts() if n.startswith("C01")})
+    parts.update(whole)
+    rows = T.check(parts)
+    bad = [r for r in rows if not r[1]]
+    with open(os.path.join(DOC, "孔位核对.md"), "w", encoding="utf-8") as f:
+        f.write("# 机械狗007A 孔位核对（每一颗螺丝）\n\n")
+        f.write("> 由 `007a/print_parts.py` 生成（`mounts.check`）：沿每颗螺丝的轴线每 0.4 mm 取点，中心要空（有孔）、外面一圈要有料（铝板 / 螺丝柱 / 热熔螺母座）。\n")
+        f.write("> 过孔有料 ≥ 1.5、咬螺纹的（自攻 / 热熔螺母）有料 ≥ 3 才算过。\n\n")
+        f.write(f"一共 {len(rows)} 颗，**对不上 {len(bad)} 颗**。\n\n| 螺丝 | 结果 | 细节 |\n|---|---|---|\n")
+        for n, ok, note in rows:
+            f.write(f"| {n} | {'✅' if ok else '❌'} | {note} |\n")
+        f.write("\n## 传感器官方尺寸来源\n\n| 东西 | 型号 | 外形 | 孔 | 怎么装 | 来源 |\n|---|---|---|---|---|---|\n")
+        for d in T.SENSORS:
+            f.write(f"| {d['name']} | {d['model']} | {d['dims']} | {d['holes']} | {d['mount']} | {d['src']} |\n")
+    print(f"孔位核对：{len(rows)} 颗，对不上 {len(bad)} 颗")
+    for n, ok, note in bad:
+        print("  ✗", n, "：", note)
 
 
 if __name__ == "__main__":

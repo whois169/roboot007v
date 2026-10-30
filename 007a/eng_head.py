@@ -67,7 +67,7 @@ if __name__ == "__main__":
     hx1 = L2 + 4 + 30.0
     hollow = M.head_hollow(3.0)                                       # 头是壳（v19 壁 3，用户：不能太薄），后面敞开让支架伸进去；弧形裙边留着
     head = [(n, s.cut(hollow).cut(bracket_clearance()) if n == "头" else s) for n, s, c in look if n.startswith(HEAD_NAMES) and not n.startswith(SKIP)] + head_inside()
-    fixed = [(n, s) for n, s, c in look if n in ("上层甲板壳", "前防撞杠", "深度相机罩", "热像仪座", "热像仪镜圈", "黑腰", "下层底盘", "雷达护圈", "雷达")]
+    fixed = [(n, s) for n, s, c in look if n in ("上层甲板壳", "前防撞杠", "黑腰", "下层底盘", "雷达护圈", "雷达") or n.startswith(("深度相机", "热像仪", "台阶测距", "探照灯"))]
     envs = [B.sweep_envelope(fx, sy) for fx in (1, -1) for sy in (1, -1)]
     fixed += [(n, s) for n, s, c in B.frame_parts(envs) if n.startswith("A05")]
     fixed += body_side()

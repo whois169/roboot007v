@@ -57,8 +57,8 @@ line([(M.L2 - 46, -80), (180, -10), (60, -10), (-15, -90)], C["usb"], 1.5, ":")
 ax.text(M.L2 - 46, -88, "雷达 USB", fontsize=8)
 line([(M.L2 - 46, 80), (180, 10), (60, 10), (0, 67)], C["sig"], 1.5, ":")
 ax.text(M.L2 - 46, 88, "麦克风 I2S", fontsize=8)
-for (x, y), c, t in [((-L2 - 4, 0), C["power"], "急停 → 继电器线圈"),
-                     ((-L2 - 4, 44), C["power"], "总开关"), ((-L2 - 4, -41), C["power"], "充电口 XT60 → 电池")]:
+for (x, y), c, t in [((-L2 - 4, -40), C["power"], "急停 → 继电器线圈"),
+                     ((-L2 - 4, 0), C["power"], "总开关"), ((-L2 - 4, 42), C["power"], "充电口 XT60 → 电池")]:
     line([(x, y), (-B.X_END, y * 0.15), (-60, y * 0.15), (0, -100) if "充电" in t else (0, 100) if "急停" in t or "开关" in t else (0, 67)], c, 1.5, "--")
     ax.text(x - 4, y, t, fontsize=8, va="center", ha="right")
 for k, t in (("power", "电源"), ("bus", "电机 485 总线 + 电源（16 AWG）"), ("usb", "USB"), ("sig", "信号（I2C / I2S / 串口 / 舵机总线）")):

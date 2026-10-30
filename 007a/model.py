@@ -432,8 +432,10 @@ def body_parts():
     # 激光雷达：人面对它看的左上角（= 机器人自己的右边，-y），照用户的前脸图
     lx, ly = L2 - 46, -(W2 - 50)
     P.append(("雷达座", soft(plan_chamfer(box(lx - 26, lx + 26, ly - 26, ly + 26, TOP, TOP + 10)), 1.0), "skel_dk"))
-    P.append(("雷达", soft(cq.Solid.makeCylinder(20, 26, V(lx, ly, TOP + 10)), 1.5), "skel_dk"))
-    P.append(("雷达窗", cq.Solid.makeCylinder(20.4, 8, V(lx, ly, TOP + 18)).cut(cq.Solid.makeCylinder(19, 8, V(lx, ly, TOP + 18))), "glass"))
+    # v20：乐动 LD19 按规格书外形（安装脚 46.29 × 54 × 3、底座 38.6 方、转头 Φ35.3，总高 34.8，扫描面离底 27），直接坐在壳顶上
+    P.append(("雷达", box(lx - 23.1, lx + 23.1, ly - 27, ly + 27, TOP, TOP + 3).fuse(box(lx - 19.3, lx + 19.3, ly - 19.3, ly + 19.3, TOP, TOP + 22.2)).fuse(
+        cq.Solid.makeCylinder(17.6, 12.6, V(lx, ly, TOP + 22.2))), "skel_dk"))
+    P.append(("雷达窗", cq.Solid.makeCylinder(17.8, 6, V(lx, ly, TOP + 24)).cut(cq.Solid.makeCylinder(17, 6, V(lx, ly, TOP + 24))), "glass"))
     # ---- 背上：货台已经做进上层甲板壳里了（见上面）
     # ---- 尾部：尾灯、急停、充电口
     for sy in (1, -1):

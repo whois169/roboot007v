@@ -27,6 +27,7 @@ import os
 import cadquery as cq
 
 import model as M
+import mounts as T
 from model import V, box, cyl_x, cyl_y, prism_xz, prism_yz, ring_y, soft
 
 L2, W2, Z0 = M.L2, M.W2, M.Z0
@@ -64,8 +65,8 @@ def body_parts():
             continue                                              # 字样挪到装甲板上（浅色）
         elif n == "雷达座":
             continue                                              # 换成八角护圈
-        elif n.startswith("测距窗"):
-            continue                                              # 测距窗挪进防撞杠
+        elif n.startswith("测距窗") or n in ("急停", "急停座", "充电口"):
+            continue                                              # 测距窗挪进防撞杠；急停、充电口在尾部接口板（mounts.py）
         else:
             P.append((n, s, c))
     up, tub, waist = shells["上层甲板壳"][0], shells["下层底盘"][0], shells["黑腰"][0]
@@ -105,7 +106,11 @@ def body_parts():
     # ---- 尾部：凹进去的接口板（急停、充电口在上面）+ 下方出风格栅
     rp_x = -L2 - 4
     up = up.cut(box(rp_x - 2, rp_x + 6, -70, 70, ZC - 24, ZC + 24))
-    P.append(("尾部接口板", box(rp_x + 5, rp_x + 6, -70, 70, ZC - 24, ZC + 24), "skel_dk"))
+    panel, panel_bodies = T.tail_panel()                           # v20：真的接口板（打印 4 厚），急停 / 开关 / 充电口按官方开孔（mounts.py）
+    P.append(("尾部接口板", panel, "skel_dk"))
+    P += panel_bodies
+    tenv = T.tail_envelope()
+    up, tub, waist = up.cut(tenv), tub.cut(tenv), waist.cut(tenv)
     r_cut = None
     for k in range(4):
         z = Z0 + 18 + k * 5.5
@@ -113,18 +118,18 @@ def body_parts():
         r_cut = c if r_cut is None else r_cut.fuse(c)
     tub = tub.cut(r_cut)
     P.append(("尾部出风槽底", box(-L2 + 7, -L2 + 8, -70, 70, Z0 + 18, Z0 + 38), "skel_dk"))
-    # ---- 前防撞杠（深色，凸出 14），台阶测距窗在杠里
-    bumper = prism_xz([(L2 - 6, Z0 + 18), (L2 + 8, Z0 + 24), (L2 + 8, Z0 + 42), (L2 - 6, Z0 + 46)], -W2 + 16, W2 - 16)
-    for sy in (1, -1):
-        bumper = bumper.cut(box(L2 + 4, L2 + 10, sy * 70 - 9, sy * 70 + 9, Z0 + 29, Z0 + 37))
-        P.append((f"测距窗{sy}", box(L2 + 4, L2 + 5, sy * 70 - 9, sy * 70 + 9, Z0 + 29, Z0 + 37), "glass"))
-    P.append(("前防撞杠", soft(bumper, 1.5), "skel_dk"))
+    # ---- 前防撞杠（v20：防撞杠 + 深度相机罩 + 热像仪座 + 探照灯筒 + 台阶测距窗做成一件，传感器全拧在上面，mounts.py）
+    bar, bar_bodies = T.front_bar()
+    P.append(("前防撞杠", bar, "skel_dk"))
+    P += bar_bodies
+    env = T.bar_envelope()
+    up, tub, waist = up.cut(env), tub.cut(env), waist.cut(env)
     # ---- 雷达护圈：八角形矮护圈（和机身 45° 切角一样），上沿低于雷达扫描窗 2 —— 不挡扫描，侧面撞到先碰护圈
     lx, ly = L2 - 46, -(W2 - 50)
     collar = M.plan_chamfer(box(lx - 30, lx + 30, ly - 30, ly + 30, TOP, TOP + 16), 14.0)
     collar = collar.cut(cq.Solid.makeCylinder(22, 20, V(lx, ly, TOP + 4)))
     collar = collar.cut(M.plan_chamfer(box(lx - 26, lx + 26, ly - 26, ly + 26, TOP + 14, TOP + 17), 12.0))   # 上沿内侧一圈台阶
-    P.append(("雷达护圈", soft(collar, 1.0), "skel"))
+    P.append(("雷达护圈", T.radar_collar_holes(soft(collar, 1.0)), "skel"))
     # ---- 斜肩（顶上两条长棱 45° × 22）、底盘收腰（底下两条长棱 45° × 18）
     SH, BL = 22.0, 18.0
     for sy in (1, -1):
@@ -159,24 +164,9 @@ def body_parts():
         ang = a * 3.14159 / 2 + 0.785
         P.append((f"拾音孔{a}", cq.Solid.makeCylinder(1.6, 0.4, V(mx + 11 * math.cos(ang), my + 11 * math.sin(ang), TOP)), "rubber"))
     P.append(("拾音孔中", cq.Solid.makeCylinder(1.6, 0.4, V(mx, my, TOP)), "rubber"))
-    # ---- 电源开关（GQ16 自锁，带光圈）：尾部接口板右边
-    P.append(("电源开关", cyl_x(44, ZC, 19, -L2 - 8, -L2 - 2), "metal"))
-    P.append(("电源光圈", cyl_x(44, ZC, 22, -L2 - 3, -L2 - 1).cut(cyl_x(44, ZC, 18, -L2 - 4, -L2)), "cyan"))
-    # ---- 深度相机：前防撞杠正中，正面往下斜 20°（看台阶）
-    cam = prism_xz([(L2 + 4, Z0 + 18), (L2 + 22, Z0 + 18), (L2 + 26, Z0 + 29), (L2 + 26, Z0 + 38), (L2 + 16, Z0 + 48), (L2 + 4, Z0 + 48)], -48, 48)
-    P.append(("深度相机罩", soft(cam, 1.0), "skel"))
-    P.append(("深度相机窗", prism_xz([(L2 + 25.5, Z0 + 21), (L2 + 26.6, Z0 + 21), (L2 + 26.6, Z0 + 37), (L2 + 25.5, Z0 + 37)], -42, 42), "glass"))
-    for y, d in ((-32, 10), (32, 10), (0, 7), (14, 7)):             # 左右红外、投射器、彩色
-        P.append((f"相机镜头{y}", cyl_x(y, Z0 + 29, d, L2 + 26.4, L2 + 27.4), "metal"))
-    # v19 省钱版：去掉探照灯、气体检测（不做巡检，只要能自己走、上下楼梯）；v16–v18 的在 git 标签 007A-v19 里
-    # ---- 热像仪（保留，用户要）：换成跟 007v 一样的 Adafruit MLX90640 110°（25.8 × 17.8 × 10.5，007v 的 thermal.py 能直接用）；
-    #      前防撞杠右头（-y），镜头前面直接开 Φ12 孔（塑料、亚克力都挡远红外）
-    ty, tz = -101.0, Z0 + 32
-    pod = prism_xz([(L2 - 2, tz - 16), (L2 + 12, tz - 16), (L2 + 16, tz - 12), (L2 + 16, tz + 12), (L2 + 12, tz + 16), (L2 - 2, tz + 16)], ty - 17, ty + 17)
-    pod = pod.cut(cyl_x(ty, tz, 12, L2 + 10, L2 + 18))
-    P.append(("热像仪座", soft(pod, 1.0), "skel"))
-    P.append(("热像仪镜头", cyl_x(ty, tz, 10, L2 + 10, L2 + 11), "glass"))
-    P.append(("热像仪镜圈", cyl_x(ty, tz, 17, L2 + 15.5, L2 + 17).cut(cyl_x(ty, tz, 12, L2 + 15, L2 + 18)), "metal"))
+    # ---- 电源开关的光圈（GQ16 自带环形灯，开孔在尾部接口板正中）
+    P.append(("电源光圈", cyl_x(T.SWITCH_Y, ZC, 22, -L2 - 3, -L2 - 1).cut(cyl_x(T.SWITCH_Y, ZC, 18, -L2 - 4, -L2)), "cyan"))
+    # 深度相机、热像仪、探照灯都在前防撞杠里（上面）
     # ---- 底部绑带卡口 ×4：底下四个角，凹 10 的槽 + 一根横销（带子穿过去）
     for x in (-150.0, 150.0):
         for y in (-70.0, 70.0):
@@ -208,4 +198,4 @@ if __name__ == "__main__":
         cq.exporters.export(cq.Workplane().add(s), os.path.join(out, fn), tolerance=0.08, angularTolerance=0.15)
         man.append(dict(file=fn, name=n, color=c))
     json.dump(man, open(os.path.join(out, "manifest.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=0)
-    print(f"{len(man)} 个零件（v19 省钱版：去掉探照灯、气体检测；热像仪换 MLX90640）")
+    print(f"{len(man)} 个零件（v20：宇树电机；前防撞杠合并传感器座、探照灯加回来；尾部接口板）")

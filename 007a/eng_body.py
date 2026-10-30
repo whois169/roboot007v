@@ -20,6 +20,7 @@ import os
 import cadquery as cq
 
 import eng_leg as E
+import mounts as T
 import model as M
 from model import V, box, cyl_x, cyl_y, soft
 
@@ -40,15 +41,7 @@ BAT = (65.0, 129.0, 70.0)                          # 电池 6S3P 21700：x × y 
 TRAY_Z = Z_BOT + T_BOT + BAT[2] + 8.0              # 电子托板下表面
 
 # 托板上的板子：(名字, x 中心, y 中心, 长 x, 宽 y, 高, 状态)
-BOARDS = [                                         # v19：外摆电机长了 12.7，两块隔板之间只剩 80，板子沿 y 排（托板 78 × 226）
-    ("树莓派 5（带散热）", 0.0, 70.0, 56.0, 85.0, 22.0, "已确认"),
-    ("USB 转 4 路 485（宇树）", 0.0, -36.0, 60.0, 45.0, 15.0, "★要图"),
-    ("USB 集线器", -15.0, -85.0, 40.0, 30.0, 12.0, "到货实测"),
-    ("12V 5A 降压（抬头舵机）", 22.0, -85.0, 26.0, 20.0, 15.0, "到货实测"),
-    ("5V 5.5A 降压（树莓派）", -25.0, 14.0, 25.4, 25.4, 9.5, "已确认"),
-    ("5V 3.2A 降压（传感器）", 25.0, 14.0, 20.3, 17.8, 8.0, "已确认"),
-    ("IMU 超核 HI13（正中间）", 0.0, 0.0, 24.0, 26.0, 12.0, "★要图"),
-]
+BOARDS = [(n, x, y, lx, ly, h + (T.STANDOFF if holes else 0.0) - 4.0, st) for n, x, y, lx, ly, h, holes, d, st in T.TRAY_BOARDS] +     [("IMU 超核 HI13（卡座里）", T.IMU_C[0], T.IMU_C[1], T.IMU_BOX[0], T.IMU_BOX[1], T.IMU_BOX[2] + 3.0 - 4.0, "★要图：卡座")]   # v20：从 mounts.py 来（高度按托板上 4 算的老口径）
 # 电池两边（底板上）
 SIDE_PARTS = [
     ("电机电源继电器 80A（带座）", 0.0, 90.0, 40.0, 40.0, 45.0),
@@ -135,10 +128,10 @@ def frame_parts(envs):
         for e in envs:
             ep = ep.cut(e)
         if fx > 0:
-            ep = ep.cut(box(x0 - 1, x1 + 1, -50, 50, Z0 + 16, Z0 + 50))   # 深度相机、探照灯、热像仪的线从这里进
+            ep = ep.cut(box(x0 - 1, x1 + 1, T.A05_CUT[0], T.A05_CUT[1], T.A05_CUT[2], T.A05_CUT[3]))   # 前防撞杠上所有传感器的线从这里进（mounts.py）
             ep = ep.cut(M.head_ring_slot())                                # v19：头弧形裙边穿过去的两条同心弧形槽（中间留一条横梁，头支架拧在上面；线也从槽里走）
         else:
-            ep = ep.cut(box(x0 - 1, x1 + 1, -70, 70, Z0 + 69, Z0 + 117))  # 尾部接口板（急停、开关、充电口）
+            ep = ep.cut(box(x0 - 1, x1 + 1, T.A06_CUT[0], T.A06_CUT[1], T.A06_CUT[2], T.A06_CUT[3]))  # 急停 / 开关 / 充电口的后身从这里进（mounts.py）
         P.append((f"{nm}（铝 4）", ep, "metal"))
     # A07 顶板（货台底下），四周 M3 孔拧上层外壳
     tp = box(-X_END, X_END, -Y_SR - T_SIDE, Y_SR + T_SIDE, Z_TOPP, Z_TOPP + T_TOP)
@@ -268,11 +261,11 @@ def finish(P):
         D["A01"][1] = D["A01"][1].cut(box(x - 6, x + 6, y - 1.5, y + 1.5, zb - 1, zb + T_BOT + 1))
     xe0, xe1 = X_END - 1, X_END + T_END + 1
     zc = M.WAIST_TOP + (TOP - M.WAIST_TOP) / 2 - 2
-    front = [(y, Z0 + z) for y in (-75.0, 75.0) for z in (22.0, 44.0)]          # 防撞杠（相机罩、灯、热像仪都装在防撞杠上）
+    front = list(T.BAR_SCREWS)                                                    # 前防撞杠（传感器都在杠上，mounts.py）
     front += [(y, zc + dz) for y in (40.0, -76.0) for dz in (-6.0, 6.0)]        # 头支架法兰（每边 2 个，eng_head.body_side）
     for y, z in front:
         D["A05"][1] = D["A05"][1].cut(cyl_x(y, z, 3.4, xe0, xe1))
-    for y, z in [(y, zc + dz) for y in (-85.0, 85.0) for dz in (-20.0, 20.0)]:  # 尾部接口板 4 个
+    for y, z in T.TAIL_SCREWS:                                                  # 尾部接口板 4 个（mounts.py）
         D["A06"][1] = D["A06"][1].cut(cyl_x(y, z, 3.4, -xe1, -xe0))
     return [tuple(D[k]) for k in order] + brs
 
@@ -293,9 +286,11 @@ def inside_parts():
     for fx in (1, -1):
         for sy in (1, -1):
             tray = tray.cut(box(*sorted((fx * xk, fx * (XB + 5))), *sorted((sy * 38.0, sy * (Y_SR + 5))), TRAY_Z - 1, TRAY_Z + 4))
+    tray = T.tray_holes(tray, TRAY_Z)                                  # v20：板子按官方孔位打孔、没图的留扎带孔（mounts.py）
     P.append(("C01 电子托板（亚克力 3，插在侧梁槽里）", tray, "glass"))
-    for n, x, y, sx, sy_, sz, st in BOARDS:
-        P.append((n, box(x - sx / 2, x + sx / 2, y - sy_ / 2, y + sy_ / 2, TRAY_Z + 3 + 4, TRAY_Z + 7 + sz), "cyan" if "IMU" in n else "skel"))
+    P += T.tray_bodies(TRAY_Z + 3)
+    cr, imu = T.imu_cradle(TRAY_Z + 3)
+    P += [("IMU 卡座 P03（打印 PETG）", cr, "skel_dk"), ("IMU 超核 HI13", imu, "cyan")]
     ring = M.head_ring_slot()                                         # v19：A04 纵梁前端也让开头的弧形裙边
     P = [(n, s.cut(ring) if n.startswith("A04") and "前" in n else s, c) for n, s, c in P]
     return P
