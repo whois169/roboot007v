@@ -651,9 +651,38 @@ def plan_crawl(T, feet0, x_start, x_goal, com_fn, H, D, direction, ph_r, ph_f, c
     def legs_ok(x, i, feet):
         return min(leg_check(hip2d(LEGS[j], x), np.array([feet[j][0], feet[j][2]]), T) for j in range(4) if j != i)
 
+    def hip_at(leg, x, z, th):
+        h = np.array([x, 0, z]) + rpy_mat(0, -th) @ np.array([SIDE[leg][0] * HX, 0, 0])
+        return np.array([h[0], h[2]])
+
+    def pose_margin(x, z, th, i, feet, swing_pts):
+        """机身在 (x, z, th) 时：撑着的腿 + 跨的那条腿（抬到最高的两个点）离台阶 / 够不够得着的最小余量。"""
+        m = min(leg_check(hip_at(LEGS[j], x, z, th), np.array([feet[j][0], feet[j][2]]), T) for j in range(4) if j != i)
+        if i >= 0:
+            m = min([m] + [leg_check(hip_at(LEGS[i], x, z, th), q, T) for q in swing_pts])
+        return m
+
+    def best_pose(x, z0, th0, i, feet, swing_pts, prev_off):
+        """机身高度、俯仰在规则给的值附近再挑：高低 ±5 cm、俯仰 ±10°（最多斜 22°，背上货不滑）。
+        上下楼梯的开头、结尾机身在“变坡”，规则给的高度 / 俯仰常常让腿拉太直或收太紧，这里补上。
+        跟上一步比，改的量每步最多变 2 cm / 5°（不然两步之间机身猛地一抬一低会翻）；余量够了（≥ 2 cm）就挑跟上一步最接近的。"""
+        best = None
+        for dz in np.arange(-0.05, 0.0501, 0.01):
+            for dth in np.radians(np.arange(-10, 10.01, 2.5)):
+                if abs(dz - prev_off[0]) > 0.0201 or abs(dth - prev_off[1]) > math.radians(5.01):
+                    continue
+                th = float(np.clip(th0 + dth, -math.radians(22), math.radians(22)))
+                m = pose_margin(x, z0 + dz, th, i, feet, swing_pts)
+                key = (min(m, 0.02), -abs(dz - prev_off[0]) - 0.2 * abs(dth - prev_off[1]) - 0.1 * abs(dz) - 0.02 * abs(dth))
+                if best is None or key > best[0]:
+                    best = (key, dz, dth, m)
+        return best[1], best[2], best[3]
+
     feet = [f.copy() for f in feet0]
     out = []
     y_prev = 0.0
+    prev_pose = None
+    off = (0.0, 0.0)
     for _, _, i, xb, xc in events:
         leg = LEGS[i]
         sup = [j for j in range(4) if j != i]
@@ -685,13 +714,32 @@ def plan_crawl(T, feet0, x_start, x_goal, com_fn, H, D, direction, ph_r, ph_f, c
         ss = np.linspace(min(old[0], xc) - 0.03, max(old[0], xc) + 0.03, 20)
         z_top = max(T.gnd(x) for x in ss) + FOOT_R + clear
         new = np.array([xc, old[1], T.gnd(xc) + FOOT_R])
-        lm = min(plan_leg[leg][2], legs_ok(bxy[0], i, feet),
-                 leg_check(hip2d(leg, bxy[0]), np.array([old[0], z_top]), T), leg_check(hip2d(leg, bxy[0]), np.array([xc, z_top]), T))
+        sw_pts = [np.array([old[0], z_top]), np.array([xc, z_top])]
+        m_rule = pose_margin(bxy[0], z + off[0] * 0.5, th + off[1] * 0.5, i, feet, sw_pts)
+        if m_rule >= 0.01:
+            dz, dth, pm = off[0] * 0.5, off[1] * 0.5, m_rule                 # 规则姿势（上一步改的量减半）够好：不再改
+        else:
+            dz, dth, pm = best_pose(bxy[0], z, th, i, feet, sw_pts, off)
+        off = (dz, dth)
+        for _ in range(3):                                              # 高度 / 俯仰改了，重心也跟着变：再对一次重心
+            z, th = body_pose(bxy[0])
+            z, th = z + dz, th + dth
+            bxy += want - com_fn(np.array([bxy[0], bxy[1], z]), th, lifted)
+        z, th = body_pose(bxy[0])
+        z, th = z + dz, th + dth
+        stab = float(tri_margin(tri, com_fn(np.array([bxy[0], bxy[1], z]), th, lifted)))
+        pm = min(pm, pose_margin(bxy[0], z, th, i, feet, sw_pts))
+        if prev_pose is not None:                                       # 从上一个姿势挪过来的半路上也查一遍（撑着的四条腿）
+            pm = min(pm, pose_margin((prev_pose[0] + bxy[0]) / 2, (prev_pose[1] + z) / 2, (prev_pose[2] + th) / 2, -1, feet, []))
+        prev_pose = (bxy[0], z, th)
+        lm = pm                                                          # 落脚点规划（leg_dp）按规则姿势算，这里按挑过的姿势真查
         out.append((i, np.array([bxy[0], bxy[1], z]), th, new, z_top, min(lm, stab - MARGIN + M_OK), lm, stab))
         feet[i] = new
     # 收尾：最后一次跨完，机身走到终点（四只脚撑着）
     z, th = body_pose(x_goal)
-    out.append((None, np.array([x_goal, 0.0, z]), th, None, None, min(legs_ok(x_goal, -1, feet), M_OK), legs_ok(x_goal, -1, feet), 1.0))
+    dz, dth, pm = best_pose(x_goal, z, th, -1, feet, [], off)
+    z, th = z + dz, th + dth
+    out.append((None, np.array([x_goal, 0.0, z]), th, None, None, min(pm, M_OK), pm, 1.0))
     return out
 
 
@@ -790,6 +838,10 @@ def crawl(s, T, x_goal, rec, H=0.25, D=0.26, direction=1, t_shift=0.5, t_swing=0
             s.step(p, R, tg, st)
         run(t_swing, swing)
         feet_w[i] = new
+        act = s.foot_world()
+        for j in range(4):
+            if j != i and np.linalg.norm(act[j] - feet_w[j]) < 0.05:
+                feet_w[j] = act[j].copy()                               # 撑着的脚滑了一点：就按它现在的位置撑，不往回拽
         if os.environ.get("CRAWL_DEBUG"):
             Rn = quat_mat(s.d.qpos[3:7])
             act = s.foot_world()
