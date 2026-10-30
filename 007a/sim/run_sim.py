@@ -58,7 +58,7 @@ K0, F0 = np.array(GEOM["knee0"]), np.array(GEOM["foot0"])
 L1, LSH = np.linalg.norm(K0), np.linalg.norm(F0 - K0)
 FOOT_R = GEOM["foot_r"]
 GEAR = np.array([1.0, 1.0, GEOM["gear_knee"]] * 4)
-TAU_M, W_M = GEOM["tau"], GEOM["w"] * V_BAT / 24.0
+TAU_M, W_M = float(os.environ.get("MOTOR_TAU", GEOM["tau"])), GEOM["w"] * V_BAT / 24.0   # 环境变量 MOTOR_TAU：试别的电机峰值扭矩
 LIMIT_J = TAU_M * GEAR                  # 关节端峰值扭矩：23.7 / 23.7 / 35.5
 CROSS0 = F0[0] * K0[1] - F0[1] * K0[0]  # 站立时“膝在后”那一侧的符号
 
@@ -113,17 +113,18 @@ def rpy_mat(roll, pitch, yaw=0.0):
 
 # ---------------------------------------------------------------- 仿真本体
 class Sim:
-    def __init__(self, terrain="", payload=5.0):
+    def __init__(self, terrain="", payload=float(os.environ.get("PAYLOAD", 5.0))):   # 背的货（kg）；环境变量 PAYLOAD 可改
         xml = open(XML, encoding="utf-8").read().replace("<!--TERRAIN-->", terrain)
         self.m = mujoco.MjModel.from_xml_string(xml)
         cg = self.m.body("cargo").id
         if payload <= 0:
-            self.m.body_mass[cg] = 1e-4
-            self.m.body_inertia[cg] = 1e-7
+            self.m.body_mass[cg] = 0.02                                 # 空载：货台只剩一块很轻的板（太小的质量 / 惯量仿真会抖）
+            self.m.body_inertia[cg] = 0.02 * np.array([0.2 ** 2 + 0.08 ** 2, 0.3 ** 2 + 0.08 ** 2, 0.3 ** 2 + 0.2 ** 2]) / 12
         else:
             self.m.body_mass[cg] = payload
             self.m.body_inertia[cg] = payload * np.array([0.2 ** 2 + 0.08 ** 2, 0.3 ** 2 + 0.08 ** 2, 0.3 ** 2 + 0.2 ** 2]) / 12
         self.d = mujoco.MjData(self.m)
+        mujoco.mj_setConst(self.m, self.d)                               # 改了货的质量：整机总质量（subtreemass）要重算，不然前馈还按背 5 kg 出力
         self.mass = float(self.m.body_subtreemass[self.m.body("base").id])
         self.qadr = np.array([self.m.joint(f"{l}_{j}").qposadr[0] for l in LEGS for j in JN])
         self.vadr = np.array([self.m.joint(f"{l}_{j}").dofadr[0] for l in LEGS for j in JN])
@@ -311,7 +312,7 @@ def sc_standup(gif):
     return s, dict(desc=f"趴着（机身贴地）→ {T_UP} 秒站到髋高 {H * 1000:.0f} → 再趴下（背 5 kg）")
 
 
-def sc_trot(gif, v_top=0.5, T=0.36, H=0.25, clear=0.07, payload=5.0):
+def sc_trot(gif, v_top=0.5, T=0.36, H=0.25, clear=0.07, payload=float(os.environ.get("PAYLOAD", 5.0))):
     """对角小跑。脚的落点按 Raibert：髋下面 + 速度 × 着地时间 / 2 + 速度误差修正。"""
     s = Sim(payload=payload)
     feet_b = stand_feet_body(H)
@@ -1014,6 +1015,9 @@ def save_gif(name, s):
 
 
 if __name__ == "__main__":
+    TAG = "_空载" if os.environ.get("PAYLOAD") is not None and float(os.environ["PAYLOAD"]) <= 0 else ""
+    if TAG:                                                             # 不背货：结果、图另存一份，不覆盖背 5 kg 的
+        NAMES = {k: v + "（空载）" for k, v in NAMES.items()}
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     gif = "--gif" in sys.argv
     names = args or list(SCENES)
@@ -1033,7 +1037,7 @@ if __name__ == "__main__":
               f"电机最高 {r['motor_speed']:.1f}/{W_M:.1f} rad/s  顶满 {r['sat']:.1f}%  横滚 {r['roll']:.1f}° 俯仰 {r['pitch']:.1f}°  "
               f"碰 {r['hit']}  稳定裕度 {r['margin_min']}  膝角 {r['knee_min']:.0f}–{r['knee_max']:.0f}°  功率 {r['P_avg']:.0f} W  走了 {r['dist']:.2f} m  "
               f"{'ok=' + str(r.get('ok')) if 'ok' in r else ''} {r.get('climbed', '')} {'实测 %.2f m/s' % r['v_meas'] if 'v_meas' in r else ''}", flush=True)
-    mine = {n: results[n] for n in names}                                # 几个场景分开同时跑时，写之前再读一遍，只更新自己跑的
+    mine = {n + TAG: results[n] for n in names}                                # 几个场景分开同时跑时，写之前再读一遍，只更新自己跑的
     results = json.load(open(rp, encoding="utf-8")) if os.path.exists(rp) else {}
     results.update(mine)
     json.dump(results, open(rp, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
