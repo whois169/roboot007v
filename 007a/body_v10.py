@@ -168,29 +168,15 @@ def body_parts():
     P.append(("深度相机窗", prism_xz([(L2 + 25.5, Z0 + 21), (L2 + 26.6, Z0 + 21), (L2 + 26.6, Z0 + 37), (L2 + 25.5, Z0 + 37)], -42, 42), "glass"))
     for y, d in ((-32, 10), (32, 10), (0, 7), (14, 7)):             # 左右红外、投射器、彩色
         P.append((f"相机镜头{y}", cyl_x(y, Z0 + 29, d, L2 + 26.4, L2 + 27.4), "metal"))
-    # ---- 探照灯（一个）：前防撞杠左头（+y，和右上角的雷达斜对着），圆筒灯 Φ34，凸出 18
-    ly_, lz_ = 101.0, Z0 + 32
-    P.append(("探照灯筒", soft(cyl_x(ly_, lz_, 34, L2 - 2, L2 + 16), 1.0), "skel"))
-    P.append(("探照灯圈", cyl_x(ly_, lz_, 36, L2 + 14, L2 + 18).cut(cyl_x(ly_, lz_, 27, L2 + 13, L2 + 19)), "metal"))
-    P.append(("探照灯", cyl_x(ly_, lz_, 25, L2 + 14, L2 + 15), "lamp"))
-    for k in range(4):                                              # 灯筒上的散热环
-        x = L2 + 1 + k * 3
-        P.append((f"灯散热环{k}", cyl_x(ly_, lz_, 37, x, x + 1.2), "skel_dk"))
-    # ---- 红外热像仪：前防撞杠右头（-y），和探照灯对称
+    # v19 省钱版：去掉探照灯、气体检测（不做巡检，只要能自己走、上下楼梯）；v16–v18 的在 git 标签 007A-v19 里
+    # ---- 热像仪（保留，用户要）：换成跟 007v 一样的 Adafruit MLX90640 110°（25.8 × 17.8 × 10.5，007v 的 thermal.py 能直接用）；
+    #      前防撞杠右头（-y），镜头前面直接开 Φ12 孔（塑料、亚克力都挡远红外）
     ty, tz = -101.0, Z0 + 32
     pod = prism_xz([(L2 - 2, tz - 16), (L2 + 12, tz - 16), (L2 + 16, tz - 12), (L2 + 16, tz + 12), (L2 + 12, tz + 16), (L2 - 2, tz + 16)], ty - 17, ty + 17)
-    pod = pod.cut(cyl_x(ty, tz, 24, L2 + 13, L2 + 18))
+    pod = pod.cut(cyl_x(ty, tz, 12, L2 + 10, L2 + 18))
     P.append(("热像仪座", soft(pod, 1.0), "skel"))
-    P.append(("热像仪镜片", cyl_x(ty, tz, 24, L2 + 13, L2 + 14), "glass"))
-    P.append(("热像仪镜圈", cyl_x(ty, tz, 27, L2 + 15.5, L2 + 17).cut(cyl_x(ty, tz, 22, L2 + 15, L2 + 18)), "metal"))
-    # ---- 气体检测：尾部右侧（-y，尾灯下面），平的进气格栅，不凸出来；旁边一个状态灯
-    gx = -L2 - 4
-    g0, g1, gz0, gz1 = -112.0, -76.0, ZC - 20, ZC + 8
-    for k in range(6):
-        y = g0 + 2 + k * 6
-        up = up.cut(box(gx - 1, gx + 3, y, y + 3, gz0, gz1))
-    P.append(("气体进气槽底", box(gx + 2.5, gx + 3, g0, g1, gz0, gz1), "skel_dk"))
-    P.append(("气体状态灯", cyl_x(-94, gz0 - 7, 5, gx - 0.6, gx + 0.4), "cyan"))
+    P.append(("热像仪镜头", cyl_x(ty, tz, 10, L2 + 10, L2 + 11), "glass"))
+    P.append(("热像仪镜圈", cyl_x(ty, tz, 17, L2 + 15.5, L2 + 17).cut(cyl_x(ty, tz, 12, L2 + 15, L2 + 18)), "metal"))
     # ---- 底部绑带卡口 ×4：底下四个角，凹 10 的槽 + 一根横销（带子穿过去）
     for x in (-150.0, 150.0):
         for y in (-70.0, 70.0):
@@ -220,4 +206,4 @@ if __name__ == "__main__":
         cq.exporters.export(cq.Workplane().add(s), os.path.join(out, fn), tolerance=0.08, angularTolerance=0.15)
         man.append(dict(file=fn, name=n, color=c))
     json.dump(man, open(os.path.join(out, "manifest.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=0)
-    print(f"{len(man)} 个零件（v16：+ 红外热像仪、气体检测（尾部格栅））")
+    print(f"{len(man)} 个零件（v19 省钱版：去掉探照灯、气体检测；热像仪换 MLX90640）")

@@ -47,22 +47,21 @@ for fx in (1, -1):
         line([(0, -40), (fx * 30, sy * 20), (xb, sy * 20), (fx * (B.XB + 21), sy * 70)], C["bus"])
         line([(0, -100), (fx * 40, -100 if sy < 0 else 100), (xb, sy * 40), (fx * (B.XB + 21), sy * 60)], C["power"], 1.5)
         line([(fx * (B.XB + 21), sy * 70), (fx * M.HIP_X - fx * 30, sy * 95), (fx * M.HIP_X, sy * 100)], C["bus"], 2.5)
-# 前面：深度相机 USB3、热像仪 USB、灯 12V、台阶测距 I2C、头（屏幕板 + 舵机）、喇叭
-front = [((L2 + 10, 0), C["usb"], "深度相机 USB3 → 派"), ((L2 + 10, -101), C["usb"], "热像仪 USB → 集线器"),
-         ((L2 + 10, 101), C["power"], "探照灯 12V + PWM"), ((L2, 70), C["sig"], "台阶测距 ×2 I2C"), ((L2 + 15, 30), C["sig"], "头：屏幕板 USB + 舵机总线")]
+# 前面：深度相机 USB3、台阶测距 I2C、头（屏幕板 + 舵机）、喇叭（v19 去掉探照灯；热像仪换 MLX90640）
+front = [((L2 + 10, 0), C["usb"], "深度相机 USB3 → 派"), ((L2 + 10, -101), C["sig"], "热像仪 MLX90640 I2C"), ((L2, 70), C["sig"], "台阶测距 ×2 I2C"), ((L2 + 15, 30), C["sig"], "头：屏幕板 USB + 舵机总线")]
 for (x, y), c, t in front:
     line([(x, y), (B.X_END, y * 0.15), (60, y * 0.15), (0, 67) if "派" in t or "头" in t else (-15, -90) if "集线器" in t else (25, -90) if "12V" in t else (0, 67)], c, 1.5, "--")
     ax.text(x + 4, y, t, fontsize=8, va="center")
-# 顶上：雷达、麦克风；尾部：气体、急停、开关、充电口
+# 顶上：雷达、麦克风；尾部：急停、开关、充电口（v19 去掉气体）
 line([(M.L2 - 46, -80), (180, -10), (60, -10), (-15, -90)], C["usb"], 1.5, ":")
 ax.text(M.L2 - 46, -88, "雷达 USB", fontsize=8)
 line([(M.L2 - 46, 80), (180, 10), (60, 10), (0, 67)], C["sig"], 1.5, ":")
 ax.text(M.L2 - 46, 88, "麦克风 I2S", fontsize=8)
-for (x, y), c, t in [((-L2 - 4, -94), C["sig"], "气体 串口（电平转换）"), ((-L2 - 4, 0), C["power"], "急停 → 继电器线圈"),
+for (x, y), c, t in [((-L2 - 4, 0), C["power"], "急停 → 继电器线圈"),
                      ((-L2 - 4, 44), C["power"], "总开关"), ((-L2 - 4, -41), C["power"], "充电口 XT60 → 电池")]:
     line([(x, y), (-B.X_END, y * 0.15), (-60, y * 0.15), (0, -100) if "充电" in t else (0, 100) if "急停" in t or "开关" in t else (0, 67)], c, 1.5, "--")
     ax.text(x - 4, y, t, fontsize=8, va="center", ha="right")
-for k, t in (("power", "电源"), ("bus", "电机 485 总线 + 电源（XT30 2+2，16 AWG）"), ("usb", "USB"), ("sig", "信号（I2C / I2S / 串口 / 舵机总线）")):
+for k, t in (("power", "电源"), ("bus", "电机 CAN 总线 + 电源（16 AWG）"), ("usb", "USB"), ("sig", "信号（I2C / I2S / 串口 / 舵机总线）")):
     ax.plot([], [], color=C[k], lw=2, label=t)
 ax.legend(loc="lower center", ncol=4, fontsize=9, bbox_to_anchor=(0.5, -0.08))
 ax.set_title("007A 走线（俯视示意）：每条腿一路 485（外摆 → 髋 → 膝 串起来），线从外摆隔板中间的孔过", fontsize=12)

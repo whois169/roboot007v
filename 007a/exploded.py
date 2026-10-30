@@ -87,7 +87,7 @@ def whole():
         m = re.match(r"\((-?1), (-?1)\)(.*)", n)
         if m:
             fx, sy, nm = int(m.group(1)), int(m.group(2)), m.group(3)
-            lab = {"外摆电机": "外摆电机（宇树 GO-M8010-6）", "髋电机": "髋电机", "膝电机": "膝电机", "同步带 HTD5M 宽20": "同步带 HTD5M（膝 1:1.5）",
+            lab = {"外摆电机": "外摆电机（SteadyWin GIM8108-8）", "髋电机": "髋电机", "膝电机": "膝电机", "同步带 HTD5M 宽20": "同步带 HTD5M（膝 1:1.5）",
                    "大腿外层壳（打印，完整外形）": "大腿外层壳（打印）", "小腿（铝 + 打印壳）": "小腿（铝 + 打印壳）"}.get(nm) if (fx, sy) == (1, 1) else None
             add(it, (fx * LEG_DX, sy * LEG_DY, 0), lab, "打印" in (lab or ""))
             continue

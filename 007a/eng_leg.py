@@ -22,9 +22,10 @@ from model import V, box, cyl_x, cyl_y, prism_xz, ring_y, soft
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # ---------------------------------------------------------------- 电机（宇树 GO-M8010-6）
-MD, MH, MBOSS_D, MBOSS_H = 96.5, 42.3, 59.0, 6.6
-OUT_PCD, OUT_N, OUT_HOLE = 34.5, 6, 4.0          # 输出盘 M4 × 6 在 Φ34.5（★ 个数按 STEP 核）
-BACK_R, BACK_N = 42.5, 8                         # 背面安装孔 R42.5（★ 个数按 STEP 核）
+MD, MH = M.MOTOR_D, M.MOTOR_H                    # v19：SteadyWin GIM8108-8 + GDZ468 驱动（Φ92 × 55，网上参数）
+MBOSS_D, MBOSS_H = 59.0, 6.6                     # ★ 输出盘照宇树画的，等 SteadyWin 的 STEP 再改
+OUT_PCD, OUT_N, OUT_HOLE = 34.5, 6, 4.0          # 输出盘 M4 × 6 在 Φ34.5（★ v19 换电机后都要按 SteadyWin STEP 重核）
+BACK_R, BACK_N = 40.0, 8                         # 背面安装孔（★ v19：Φ92 电机先按 R40 画，按 STEP 核）
 
 # ---------------------------------------------------------------- 皮带（HTD5M）
 PITCH = 5.0

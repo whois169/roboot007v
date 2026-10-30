@@ -23,7 +23,8 @@ V = cq.Vector
 BODY_L, BODY_W, BODY_H = 480.0, 260.0, 140.0          # v12：机身高 185 → 160 → 140
 L2, W2 = BODY_L / 2, BODY_W / 2
 HIP_X = 160.0                                   # 髋往后收：头要在最前面（v2，用户：腿不能超过头）
-MOTOR_D = 96.5                                   # 关节电机 宇树 GO-M8010-6（Φ96.5 × 42.3）
+MOTOR_D, MOTOR_H = 92.0, 55.0                    # v19 省钱版：关节电机 SteadyWin GIM8108-8（带 24 V 驱动 GDZ468，Φ92 × 55）；v18 以前是宇树 GO-M8010-6（Φ96.5 × 42.3）
+LEG_DY = 2 * (MOTOR_H - 42.3)                    # 髋、膝两个电机叠在机身侧面，每个厚 12.7 → 腿平面往外挪 25.4
 SEAM = 2.0
 
 # 腿：比例照用户草图（concept_v3）
@@ -60,7 +61,7 @@ KNEE_TOP = [(303, 234), (311, 245), (313, 262)]
 KNEE_BOT = [(296, 266)]
 SHANK_SK = [(310, 250), (317, 265), (311, 285), (218, 303), (160, 348), (149, 340), (208, 288), (294, 262)]
 T_THIGH, T_SHANK = 38.0, 16.0                    # v3：小腿插在大腿膝盖的叉口里，两段在同一个面上
-LEG_Y = W2 + 4.6 + T_THIGH / 2                   # 大腿中面离中线（第 2 步：大腿内板 y=134.6、外板外侧 172.6，eng_leg.py）
+LEG_Y = W2 + 4.6 + T_THIGH / 2 + LEG_DY          # 大腿中面离中线（第 2 步：大腿内板 y=134.6、外板外侧 172.6，eng_leg.py；v19 电机厚了再往外 LEG_DY）
 
 
 # ================================================================ 小工具
@@ -180,7 +181,7 @@ def leg_2d(foot=(0.0, -HIP_Z)):
     return thigh, shank, knee, foot
 
 
-Y_STEP = 146.0                                   # 大腿台阶：外层完整外形从这里开始（eng_leg.py 算的）
+Y_STEP = 146.0 + LEG_DY                          # 大腿台阶：外层完整外形从这里开始（eng_leg.py 算的；v19 跟着腿往外）
 PD_S_, PD_B_ = 20 * 5 / math.pi, 30 * 5 / math.pi  # 小 / 大带轮节圆（HTD5M 20 / 30 齿）
 
 
@@ -254,6 +255,13 @@ def leg_parts(fx, sy):
     fxp, fzp = foot
     pad = cq.Solid.makeSphere(19, V(fxp, ys0 + T_SHANK / 2, fzp + 17)).cut(box(fxp - 30, fxp + 30, ys0 - 20, ys0 + 50, fzp - 10, fzp + 1))
     P.append(("脚垫", place(pad.translate(V(0, 0, -1)), 0), "rubber"))      # 加大、底下削平一点（站得稳）
+    # v19：电机厚了，大腿离机身侧面多了 LEG_DY 的空：露出来的是大腿杯（包着膝电机，Φ MOTOR_D + 8，深灰），外面一圈细槽
+    if LEG_DY > 1:
+        cup_y0, cup_y1 = W2 + 2, LEG_Y - T_THIGH / 2 + 1
+        cup = soft(cyl_y(0, 0, MOTOR_D + 8, cup_y0, cup_y1), 1.5)
+        for yy in (cup_y0 + (cup_y1 - cup_y0) * 0.35, cup_y0 + (cup_y1 - cup_y0) * 0.65):
+            cup = cup.cut(ring_y(0, 0, MOTOR_D + 10, MOTOR_D + 5, yy - 0.8, yy + 0.8))
+        P.append(("大腿杯", place(cup, 0), "skel_dk"))
     # 机身侧面的髋座（外摆电机的法兰，深色圆盘）
     P.append(("髋座", place(soft(cyl_y(0, 0, MOTOR_D + 18, W2 - 1, W2 + 7), 2.0), 0), "skel_dk"))
     tag = ("前" if fx > 0 else "后") + ("左" if sy > 0 else "右")
