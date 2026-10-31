@@ -78,9 +78,10 @@ if __name__ == "__main__":
     parts.append(export_other("L02", "大腿杯和内板", leg["大腿杯 + 内板（铝，CNC）"], 4, "6061-T6", "CNC"))
     parts.append(export_other("L03", "髋座", leg["髋座（铝，CNC）"], 4, "6061-T6", "CNC"))
     parts.append(export_other("L04", "转接盘和轴", leg["转接盘 + 轴（钢，车削）"], 4, "45 钢", "车削"))
-    parts.append(export_other("L05", "膝轴", leg["膝轴 Φ12"], 4, "45 钢", "车削"))
+    parts.append(export_other("L05", "膝轴", leg["膝轴 Φ12（两头 M5，固定）"], 4, "45 钢（两头攻 M5 × 10）", "车削"))
     parts.append(export_other("L06", "大腿外层壳", leg["大腿外层壳（打印，完整外形）"], 4, "PETG / ASA", "3D 打印"))
-    parts.append(export_other("L07", "小腿", leg["小腿（铝 + 打印壳）"], 4, "PA12-CF（或铝管 + 打印壳）", "3D 打印"))
+    parts.append(export_other("L07", "小腿", leg["小腿（打印，夹住小腿根）"], 4, "PA12-CF", "3D 打印"))
+    parts.append(export_other("L09", "小腿根", next(s for n, s in leg.items() if n.startswith("小腿根")), 4, "7075-T6（齿形 HTD5M 24 齿）", "CNC"))
     parts.append(export_other("L08", "绕线环", leg["绕线环（打印 PETG）"], 4, "PETG", "3D 打印"))
     br = [s for n, s, c in B.frame_parts(envs) if n.startswith("L 角码")]
     parts.append(export_other("J01", "L角码", br[0], len(br), "不锈钢 / 铝（买成品，腿长 12、宽 12、厚 2，M3 孔）", "买"))

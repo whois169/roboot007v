@@ -601,7 +601,7 @@
 },
 {
 "file": "120.stl",
-"name": "(1, 1)膝轴 Φ12",
+"name": "(1, 1)膝轴 Φ12（两头 M5，固定）",
 "color": "metal"
 },
 {
@@ -616,342 +616,442 @@
 },
 {
 "file": "123.stl",
-"name": "(1, 1)大带轮 HTD5M 24 齿（小腿根）",
+"name": "(1, 1)膝垫套 内",
 "color": "metal"
 },
 {
 "file": "124.stl",
-"name": "(1, 1)小腿（铝 + 打印壳）",
-"color": "skel"
+"name": "(1, 1)膝垫套 外",
+"color": "metal"
 },
 {
 "file": "125.stl",
-"name": "(1, -1)外摆电机",
-"color": "skel_dk"
+"name": "(1, 1)小腿根 L09（铝 CNC，带 HTD5M 24 齿）",
+"color": "metal"
 },
 {
 "file": "126.stl",
-"name": "(1, -1)髋座（铝，CNC）",
+"name": "(1, 1)小腿螺丝 M4×16 薄头 (-116,-166)",
 "color": "metal"
 },
 {
 "file": "127.stl",
-"name": "(1, -1)绕线环（打印 PETG）",
-"color": "skel_dk"
+"name": "(1, 1)小腿螺丝 M4×16 薄头 (-108,-173)",
+"color": "metal"
 },
 {
 "file": "128.stl",
-"name": "(1, -1)髋电机",
-"color": "skel_dk"
+"name": "(1, 1)小腿螺丝 M4×16 薄头 (-100,-181)",
+"color": "metal"
 },
 {
 "file": "129.stl",
-"name": "(1, -1)大腿杯 + 内板（铝，CNC）",
+"name": "(1, 1)小腿（打印，夹住小腿根）",
 "color": "skel"
 },
 {
 "file": "130.stl",
+"name": "(1, -1)外摆电机",
+"color": "skel_dk"
+},
+{
+"file": "131.stl",
+"name": "(1, -1)髋座（铝，CNC）",
+"color": "metal"
+},
+{
+"file": "132.stl",
+"name": "(1, -1)绕线环（打印 PETG）",
+"color": "skel_dk"
+},
+{
+"file": "133.stl",
+"name": "(1, -1)髋电机",
+"color": "skel_dk"
+},
+{
+"file": "134.stl",
+"name": "(1, -1)大腿杯 + 内板（铝，CNC）",
+"color": "skel"
+},
+{
+"file": "135.stl",
 "name": "(1, -1)大腿外板（铝 4）",
 "color": "shell"
 },
 {
-"file": "131.stl",
+"file": "136.stl",
 "name": "(1, -1)大腿外层壳（打印，完整外形）",
 "color": "skel"
 },
 {
-"file": "132.stl",
+"file": "137.stl",
 "name": "(1, -1)立柱 M4 0",
 "color": "metal"
 },
 {
-"file": "133.stl",
+"file": "138.stl",
 "name": "(1, -1)立柱 M4 1",
 "color": "metal"
 },
 {
-"file": "134.stl",
+"file": "139.stl",
 "name": "(1, -1)立柱 M4 2",
 "color": "metal"
 },
 {
-"file": "135.stl",
+"file": "140.stl",
 "name": "(1, -1)立柱 M4 3",
 "color": "metal"
 },
 {
-"file": "136.stl",
+"file": "141.stl",
 "name": "(1, -1)膝电机",
 "color": "skel_dk"
 },
 {
-"file": "137.stl",
+"file": "142.stl",
 "name": "(1, -1)转接盘 + 轴（钢，车削）",
 "color": "metal"
 },
 {
-"file": "138.stl",
+"file": "143.stl",
 "name": "(1, -1)小带轮 HTD5M 16 齿",
 "color": "metal"
 },
 {
-"file": "139.stl",
+"file": "144.stl",
 "name": "(1, -1)外板轴承 6801",
 "color": "metal"
 },
 {
-"file": "140.stl",
+"file": "145.stl",
 "name": "(1, -1)张紧轮 Φ18",
 "color": "metal"
 },
 {
-"file": "141.stl",
+"file": "146.stl",
 "name": "(1, -1)同步带 HTD5M 宽20",
 "color": "rubber"
 },
 {
-"file": "142.stl",
-"name": "(1, -1)膝轴 Φ12",
+"file": "147.stl",
+"name": "(1, -1)膝轴 Φ12（两头 M5，固定）",
 "color": "metal"
 },
 {
-"file": "143.stl",
+"file": "148.stl",
 "name": "(1, -1)膝轴承 6801 内",
 "color": "metal"
 },
 {
-"file": "144.stl",
+"file": "149.stl",
 "name": "(1, -1)膝轴承 6801 外",
 "color": "metal"
 },
 {
-"file": "145.stl",
-"name": "(1, -1)大带轮 HTD5M 24 齿（小腿根）",
-"color": "metal"
-},
-{
-"file": "146.stl",
-"name": "(1, -1)小腿（铝 + 打印壳）",
-"color": "skel"
-},
-{
-"file": "147.stl",
-"name": "(-1, 1)外摆电机",
-"color": "skel_dk"
-},
-{
-"file": "148.stl",
-"name": "(-1, 1)髋座（铝，CNC）",
-"color": "metal"
-},
-{
-"file": "149.stl",
-"name": "(-1, 1)绕线环（打印 PETG）",
-"color": "skel_dk"
-},
-{
 "file": "150.stl",
-"name": "(-1, 1)髋电机",
-"color": "skel_dk"
+"name": "(1, -1)膝垫套 内",
+"color": "metal"
 },
 {
 "file": "151.stl",
-"name": "(-1, 1)大腿杯 + 内板（铝，CNC）",
-"color": "skel"
+"name": "(1, -1)膝垫套 外",
+"color": "metal"
 },
 {
 "file": "152.stl",
-"name": "(-1, 1)大腿外板（铝 4）",
-"color": "shell"
+"name": "(1, -1)小腿根 L09（铝 CNC，带 HTD5M 24 齿）",
+"color": "metal"
 },
 {
 "file": "153.stl",
-"name": "(-1, 1)大腿外层壳（打印，完整外形）",
-"color": "skel"
+"name": "(1, -1)小腿螺丝 M4×16 薄头 (-116,-166)",
+"color": "metal"
 },
 {
 "file": "154.stl",
-"name": "(-1, 1)立柱 M4 0",
+"name": "(1, -1)小腿螺丝 M4×16 薄头 (-108,-173)",
 "color": "metal"
 },
 {
 "file": "155.stl",
-"name": "(-1, 1)立柱 M4 1",
+"name": "(1, -1)小腿螺丝 M4×16 薄头 (-100,-181)",
 "color": "metal"
 },
 {
 "file": "156.stl",
-"name": "(-1, 1)立柱 M4 2",
-"color": "metal"
+"name": "(1, -1)小腿（打印，夹住小腿根）",
+"color": "skel"
 },
 {
 "file": "157.stl",
-"name": "(-1, 1)立柱 M4 3",
-"color": "metal"
-},
-{
-"file": "158.stl",
-"name": "(-1, 1)膝电机",
+"name": "(-1, 1)外摆电机",
 "color": "skel_dk"
 },
 {
-"file": "159.stl",
-"name": "(-1, 1)转接盘 + 轴（钢，车削）",
+"file": "158.stl",
+"name": "(-1, 1)髋座（铝，CNC）",
 "color": "metal"
+},
+{
+"file": "159.stl",
+"name": "(-1, 1)绕线环（打印 PETG）",
+"color": "skel_dk"
 },
 {
 "file": "160.stl",
-"name": "(-1, 1)小带轮 HTD5M 16 齿",
-"color": "metal"
+"name": "(-1, 1)髋电机",
+"color": "skel_dk"
 },
 {
 "file": "161.stl",
-"name": "(-1, 1)外板轴承 6801",
-"color": "metal"
+"name": "(-1, 1)大腿杯 + 内板（铝，CNC）",
+"color": "skel"
 },
 {
 "file": "162.stl",
-"name": "(-1, 1)张紧轮 Φ18",
-"color": "metal"
+"name": "(-1, 1)大腿外板（铝 4）",
+"color": "shell"
 },
 {
 "file": "163.stl",
-"name": "(-1, 1)同步带 HTD5M 宽20",
-"color": "rubber"
+"name": "(-1, 1)大腿外层壳（打印，完整外形）",
+"color": "skel"
 },
 {
 "file": "164.stl",
-"name": "(-1, 1)膝轴 Φ12",
+"name": "(-1, 1)立柱 M4 0",
 "color": "metal"
 },
 {
 "file": "165.stl",
-"name": "(-1, 1)膝轴承 6801 内",
+"name": "(-1, 1)立柱 M4 1",
 "color": "metal"
 },
 {
 "file": "166.stl",
-"name": "(-1, 1)膝轴承 6801 外",
+"name": "(-1, 1)立柱 M4 2",
 "color": "metal"
 },
 {
 "file": "167.stl",
-"name": "(-1, 1)大带轮 HTD5M 24 齿（小腿根）",
+"name": "(-1, 1)立柱 M4 3",
 "color": "metal"
 },
 {
 "file": "168.stl",
-"name": "(-1, 1)小腿（铝 + 打印壳）",
-"color": "skel"
-},
-{
-"file": "169.stl",
-"name": "(-1, -1)外摆电机",
+"name": "(-1, 1)膝电机",
 "color": "skel_dk"
 },
 {
+"file": "169.stl",
+"name": "(-1, 1)转接盘 + 轴（钢，车削）",
+"color": "metal"
+},
+{
 "file": "170.stl",
-"name": "(-1, -1)髋座（铝，CNC）",
+"name": "(-1, 1)小带轮 HTD5M 16 齿",
 "color": "metal"
 },
 {
 "file": "171.stl",
-"name": "(-1, -1)绕线环（打印 PETG）",
-"color": "skel_dk"
+"name": "(-1, 1)外板轴承 6801",
+"color": "metal"
 },
 {
 "file": "172.stl",
-"name": "(-1, -1)髋电机",
-"color": "skel_dk"
+"name": "(-1, 1)张紧轮 Φ18",
+"color": "metal"
 },
 {
 "file": "173.stl",
-"name": "(-1, -1)大腿杯 + 内板（铝，CNC）",
-"color": "skel"
+"name": "(-1, 1)同步带 HTD5M 宽20",
+"color": "rubber"
 },
 {
 "file": "174.stl",
-"name": "(-1, -1)大腿外板（铝 4）",
-"color": "shell"
+"name": "(-1, 1)膝轴 Φ12（两头 M5，固定）",
+"color": "metal"
 },
 {
 "file": "175.stl",
-"name": "(-1, -1)大腿外层壳（打印，完整外形）",
-"color": "skel"
+"name": "(-1, 1)膝轴承 6801 内",
+"color": "metal"
 },
 {
 "file": "176.stl",
-"name": "(-1, -1)立柱 M4 0",
+"name": "(-1, 1)膝轴承 6801 外",
 "color": "metal"
 },
 {
 "file": "177.stl",
-"name": "(-1, -1)立柱 M4 1",
+"name": "(-1, 1)膝垫套 内",
 "color": "metal"
 },
 {
 "file": "178.stl",
-"name": "(-1, -1)立柱 M4 2",
+"name": "(-1, 1)膝垫套 外",
 "color": "metal"
 },
 {
 "file": "179.stl",
-"name": "(-1, -1)立柱 M4 3",
+"name": "(-1, 1)小腿根 L09（铝 CNC，带 HTD5M 24 齿）",
 "color": "metal"
 },
 {
 "file": "180.stl",
-"name": "(-1, -1)膝电机",
-"color": "skel_dk"
+"name": "(-1, 1)小腿螺丝 M4×16 薄头 (-116,-166)",
+"color": "metal"
 },
 {
 "file": "181.stl",
-"name": "(-1, -1)转接盘 + 轴（钢，车削）",
+"name": "(-1, 1)小腿螺丝 M4×16 薄头 (-108,-173)",
 "color": "metal"
 },
 {
 "file": "182.stl",
-"name": "(-1, -1)小带轮 HTD5M 16 齿",
+"name": "(-1, 1)小腿螺丝 M4×16 薄头 (-100,-181)",
 "color": "metal"
 },
 {
 "file": "183.stl",
+"name": "(-1, 1)小腿（打印，夹住小腿根）",
+"color": "skel"
+},
+{
+"file": "184.stl",
+"name": "(-1, -1)外摆电机",
+"color": "skel_dk"
+},
+{
+"file": "185.stl",
+"name": "(-1, -1)髋座（铝，CNC）",
+"color": "metal"
+},
+{
+"file": "186.stl",
+"name": "(-1, -1)绕线环（打印 PETG）",
+"color": "skel_dk"
+},
+{
+"file": "187.stl",
+"name": "(-1, -1)髋电机",
+"color": "skel_dk"
+},
+{
+"file": "188.stl",
+"name": "(-1, -1)大腿杯 + 内板（铝，CNC）",
+"color": "skel"
+},
+{
+"file": "189.stl",
+"name": "(-1, -1)大腿外板（铝 4）",
+"color": "shell"
+},
+{
+"file": "190.stl",
+"name": "(-1, -1)大腿外层壳（打印，完整外形）",
+"color": "skel"
+},
+{
+"file": "191.stl",
+"name": "(-1, -1)立柱 M4 0",
+"color": "metal"
+},
+{
+"file": "192.stl",
+"name": "(-1, -1)立柱 M4 1",
+"color": "metal"
+},
+{
+"file": "193.stl",
+"name": "(-1, -1)立柱 M4 2",
+"color": "metal"
+},
+{
+"file": "194.stl",
+"name": "(-1, -1)立柱 M4 3",
+"color": "metal"
+},
+{
+"file": "195.stl",
+"name": "(-1, -1)膝电机",
+"color": "skel_dk"
+},
+{
+"file": "196.stl",
+"name": "(-1, -1)转接盘 + 轴（钢，车削）",
+"color": "metal"
+},
+{
+"file": "197.stl",
+"name": "(-1, -1)小带轮 HTD5M 16 齿",
+"color": "metal"
+},
+{
+"file": "198.stl",
 "name": "(-1, -1)外板轴承 6801",
 "color": "metal"
 },
 {
-"file": "184.stl",
+"file": "199.stl",
 "name": "(-1, -1)张紧轮 Φ18",
 "color": "metal"
 },
 {
-"file": "185.stl",
+"file": "200.stl",
 "name": "(-1, -1)同步带 HTD5M 宽20",
 "color": "rubber"
 },
 {
-"file": "186.stl",
-"name": "(-1, -1)膝轴 Φ12",
+"file": "201.stl",
+"name": "(-1, -1)膝轴 Φ12（两头 M5，固定）",
 "color": "metal"
 },
 {
-"file": "187.stl",
+"file": "202.stl",
 "name": "(-1, -1)膝轴承 6801 内",
 "color": "metal"
 },
 {
-"file": "188.stl",
+"file": "203.stl",
 "name": "(-1, -1)膝轴承 6801 外",
 "color": "metal"
 },
 {
-"file": "189.stl",
-"name": "(-1, -1)大带轮 HTD5M 24 齿（小腿根）",
+"file": "204.stl",
+"name": "(-1, -1)膝垫套 内",
 "color": "metal"
 },
 {
-"file": "190.stl",
-"name": "(-1, -1)小腿（铝 + 打印壳）",
+"file": "205.stl",
+"name": "(-1, -1)膝垫套 外",
+"color": "metal"
+},
+{
+"file": "206.stl",
+"name": "(-1, -1)小腿根 L09（铝 CNC，带 HTD5M 24 齿）",
+"color": "metal"
+},
+{
+"file": "207.stl",
+"name": "(-1, -1)小腿螺丝 M4×16 薄头 (-116,-166)",
+"color": "metal"
+},
+{
+"file": "208.stl",
+"name": "(-1, -1)小腿螺丝 M4×16 薄头 (-108,-173)",
+"color": "metal"
+},
+{
+"file": "209.stl",
+"name": "(-1, -1)小腿螺丝 M4×16 薄头 (-100,-181)",
+"color": "metal"
+},
+{
+"file": "210.stl",
+"name": "(-1, -1)小腿（打印，夹住小腿根）",
 "color": "skel"
 }
 ]

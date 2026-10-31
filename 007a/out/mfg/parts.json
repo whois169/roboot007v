@@ -143,7 +143,7 @@
   "code": "L05",
   "name": "膝轴",
   "qty": 4,
-  "material": "45 钢",
+  "material": "45 钢（两头攻 M5 × 10）",
   "process": "车削",
   "t": "—",
   "size": "12 × 38 × 12",
@@ -158,7 +158,7 @@
   "material": "PETG / ASA",
   "process": "3D 打印",
   "t": "—",
-  "size": "225 × 23 × 231",
+  "size": "215 × 23 × 214",
   "files": [
    "L06_大腿外层壳.stl"
   ]
@@ -167,12 +167,24 @@
   "code": "L07",
   "name": "小腿",
   "qty": 4,
-  "material": "PA12-CF（或铝管 + 打印壳）",
+  "material": "PA12-CF",
   "process": "3D 打印",
   "t": "—",
   "size": "163 × 20 × 131",
   "files": [
    "L07_小腿.stl"
+  ]
+ },
+ {
+  "code": "L09",
+  "name": "小腿根",
+  "qty": 4,
+  "material": "7075-T6（齿形 HTD5M 24 齿）",
+  "process": "CNC",
+  "t": "—",
+  "size": "71 × 23 × 67",
+  "files": [
+   "L09_小腿根.step"
   ]
  },
  {

@@ -1,6 +1,6 @@
 [
 {
-"file": "..\\..\\eng_parts\\101.stl",
+"file": "..\\..\\eng_parts\\103.stl",
 "color": "skel_dk",
 "offset": [
 0.0,
@@ -11,7 +11,7 @@
 "printed": false
 },
 {
-"file": "..\\..\\eng_parts\\102.stl",
+"file": "..\\..\\eng_parts\\104.stl",
 "color": "metal",
 "offset": [
 0.0,
@@ -22,7 +22,7 @@
 "printed": false
 },
 {
-"file": "..\\..\\eng_parts\\103.stl",
+"file": "..\\..\\eng_parts\\105.stl",
 "color": "skel_dk",
 "offset": [
 0.0,
@@ -33,7 +33,7 @@
 "printed": false
 },
 {
-"file": "..\\..\\eng_parts\\104.stl",
+"file": "..\\..\\eng_parts\\106.stl",
 "color": "skel_dk",
 "offset": [
 0.0,
@@ -44,7 +44,7 @@
 "printed": false
 },
 {
-"file": "..\\..\\eng_parts\\105.stl",
+"file": "..\\..\\eng_parts\\107.stl",
 "color": "skel",
 "offset": [
 0.0,
@@ -55,7 +55,7 @@
 "printed": false
 },
 {
-"file": "..\\..\\eng_parts\\106.stl",
+"file": "..\\..\\eng_parts\\108.stl",
 "color": "shell",
 "offset": [
 0.0,
@@ -66,7 +66,7 @@
 "printed": false
 },
 {
-"file": "..\\..\\eng_parts\\107.stl",
+"file": "..\\..\\eng_parts\\109.stl",
 "color": "skel",
 "offset": [
 0.0,
@@ -77,28 +77,6 @@
 "printed": true
 },
 {
-"file": "..\\..\\eng_parts\\108.stl",
-"color": "metal",
-"offset": [
-0.0,
-374.9599914550781,
-0.0
-],
-"label": "立柱 M4",
-"printed": false
-},
-{
-"file": "..\\..\\eng_parts\\109.stl",
-"color": "metal",
-"offset": [
-0.0,
-374.9599914550781,
-0.0
-],
-"label": "",
-"printed": false
-},
-{
 "file": "..\\..\\eng_parts\\110.stl",
 "color": "metal",
 "offset": [
@@ -106,7 +84,7 @@
 374.9599914550781,
 0.0
 ],
-"label": "",
+"label": "立柱 M4",
 "printed": false
 },
 {
@@ -122,6 +100,28 @@
 },
 {
 "file": "..\\..\\eng_parts\\112.stl",
+"color": "metal",
+"offset": [
+0.0,
+374.9599914550781,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\113.stl",
+"color": "metal",
+"offset": [
+0.0,
+374.9599914550781,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\114.stl",
 "color": "skel_dk",
 "offset": [
 0.0,
@@ -132,7 +132,7 @@
 "printed": false
 },
 {
-"file": "..\\..\\eng_parts\\113.stl",
+"file": "..\\..\\eng_parts\\115.stl",
 "color": "metal",
 "offset": [
 0.0,
@@ -143,7 +143,7 @@
 "printed": false
 },
 {
-"file": "..\\..\\eng_parts\\114.stl",
+"file": "..\\..\\eng_parts\\116.stl",
 "color": "metal",
 "offset": [
 0.0,
@@ -154,7 +154,7 @@
 "printed": false
 },
 {
-"file": "..\\..\\eng_parts\\115.stl",
+"file": "..\\..\\eng_parts\\117.stl",
 "color": "metal",
 "offset": [
 0.0,
@@ -165,7 +165,7 @@
 "printed": false
 },
 {
-"file": "..\\..\\eng_parts\\116.stl",
+"file": "..\\..\\eng_parts\\118.stl",
 "color": "metal",
 "offset": [
 0.0,
@@ -176,7 +176,7 @@
 "printed": false
 },
 {
-"file": "..\\..\\eng_parts\\117.stl",
+"file": "..\\..\\eng_parts\\119.stl",
 "color": "rubber",
 "offset": [
 0.0,
@@ -187,36 +187,14 @@
 "printed": false
 },
 {
-"file": "..\\..\\eng_parts\\118.stl",
+"file": "..\\..\\eng_parts\\120.stl",
 "color": "metal",
 "offset": [
 0.0,
 284.9599914550781,
 -140.0
 ],
-"label": "膝轴 Φ12",
-"printed": false
-},
-{
-"file": "..\\..\\eng_parts\\119.stl",
-"color": "metal",
-"offset": [
-0.0,
-240.760009765625,
--140.0
-],
-"label": "",
-"printed": false
-},
-{
-"file": "..\\..\\eng_parts\\120.stl",
-"color": "metal",
-"offset": [
-0.0,
-329.1600036621094,
--140.0
-],
-"label": "轴承 6801",
+"label": "膝轴 Φ12（两头 M5，固定）",
 "printed": false
 },
 {
@@ -224,21 +202,98 @@
 "color": "metal",
 "offset": [
 0.0,
-291.4599914550781,
+271.9599914550781,
 -140.0
 ],
-"label": "大带轮 24 齿（小腿根一体）",
+"label": "",
 "printed": false
 },
 {
 "file": "..\\..\\eng_parts\\122.stl",
+"color": "metal",
+"offset": [
+0.0,
+310.9599914550781,
+-140.0
+],
+"label": "轴承 6801（在小腿根里）",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\123.stl",
+"color": "metal",
+"offset": [
+0.0,
+255.7100067138672,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\124.stl",
+"color": "metal",
+"offset": [
+0.0,
+320.7099914550781,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\125.stl",
+"color": "metal",
+"offset": [
+0.0,
+291.4599914550781,
+-140.0
+],
+"label": "小腿根（铝 CNC，24 齿 + 舌头）",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\126.stl",
+"color": "metal",
+"offset": [
+0.0,
+291.4599914550781,
+-140.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\127.stl",
+"color": "metal",
+"offset": [
+0.0,
+291.4599914550781,
+-140.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\128.stl",
+"color": "metal",
+"offset": [
+0.0,
+291.4599914550781,
+-140.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\129.stl",
 "color": "skel",
 "offset": [
 0.0,
 291.4599914550781,
 -140.0
 ],
-"label": "小腿（铝 + 打印壳）",
+"label": "小腿（打印，夹住小腿根）",
 "printed": true
 }
 ]

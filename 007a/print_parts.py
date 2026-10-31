@@ -223,7 +223,7 @@ def main():
     k += 1
     # 腿：工程件（大腿外层壳、小腿、绕线环）+ 外观盖板
     leg, _, _ = E.leg_module()
-    for nm, mat in (("大腿外层壳（打印，完整外形）", "PA12-CF / ASA"), ("小腿（铝 + 打印壳）", "PA12-CF"), ("绕线环（打印 PETG）", "PETG")):
+    for nm, mat in (("大腿外层壳（打印，完整外形）", "PA12-CF / ASA"), ("小腿（打印，夹住小腿根）", "PA12-CF"), ("绕线环（打印 PETG）", "PETG")):
         s = next(s for n, s, c, g in leg if n == nm)
         save(f"S{k:02d}", nm.split("（")[0], s, mat, 4, "左右腿镜像（切片里镜像）")
         k += 1

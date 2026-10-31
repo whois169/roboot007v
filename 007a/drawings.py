@@ -198,7 +198,7 @@ def main():
         fig.text(0.06, 0.8, "机械狗007A 零件图", fontsize=30, weight="bold")
         fig.text(0.06, 0.72, VERSION + "    由 007a/drawings.py 生成", fontsize=12, color="#555")
         rows = [("A01–A07", "机身铝板（激光切割，6061-T6）"), ("L01", "大腿外板（激光切割）"), ("L02 / L03", "大腿杯 + 内板、髋座（CNC）"),
-                ("L04 / L05", "转接盘 + 轴、膝轴（车削，45 钢）"), ("H01 / H02", "头支架（5052 铝板 3 折弯）"), ("C01", "电子托板（亚克力 3）"),
+                ("L04 / L05", "转接盘 + 轴、膝轴（车削，45 钢）"), ("L09", "小腿根（铝 CNC，24 齿带轮 + 舌头）"), ("H01 / H02", "头支架（5052 铝板 3 折弯）"), ("C01", "电子托板（亚克力 3）"),
                 ("打印件", "见 打印件清单.md（STL 在 007a/out/print/）")]
         for i, (a, b) in enumerate(rows):
             fig.text(0.08, 0.6 - i * 0.05, a, fontsize=13, weight="bold")
@@ -217,7 +217,8 @@ def main():
         for code, nm, key, mat, proc in (("L02", "大腿杯和内板", "大腿杯 + 内板（铝，CNC）", "6061-T6，阳极氧化深灰", "CNC"),
                                          ("L03", "髋座", "髋座（铝，CNC）", "6061-T6，阳极氧化深灰", "CNC"),
                                          ("L04", "转接盘和轴", "转接盘 + 轴（钢，车削）", "45 钢，发黑", "车削"),
-                                         ("L05", "膝轴", "膝轴 Φ12", "45 钢，发黑", "车削")):
+                                         ("L05", "膝轴", "膝轴 Φ12（两头 M5，固定）", "45 钢，发黑，两头攻 M5 × 10", "车削"),
+                                         ("L09", "小腿根", next(n for n in leg if n.startswith("小腿根")), "7075-T6，HTD5M 24 齿 + 8 厚舌头，孔 Φ21 压 2 个 6801", "CNC")):
             solid_page(pdf, code, nm, leg[key], 4, mat, proc, star_motor if code in ("L02", "L03", "L04") else "")
             print("  ", code)
         for n, s in H.body_side():

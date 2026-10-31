@@ -109,7 +109,7 @@
 },
 {
 "file": "018.stl",
-"name": "膝轴 Φ12",
+"name": "膝轴 Φ12（两头 M5，固定）",
 "color": "metal",
 "group": "大腿"
 },
@@ -117,23 +117,53 @@
 "file": "019.stl",
 "name": "膝轴承 6801 内",
 "color": "metal",
-"group": "大腿"
+"group": "小腿"
 },
 {
 "file": "020.stl",
 "name": "膝轴承 6801 外",
 "color": "metal",
-"group": "大腿"
+"group": "小腿"
 },
 {
 "file": "021.stl",
-"name": "大带轮 HTD5M 24 齿（小腿根）",
+"name": "膝垫套 内",
+"color": "metal",
+"group": "大腿"
+},
+{
+"file": "022.stl",
+"name": "膝垫套 外",
+"color": "metal",
+"group": "大腿"
+},
+{
+"file": "023.stl",
+"name": "小腿根 L09（铝 CNC，带 HTD5M 24 齿）",
 "color": "metal",
 "group": "小腿"
 },
 {
-"file": "022.stl",
-"name": "小腿（铝 + 打印壳）",
+"file": "024.stl",
+"name": "小腿螺丝 M4×16 薄头 (-116,-166)",
+"color": "metal",
+"group": "小腿"
+},
+{
+"file": "025.stl",
+"name": "小腿螺丝 M4×16 薄头 (-108,-173)",
+"color": "metal",
+"group": "小腿"
+},
+{
+"file": "026.stl",
+"name": "小腿螺丝 M4×16 薄头 (-100,-181)",
+"color": "metal",
+"group": "小腿"
+},
+{
+"file": "027.stl",
+"name": "小腿（打印，夹住小腿根）",
 "color": "skel",
 "group": "小腿"
 }
