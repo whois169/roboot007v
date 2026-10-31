@@ -1,0 +1,3346 @@
+[
+{
+"file": "..\\..\\parts\\000.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\001.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\002.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\003.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\004.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\005.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\006.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\007.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\008.stl",
+"color": "cyan",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\009.stl",
+"color": "cyan",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\010.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\011.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\012.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\013.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\014.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\015.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\016.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\017.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\018.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\019.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\020.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\021.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\022.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\023.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\024.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\025.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\026.stl",
+"color": "skel_dk",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\027.stl",
+"color": "skel_dk",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\028.stl",
+"color": "skel_dk",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\029.stl",
+"color": "skel_dk",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\030.stl",
+"color": "skel_dk",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "头（屏幕 + 抬头低头）",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\031.stl",
+"color": "glass",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\032.stl",
+"color": "eye",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\033.stl",
+"color": "eye",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\034.stl",
+"color": "cyan",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\035.stl",
+"color": "metal",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\036.stl",
+"color": "cyan",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\037.stl",
+"color": "metal",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\038.stl",
+"color": "cyan",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\039.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "激光雷达",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\040.stl",
+"color": "glass",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\041.stl",
+"color": "red",
+"offset": [
+-300.0,
+0.0,
+30.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\042.stl",
+"color": "red",
+"offset": [
+-300.0,
+0.0,
+30.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\043.stl",
+"color": "skel",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\044.stl",
+"color": "skel",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\045.stl",
+"color": "skel",
+"offset": [
+0.0,
+230.0,
+40.0
+],
+"label": "侧装甲板（打印）",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\046.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\047.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\048.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\049.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\050.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\051.stl",
+"color": "metal",
+"offset": [
+0.0,
+230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\052.stl",
+"color": "metal",
+"offset": [
+0.0,
+230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\053.stl",
+"color": "metal",
+"offset": [
+0.0,
+230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\054.stl",
+"color": "metal",
+"offset": [
+0.0,
+230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\055.stl",
+"color": "shell",
+"offset": [
+0.0,
+230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\056.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\057.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\058.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\059.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\060.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\061.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\062.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\063.stl",
+"color": "skel",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\064.stl",
+"color": "skel",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\065.stl",
+"color": "skel",
+"offset": [
+0.0,
+-230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\066.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+-230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\067.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+-230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\068.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+-230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\069.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+-230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\070.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+-230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\071.stl",
+"color": "metal",
+"offset": [
+0.0,
+-230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\072.stl",
+"color": "metal",
+"offset": [
+0.0,
+-230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\073.stl",
+"color": "metal",
+"offset": [
+0.0,
+-230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\074.stl",
+"color": "metal",
+"offset": [
+0.0,
+-230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\075.stl",
+"color": "shell",
+"offset": [
+0.0,
+-230.0,
+40.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\076.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\077.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\078.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\079.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\080.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\081.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\082.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\083.stl",
+"color": "skel_dk",
+"offset": [
+-300.0,
+0.0,
+30.0
+],
+"label": "尾部接口板（急停、总开关、充电口）",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\084.stl",
+"color": "estop",
+"offset": [
+-300.0,
+0.0,
+30.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\085.stl",
+"color": "metal",
+"offset": [
+-300.0,
+0.0,
+30.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\086.stl",
+"color": "rubber",
+"offset": [
+-300.0,
+0.0,
+30.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\087.stl",
+"color": "skel_dk",
+"offset": [
+-300.0,
+0.0,
+30.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\088.stl",
+"color": "skel_dk",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "前防撞杠（打印）",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\089.stl",
+"color": "skel_dk",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\090.stl",
+"color": "glass",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\091.stl",
+"color": "glass",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\092.stl",
+"color": "glass",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\093.stl",
+"color": "glass",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\094.stl",
+"color": "skel_dk",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\095.stl",
+"color": "skel_dk",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\096.stl",
+"color": "skel_dk",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\097.stl",
+"color": "lamp",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\098.stl",
+"color": "metal",
+"offset": [
+330.0,
+0.0,
+60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\099.stl",
+"color": "skel",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\100.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\101.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\102.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\103.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\104.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\105.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\106.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\107.stl",
+"color": "cyan",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\108.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\109.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\110.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\111.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\112.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\113.stl",
+"color": "cyan",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\114.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\115.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\116.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\117.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\118.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\119.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\120.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\121.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\122.stl",
+"color": "shell",
+"offset": [
+0.0,
+0.0,
+330.0
+],
+"label": "上层甲板壳 + 货台（打印）",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\123.stl",
+"color": "shell",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "下层底盘（打印）",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\124.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-300.0
+],
+"label": "黑腰 + 腰线灯（打印）",
+"printed": true
+},
+{
+"file": "..\\..\\parts\\127.stl",
+"color": "metal",
+"offset": [
+170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\128.stl",
+"color": "skel_dk",
+"offset": [
+170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\129.stl",
+"color": "cyan",
+"offset": [
+170.0,
+360.0,
+0.0
+],
+"label": "髋盖 + 青色光环",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\130.stl",
+"color": "metal",
+"offset": [
+170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\131.stl",
+"color": "metal",
+"offset": [
+170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\132.stl",
+"color": "metal",
+"offset": [
+170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\133.stl",
+"color": "metal",
+"offset": [
+170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\134.stl",
+"color": "metal",
+"offset": [
+170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\135.stl",
+"color": "metal",
+"offset": [
+170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\136.stl",
+"color": "metal",
+"offset": [
+170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\141.stl",
+"color": "skel_dk",
+"offset": [
+170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\142.stl",
+"color": "cyan",
+"offset": [
+170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\143.stl",
+"color": "rubber",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "脚垫（橡胶）",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\146.stl",
+"color": "metal",
+"offset": [
+170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\147.stl",
+"color": "skel_dk",
+"offset": [
+170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\148.stl",
+"color": "cyan",
+"offset": [
+170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\149.stl",
+"color": "metal",
+"offset": [
+170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\150.stl",
+"color": "metal",
+"offset": [
+170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\151.stl",
+"color": "metal",
+"offset": [
+170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\152.stl",
+"color": "metal",
+"offset": [
+170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\153.stl",
+"color": "metal",
+"offset": [
+170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\154.stl",
+"color": "metal",
+"offset": [
+170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\155.stl",
+"color": "metal",
+"offset": [
+170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\160.stl",
+"color": "skel_dk",
+"offset": [
+170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\161.stl",
+"color": "cyan",
+"offset": [
+170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\162.stl",
+"color": "rubber",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\165.stl",
+"color": "metal",
+"offset": [
+-170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\166.stl",
+"color": "skel_dk",
+"offset": [
+-170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\167.stl",
+"color": "cyan",
+"offset": [
+-170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\168.stl",
+"color": "metal",
+"offset": [
+-170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\169.stl",
+"color": "metal",
+"offset": [
+-170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\170.stl",
+"color": "metal",
+"offset": [
+-170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\171.stl",
+"color": "metal",
+"offset": [
+-170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\172.stl",
+"color": "metal",
+"offset": [
+-170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\173.stl",
+"color": "metal",
+"offset": [
+-170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\174.stl",
+"color": "metal",
+"offset": [
+-170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\179.stl",
+"color": "skel_dk",
+"offset": [
+-170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\180.stl",
+"color": "cyan",
+"offset": [
+-170.0,
+360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\181.stl",
+"color": "rubber",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\184.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\185.stl",
+"color": "skel_dk",
+"offset": [
+-170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\186.stl",
+"color": "cyan",
+"offset": [
+-170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\187.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\188.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\189.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\190.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\191.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\192.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\193.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\198.stl",
+"color": "skel_dk",
+"offset": [
+-170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\199.stl",
+"color": "cyan",
+"offset": [
+-170.0,
+-360.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\parts\\200.stl",
+"color": "rubber",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\000.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+-170.0
+],
+"label": "A01 底板（铝 3）",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\001.stl",
+"color": "metal",
+"offset": [
+60.0,
+0.0,
+0.0
+],
+"label": "A02 外摆隔板（铝 5）",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\002.stl",
+"color": "metal",
+"offset": [
+-60.0,
+0.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\003.stl",
+"color": "metal",
+"offset": [
+0.0,
+110.0,
+0.0
+],
+"label": "A03 侧梁（铝 3）",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\004.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+110.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\005.stl",
+"color": "metal",
+"offset": [
+0.0,
+-110.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\006.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+-110.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\007.stl",
+"color": "metal",
+"offset": [
+100.0,
+40.0,
+0.0
+],
+"label": "A04 纵梁（铝 4）",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\008.stl",
+"color": "metal",
+"offset": [
+100.0,
+-40.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\009.stl",
+"color": "metal",
+"offset": [
+-100.0,
+40.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\010.stl",
+"color": "metal",
+"offset": [
+-100.0,
+-40.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\011.stl",
+"color": "metal",
+"offset": [
+140.0,
+0.0,
+0.0
+],
+"label": "A05 前端板（铝 4）",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\012.stl",
+"color": "metal",
+"offset": [
+-140.0,
+0.0,
+0.0
+],
+"label": "A06 后端板（铝 4）",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\013.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+190.0
+],
+"label": "A07 顶板（铝 3）",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\076.stl",
+"color": "rubber",
+"offset": [
+0.0,
+0.0,
+-60.0
+],
+"label": "电池 6S3P 280 Wh",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\077.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+-60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\078.stl",
+"color": "skel",
+"offset": [
+0.0,
+0.0,
+-60.0
+],
+"label": "电机电源继电器 80A",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\079.stl",
+"color": "skel",
+"offset": [
+0.0,
+0.0,
+-60.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\080.stl",
+"color": "glass",
+"offset": [
+0.0,
+0.0,
+100.0
+],
+"label": "C01 电子托板（亚克力）",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\081.stl",
+"color": "skel",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "树莓派 5",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\082.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\083.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\084.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\085.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\086.stl",
+"color": "skel",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\087.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\088.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\089.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\090.stl",
+"color": "skel",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\091.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\092.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\093.stl",
+"color": "skel",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\094.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\095.stl",
+"color": "metal",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\096.stl",
+"color": "skel",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\097.stl",
+"color": "skel",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\098.stl",
+"color": "skel",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\099.stl",
+"color": "skel_dk",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\100.stl",
+"color": "cyan",
+"offset": [
+0.0,
+0.0,
+130.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\101.stl",
+"color": "skel_dk",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "外摆电机（SteadyWin GIM8108-8）",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\102.stl",
+"color": "metal",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\103.stl",
+"color": "skel_dk",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\104.stl",
+"color": "skel_dk",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "髋电机",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\105.stl",
+"color": "skel",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\106.stl",
+"color": "shell",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\107.stl",
+"color": "skel",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "大腿外层壳（打印）",
+"printed": true
+},
+{
+"file": "..\\..\\eng_parts\\108.stl",
+"color": "metal",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\109.stl",
+"color": "metal",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\110.stl",
+"color": "metal",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\111.stl",
+"color": "metal",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\112.stl",
+"color": "skel_dk",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "膝电机",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\113.stl",
+"color": "metal",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\114.stl",
+"color": "metal",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\115.stl",
+"color": "metal",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\116.stl",
+"color": "metal",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\117.stl",
+"color": "rubber",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "同步带 HTD5M（膝 1:1.5）",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\118.stl",
+"color": "metal",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\119.stl",
+"color": "metal",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\120.stl",
+"color": "metal",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\121.stl",
+"color": "metal",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\122.stl",
+"color": "skel",
+"offset": [
+170.0,
+300.0,
+0.0
+],
+"label": "小腿（铝 + 打印壳）",
+"printed": true
+},
+{
+"file": "..\\..\\eng_parts\\123.stl",
+"color": "skel_dk",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\124.stl",
+"color": "metal",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\125.stl",
+"color": "skel_dk",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\126.stl",
+"color": "skel_dk",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\127.stl",
+"color": "skel",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\128.stl",
+"color": "shell",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\129.stl",
+"color": "skel",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\130.stl",
+"color": "metal",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\131.stl",
+"color": "metal",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\132.stl",
+"color": "metal",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\133.stl",
+"color": "metal",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\134.stl",
+"color": "skel_dk",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\135.stl",
+"color": "metal",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\136.stl",
+"color": "metal",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\137.stl",
+"color": "metal",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\138.stl",
+"color": "metal",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\139.stl",
+"color": "rubber",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\140.stl",
+"color": "metal",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\141.stl",
+"color": "metal",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\142.stl",
+"color": "metal",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\143.stl",
+"color": "metal",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\144.stl",
+"color": "skel",
+"offset": [
+170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\145.stl",
+"color": "skel_dk",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\146.stl",
+"color": "metal",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\147.stl",
+"color": "skel_dk",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\148.stl",
+"color": "skel_dk",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\149.stl",
+"color": "skel",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\150.stl",
+"color": "shell",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\151.stl",
+"color": "skel",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\152.stl",
+"color": "metal",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\153.stl",
+"color": "metal",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\154.stl",
+"color": "metal",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\155.stl",
+"color": "metal",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\156.stl",
+"color": "skel_dk",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\157.stl",
+"color": "metal",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\158.stl",
+"color": "metal",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\159.stl",
+"color": "metal",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\160.stl",
+"color": "metal",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\161.stl",
+"color": "rubber",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\162.stl",
+"color": "metal",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\163.stl",
+"color": "metal",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\164.stl",
+"color": "metal",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\165.stl",
+"color": "metal",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\166.stl",
+"color": "skel",
+"offset": [
+-170.0,
+300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\167.stl",
+"color": "skel_dk",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\168.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\169.stl",
+"color": "skel_dk",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\170.stl",
+"color": "skel_dk",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\171.stl",
+"color": "skel",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\172.stl",
+"color": "shell",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\173.stl",
+"color": "skel",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\174.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\175.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\176.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\177.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\178.stl",
+"color": "skel_dk",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\179.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\180.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\181.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\182.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\183.stl",
+"color": "rubber",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\184.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\185.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\186.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\187.stl",
+"color": "metal",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+},
+{
+"file": "..\\..\\eng_parts\\188.stl",
+"color": "skel",
+"offset": [
+-170.0,
+-300.0,
+0.0
+],
+"label": "",
+"printed": false
+}
+]

@@ -1,0 +1,187 @@
+<title>007A 省钱版 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 布局：整屏 3D 视口，左上角一块小说明，底部一排视角按钮 */
+:root {
+  --bg: #e9ecef; --panel: rgba(255,255,255,.86); --fg: #1d2329; --muted: #5d6873;
+  --line: #c9d0d6; --accent: #0f9fb5; --btn: #ffffff;
+  --sans: "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15191d; --panel: rgba(28,33,38,.86); --fg: #e6eaee; --muted: #9aa5af;
+  --line: #36404a; --accent: #3cc8dc; --btn: #222930; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #15191d; --panel: rgba(28,33,38,.86); --fg: #e6eaee; --muted: #9aa5af;
+  --line: #36404a; --accent: #3cc8dc; --btn: #222930; color-scheme: dark }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); overflow: hidden; }
+#view { position: fixed; inset: 0; }
+#view canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.info {
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px);
+  left: max(16px, env(safe-area-inset-left, 0px)); max-width: min(340px, calc(100% - 32px));
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 12px 14px; backdrop-filter: blur(6px); display: grid; gap: 6px;
+}
+.info h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: .02em; }
+.info h1 span { color: var(--accent); font-family: var(--mono); font-weight: 600; }
+.info p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.55; }
+.info dl { margin: 2px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 12.5px; }
+.info dt { color: var(--muted); }
+.info dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.bar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 14px) max(16px, env(safe-area-inset-left, 0px));
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+}
+.bar button {
+  font: 500 14px var(--sans); color: var(--fg); background: var(--btn);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer;
+}
+.bar button:hover { border-color: var(--accent); }
+.bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bar button[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+#status { position: fixed; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 15px; pointer-events: none; }
+</style>
+
+<div id="view"></div>
+<div id="status">正在载入模型（约 6 MB）…</div>
+
+<div class="info">
+  <h1>机械狗 <span>007A</span> · v19 省钱版</h1>
+  <p>鼠标左键拖动转，滚轮放大缩小，右键拖动平移。手机上单指转、双指缩放。</p>
+  <dl>
+    <dt>关节电机</dt><dd>SteadyWin GIM8108-8 ×12</dd>
+    <dt>整机宽</dt><dd>约 402 mm</dd>
+    <dt>站立髋高</dt><dd>276 mm</dd>
+    <dt>头</dt><dd>抬 40° / 低 20°，缝 1.5 mm</dd>
+  </dl>
+</div>
+
+<div class="bar">
+  <button id="spin" aria-pressed="true">自动转 360°</button>
+  <button data-view="front45">前 45°</button>
+  <button data-view="front">正面</button>
+  <button data-view="side">侧面</button>
+  <button data-view="back45">后 45°</button>
+  <button data-view="top">俯视</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/utils/BufferGeometryUtils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/environments/RoomEnvironment.js"></script>
+<script>
+const host = document.getElementById('view'), status = document.getElementById('status');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+host.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 100);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+controls.autoRotateSpeed = 1.6;
+controls.maxPolarAngle = Math.PI * 0.495;
+
+const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+scene.add(sun, sun.target);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.22 }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+let size = 1, center = new THREE.Vector3();
+
+function resize() {
+  const w = host.clientWidth, h = host.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+
+const VIEWS = {               // 方向：x 朝前（机身前面），y 朝上，z 朝左
+  front45: [1, 0.55, 1], front: [1, 0.15, 0], side: [0, 0.15, 1],
+  back45: [-1, 0.55, -1], top: [0.05, 1, 0.0001],
+};
+let front = new THREE.Vector3(1, 0, 0), left = new THREE.Vector3(0, 0, -1);
+function setView(name) {
+  const [a, b, c] = VIEWS[name];
+  const dir = front.clone().multiplyScalar(a).add(new THREE.Vector3(0, b, 0)).add(left.clone().multiplyScalar(c)).normalize();
+  const dist = size * (camera.aspect < 0.8 ? 3.8 : 2.6);
+  camera.position.copy(center).addScaledVector(dir, dist);
+  controls.target.copy(center);
+  controls.update();
+}
+
+function glbBuffer() {
+  const s = atob(window.MODEL_007A), u = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+  return u.buffer;
+}
+
+const loaded = gltf => {
+  const root = gltf.scene;
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    let g = o.geometry;
+    if (THREE.BufferGeometryUtils.toCreasedNormals) g = THREE.BufferGeometryUtils.toCreasedNormals(g, Math.PI / 7);
+    else { g.computeVertexNormals(); o.material.flatShading = true; }
+    o.geometry = g;
+    o.castShadow = o.receiveShadow = true;
+  });
+  scene.add(root);
+
+  const box = new THREE.Box3().setFromObject(root);
+  box.getCenter(center);
+  const s = box.getSize(new THREE.Vector3());
+  size = Math.max(s.x, s.y, s.z);
+  // 机身前后方向是水平方向里较长的那一边；头在哪头，哪头就是前
+  if (s.z > s.x) { front.set(0, 0, -1); left.set(-1, 0, 0); }
+  const head = root.getObjectByName('头') || root.getObjectByName('屏幕');
+  if (head) {
+    const hc = new THREE.Box3().setFromObject(head).getCenter(new THREE.Vector3()).sub(center);
+    if (hc.dot(front) < 0) { front.negate(); left.negate(); }
+  }
+  ground.position.set(center.x, box.min.y, center.z);
+  ground.scale.setScalar(size * 6);
+  sun.position.copy(center).add(new THREE.Vector3(size, size * 2, size * 0.8));
+  sun.target.position.copy(center);
+  const sc = sun.shadow.camera;
+  sc.left = sc.bottom = -size; sc.right = sc.top = size; sc.near = 0.01; sc.far = size * 6;
+  sc.updateProjectionMatrix();
+  camera.near = size / 200; camera.far = size * 40; camera.updateProjectionMatrix();
+  controls.minDistance = size * 0.5; controls.maxDistance = size * 6;
+  setView('front45');
+  status.hidden = true;
+};
+const failed = () => { status.textContent = '模型没载入成功，刷新页面再试一次。'; };
+const ms = document.createElement('script');
+ms.src = 'model.js';
+ms.onload = () => { try { new THREE.GLTFLoader().parse(glbBuffer(), '', loaded, failed); } catch (e) { failed(); } };
+ms.onerror = failed;
+document.body.appendChild(ms);
+
+const spinBtn = document.getElementById('spin');
+spinBtn.setAttribute('aria-pressed', String(controls.autoRotate));
+spinBtn.addEventListener('click', () => {
+  controls.autoRotate = !controls.autoRotate;
+  spinBtn.setAttribute('aria-pressed', String(controls.autoRotate));
+});
+document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+</script>
