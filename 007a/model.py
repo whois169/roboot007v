@@ -37,7 +37,7 @@ Z0 = HIP_Z - 72.0                                # 机身底离地（v12：髋�
 TUB_TOP, WAIST_TOP = Z0 + 40, Z0 + 50            # 下层底盘顶、黑腰顶（v12：上层外壳 90 高）
 TOP = Z0 + BODY_H
 HUB_SK = [(-35, -33), (28, -33), (33, 38), (-4, 49), (-47, 8)]
-RK = 31.5                                        # 大腿膝那头的圆头半径（第 2 步：要装下 30 齿大带轮，eng_leg.py RK_NEW）
+RK = 26.7                                        # 大腿膝那头的圆头半径 = 24 齿大带轮节圆半径 + ARM_M（v21：带轮 20/30 → 16/24 齿）
 HEX_A = 54.25                                    # 髋盘边心距（第 2 步：包住大腿杯 Φ104.5，eng_leg.py HEX_A_NEW）
 # v6：髋盘照 v3（用户认可的造型：后面尖角、上沿斜边、下面缺口、楔形大腿），只把轮廓理顺、缩小。
 # 在“大腿坐标”里定义（u 沿 髋→膝，v 朝大腿上沿那侧），每条边：(方向角, 离中心的距离)；v3 量出来是 34° / -129° / 170° / 106°，取整成：
@@ -60,7 +60,8 @@ HUB_F = _hub_scale()
 KNEE_TOP = [(303, 234), (311, 245), (313, 262)]
 KNEE_BOT = [(296, 266)]
 SHANK_SK = [(310, 250), (317, 265), (311, 285), (218, 303), (160, 348), (149, 340), (208, 288), (294, 262)]
-T_THIGH, T_SHANK = 38.0, 16.0                    # v3：小腿插在大腿膝盖的叉口里，两段在同一个面上
+T_THIGH, T_SHANK = 38.0, 20.0                    # v3：小腿插在大腿膝盖的叉口里，两段在同一个面上（v21：小腿厚 16 → 20）
+SHANK_GROW = 3.0                                 # v21（用户）：小腿侧面加宽一点，更协调：草图外形往外扩 3
 LEG_Y = W2 + 4.6 + T_THIGH / 2 + LEG_DY          # 大腿中面离中线（第 2 步：大腿内板 y=134.6、外板外侧 172.6，eng_leg.py；v19 电机厚了再往外 LEG_DY）
 
 
@@ -169,23 +170,31 @@ def leg_2d(foot=(0.0, -HIP_Z)):
         t = d0 / (d0 - d1)
         return p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t
     A1, A2 = cut_on(E, A), cut_on(A, B)
+    # v21（用户：髋那头不变，越往下越细）：髋盘和上沿（B → 膝）照旧；下沿改成贴着皮带外扩 ARM_M 的直线（旧下沿从 C 斜下去，中段切到皮带里了），凹角倒 R10
+    from shapely.geometry import Polygon
     hub_arc = [W(*A2), W(*B)]
     knee_arc = [W(*q) for q in arc] + [W(*C), W(*D), W(*E), W(*A1)]
-    thigh = hub_arc + knee_arc
+    out = Polygon(hub_arc + knee_arc).union(Polygon(belt_case(knee, ARM_M))).buffer(10, quad_segs=6).buffer(-10, quad_segs=6)
+    thigh = [(round(x, 3), round(z, 3)) for x, z in out.simplify(0.15).exterior.coords[:-1]]   # 去掉太碎的小边（offset2D 会失败）
 
     def at_knee(pts, rr):
         return [tuple(k + d for k, d in zip(knee, _rot((sk(p, K0)[0] * S, sk(p, K0)[1] * S), rr))) for p in pts]
     a_sh = math.atan2(*reversed(sk(T0, K0)))
     a_now = math.atan2(foot[1] - knee[1], foot[0] - knee[0])
     shank = at_knee(SHANK_SK, a_now - a_sh)
+    shank = [(round(x, 3), round(z, 3)) for x, z in Polygon(shank).buffer(SHANK_GROW, join_style=2, mitre_limit=3).exterior.coords[:-1]]
     return thigh, shank, knee, foot
 
 
+
 Y_STEP = 146.0 + LEG_DY                          # 大腿台阶：外层完整外形从这里开始（eng_leg.py 算的；v19 跟着腿往外）
-PD_S_, PD_B_ = 20 * 5 / math.pi, 30 * 5 / math.pi  # 小 / 大带轮节圆（HTD5M 20 / 30 齿）
+PD_S_, PD_B_ = 16 * 5 / math.pi, 24 * 5 / math.pi  # 小 / 大带轮节圆（v21：HTD5M 16 / 24 齿，还是 1.5 倍）
 
 
-def belt_case(knee, m=10.0):
+ARM_M = 7.6                                      # v21：大腿细臂 = 带轮节圆外扩 7.6（皮带 0.6 + 空 3.4 + 打印壳壁 3.6），膝那头正好 = RK
+
+
+def belt_case(knee, m=ARM_M):
     """大腿内层：两个带轮节圆外扩 m 的外切轮廓（凸包）。"""
     kx, kz = knee
     pts = sorted({(round(r * math.cos(2 * math.pi * i / 48) + cx, 3), round(r * math.sin(2 * math.pi * i / 48) + cz, 3))

@@ -4,8 +4,8 @@
 从里到外（y）：
   外摆电机（轴朝前后，在髋后面，定子固定在机身）→ 髋座（跟外摆一起转：后板接外摆输出、侧板托髋电机）
   → 髋电机（定子在髋座侧板上，输出朝外；髋座只挂在外摆电机输出上，像宇树那样，上下两块三角筋加强）→ 大腿杯（杯底接髋电机输出；膝电机的定子也拧在杯底上，跟大腿一起转）
-  → 膝电机（输出朝外）→ 转接轴 + 20 齿小带轮（在两块大腿板之间）→ 大腿外板（外侧轴承托住转接轴）
-膝：30 齿大带轮和小腿根做成一体，套在膝轴上（两块大腿板各一个轴承），减速 30 / 20 = 1.5。
+  → 膝电机（输出朝外）→ 转接轴 + 16 齿小带轮（在两块大腿板之间）→ 大腿外板（外侧轴承托住转接轴）
+膝：24 齿大带轮和小腿根做成一体，套在膝轴上（两块大腿板各一个轴承），小腿插在大腿两块板中间（大腿夹小腿），减速 24 / 16 = 1.5。
 皮带：HTD5M 宽 20 PU 钢丝芯闭口带（旧四足 v0.4 同款），张紧轮在大腿后侧直段上。
 电机尺寸按宇树 GO-M8010-6 官方尺寸图（007a/ref/go-m8010-6/尺寸图.png）：Φ96.5 × 42.3，输出盘 Φ59 凸出 6.6、6-M4 在 Φ34.5，背面 8-M3.5 在 R42.5。
 用法：python 007a/eng_leg.py → 007a/out/leg_parts（STL + manifest，给 blender/render.py）和 docs/机械狗007A/腿_截面.png
@@ -38,7 +38,7 @@ BACK_HOLE = 3.9                                  # M3.5 过孔
 
 # ---------------------------------------------------------------- 皮带（HTD5M）
 PITCH = 5.0
-Z_S, Z_B = 20, 30                                # 小轮 20 齿（髋）、大轮 30 齿（膝）→ 1.5
+Z_S, Z_B = 16, 24                                # v21：小轮 16 齿（髋）、大轮 24 齿（膝）→ 1.5；带长正好 100 齿（500-5M）
 PD_S, PD_B = Z_S * PITCH / math.pi, Z_B * PITCH / math.pi
 BELT_W, BELT_T = 20.0, 3.6
 
@@ -59,7 +59,7 @@ CAV_R = CUP_OD / 2 + 6.0                         # 机身侧面窝的半径（�
 PIT_R, PIT_D = 62.0, 5.0                         # 外观上的髋窝（body_v10.py）
 
 # 外观跟着改：膝圆头要装下 30 齿大轮，髋盘要包住大腿杯
-RK_NEW = PD_B / 2 + BELT_T + 4.0                 # 大轮节圆半径 + 皮带厚 + 壁
+RK_NEW = PD_B / 2 + M.ARM_M                      # 大轮节圆半径 + 7.6（皮带 + 空 + 壳壁）
 HEX_A_NEW = CUP_OD / 2 + 2.0
 
 
@@ -174,7 +174,8 @@ def leg_module():
     yk = Y_KFE[0] + MBACK_H                                            # 膝电机背面：杯里一圈法兰托住它（背面凸台从 Φ64 孔里过）
     flange = bolt_ring(ring_y(0, 0, CUP_OD - 5, MBACK_D + 2, yk - 5, yk), BACK_R, BACK_N, BACK_HOLE, yk - 5, yk)
     cup = cup.fuse(flange)
-    tin = prism_xz(M.belt_case(knee), *Y_TIN)                          # 内板只包住皮带（外摆时不碰机身）.cut(cyl_y(0, 0, MBOSS_D + 4, Y_TIN[0] - 1, Y_TIN[1] + 1)).cut(cyl_y(kx, kz, 21, Y_TIN[0] - 1, Y_TIN[1] + 1))
+    tin = prism_xz(M.belt_case(knee), *Y_TIN).cut(cyl_y(0, 0, MBOSS_D + 4, Y_TIN[0] - 1, Y_TIN[1] + 1)).cut(
+        cyl_y(kx, kz, 21, Y_TIN[0] - 1, Y_TIN[1] + 1))                    # 内板只包住皮带（外摆时不碰机身）；让开膝电机输出盘、膝轴承 6801 孔
     P.append(("大腿杯 + 内板（铝，CNC）", soft(cup.fuse(tin), 0.8), "skel", "大腿"))
     tout = prism_xz(thigh2d, *Y_TOUT).cut(cyl_y(0, 0, 21, Y_TOUT[0] - 1, Y_TOUT[1] + 1)).cut(cyl_y(kx, kz, 21, Y_TOUT[0] - 1, Y_TOUT[1] + 1))
     P.append(("大腿外板（铝 4）", soft(tout, 0.8), "shell", "大腿"))
@@ -207,14 +208,14 @@ def leg_module():
     P.append(("张紧轮 Φ18", cyl_y(ix, iz, 18, Y_PUL[0] + 1, Y_PUL[1] - 1), "metal", "大腿"))
     # ---- 皮带
     P.append((f"同步带 HTD5M 宽{BELT_W:.0f}", belt_loop(knee, Y_PUL[0] + 1.5, Y_PUL[1] - 1.5), "rubber", "大腿"))
-    # ---- 膝：膝轴 + 两个轴承 + 大带轮（和小腿根一体）+ 小腿
+    # ---- 膝：膝轴 + 两个轴承 + 大带轮（和小腿根一体）+ 小腿（插在大腿两块板中间）
     P.append(("膝轴 Φ12", cyl_y(kx, kz, 12, Y_TIN[0], Y_TOUT[1]), "metal", "大腿"))
     for nm, yy in (("膝轴承 6801 内", Y_TIN), ("膝轴承 6801 外", Y_TOUT)):
         P.append((nm, ring_y(kx, kz, 21, 12, *yy), "metal", "大腿"))
     pul_b = cyl_y(kx, kz, PD_B - 1.1, Y_PUL[0] + 1.5, Y_PUL[1] - 1.5).fuse(cyl_y(kx, kz, PD_B + 5, Y_PUL[0], Y_PUL[0] + 1.5)).fuse(
         cyl_y(kx, kz, PD_B + 5, Y_PUL[1] - 1.5, Y_PUL[1]))
     P.append((f"大带轮 HTD5M {Z_B} 齿（小腿根）", pul_b, "metal", "小腿"))
-    sh = soft(prism_xz(shank2d, Y_LEG - 8, Y_LEG + 8), 1.5).cut(cyl_y(kx, kz, PD_B + 6, Y_LEG - 9, Y_LEG + 9))
+    sh = soft(prism_xz(shank2d, Y_LEG - M.T_SHANK / 2, Y_LEG + M.T_SHANK / 2), 1.5).cut(cyl_y(kx, kz, PD_B + 6, Y_LEG - M.T_SHANK / 2 - 1, Y_LEG + M.T_SHANK / 2 + 1))
     P.append(("小腿（铝 + 打印壳）", sh, "skel", "小腿"))
     return P, knee, foot
 
