@@ -41,7 +41,7 @@ BAT = (65.0, 129.0, 70.0)                          # 电池 6S3P 21700：x × y 
 TRAY_Z = Z_BOT + T_BOT + BAT[2] + 8.0              # 电子托板下表面
 
 # 托板上的板子：(名字, x 中心, y 中心, 长 x, 宽 y, 高, 状态)
-BOARDS = [(n, x, y, lx, ly, h + (T.STANDOFF if holes else 0.0) - 4.0, st) for n, x, y, lx, ly, h, holes, d, st in T.TRAY_BOARDS] +     [("IMU 超核 HI13（卡座里）", T.IMU_C[0], T.IMU_C[1], T.IMU_BOX[0], T.IMU_BOX[1], T.IMU_BOX[2] + 3.0 - 4.0, "★要图：卡座")]   # v20：从 mounts.py 来（高度按托板上 4 算的老口径）
+BOARDS = [(n, x, y, lx, ly, h + (T.STANDOFF if holes else 0.0) - 4.0, st) for n, x, y, lx, ly, h, holes, d, st in T.TRAY_BOARDS]   # v20：从 mounts.py 来（高度按托板上 4 算的老口径）
 # 电池两边（底板上）
 SIDE_PARTS = [
     ("电机电源继电器 80A（带座）", 0.0, 90.0, 40.0, 40.0, 45.0),
@@ -289,8 +289,6 @@ def inside_parts():
     tray = T.tray_holes(tray, TRAY_Z)                                  # v20：板子按官方孔位打孔、没图的留扎带孔（mounts.py）
     P.append(("C01 电子托板（亚克力 3，插在侧梁槽里）", tray, "glass"))
     P += T.tray_bodies(TRAY_Z + 3)
-    cr, imu = T.imu_cradle(TRAY_Z + 3)
-    P += [("IMU 卡座 P03（打印 PETG）", cr, "skel_dk"), ("IMU 超核 HI13", imu, "cyan")]
     ring = M.head_ring_slot()                                         # v19：A04 纵梁前端也让开头的弧形裙边
     P = [(n, s.cut(ring) if n.startswith("A04") and "前" in n else s, c) for n, s, c in P]
     return P

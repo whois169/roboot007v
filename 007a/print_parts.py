@@ -219,10 +219,6 @@ def main():
     save(f"S{k:02d}", "舵机座", next(sh for n, sh in H.body_side() if n.startswith("舵机座")), "PETG", 1,
          "抬头舵机 STS3032 座（店铺尺寸图）；2 颗 M3×8 沉头拧左头支架 H01（外面螺母），舵机后耳 2 颗 M2×6 自攻")
     k += 1
-    cr, _ = T.imu_cradle(B.TRAY_Z + 3)
-    save(f"S{k:02d}", "IMU 卡座", cr, "PETG", 1, "IMU 卡槽 24.4 × 26.4（超核官网外形，没给安装孔）+ 扎带槽；2 个 M3 热熔螺母（从托板下面拧）")
-    whole["IMU 卡座"] = cr
-    k += 1
     save(f"S{k:02d}", "护角", look[CORNERS[0]], "TPU 95A 黑", 4, "四个角一样（左右镜像打：切片里镜像）")
     k += 1
     # 腿：工程件（大腿外层壳、小腿、绕线环）+ 外观盖板

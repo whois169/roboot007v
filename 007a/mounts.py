@@ -6,7 +6,7 @@
 尾部接口板（S16，打印 ASA 深灰，4 厚）：急停、总开关、充电口，4 颗 M3 拧 A06（热熔螺母在板背面的柱子里）。
   A04 纵梁在 y ±16–20 一直通到 A06，急停后面有 66.5 深：急停挪到 y = -40（纵梁外面），开关居中，充电口 y = +42。
 顶上：雷达 LD19 三颗 M2 自攻拧进上层壳里的螺丝柱；麦克风 INMP441 ×2 卡在拾音孔下面的圆槽里；喇叭 ×2 卡圈。
-电子托板 C01：树莓派 5、两块 Pololu 降压、功放按官方孔位打孔；IMU（官网没给孔）做卡座 P03；没图的板子（485 模块、集线器、12 V 降压）留扎带孔。
+电子托板 C01：树莓派 5、两块 Pololu 降压、功放按官方孔位打孔；IMU 超核 HI12M0 按店铺尺寸表 3 颗 M2.5 铜柱（v21，卡座 P03 取消）；没安装孔的板子（宇树 485 模块是光板、集线器、12 V 降压）留扎带孔。
 FASTENERS：每一颗螺丝从哪穿到哪，check() 逐颗查“孔对不对得上、有没有料咬螺丝”。
 ★ = 官方图没标、到货要量的。
 """
@@ -30,8 +30,8 @@ SENSORS = [
          dims="板 25.4 × 17.78 × 1.57；探头 Φ9.3 在板背面正中，凸出 5.72", holes="4-Φ2.5，孔距 20.32 × 12.7", mount="前防撞杠右头，探头朝前，4 颗 M2.5 自攻"),
     dict(name="台阶测距 ×2", model="Pololu VL53L1X（3415）", src="Pololu 官方尺寸图（007v/ref/pololu/dims_3415.jpg）",
          dims="12.7 × 17.78", holes="2-Φ2.18，孔距 12.7，离左边 2.54", mount="前防撞杠 y ±78，低头 20°，2 颗 M2 自攻"),
-    dict(name="探照灯", model="XHP50 20 mm 铝基板 + Φ20 透镜 + Φ26 散热铝块", src="★ 通用件，没有官方图：到货量",
-         dims="★ 透镜 Φ20、基板 Φ20、散热块 Φ26 × 8", holes="—", mount="前防撞杠左头灯筒，透镜压圈卡住"),
+    dict(name="探照灯", model="XHP50 20 mm 铜基板 + 3° 聚光透镜（矮款）+ 20 × 20 × 6 散热铝块", src="淘宝店铺尺寸图（格锐特光电 3 度透镜：直径 21.78 高 17.6；铜基板 Φ20 × 1.6；铝块 20 × 20 × 6）",
+         dims="透镜 Φ21.8 × 17.6；基板 Φ20 × 1.6；铝块 20 × 20 × 6", holes="—", mount="前防撞杠左头灯筒：透镜、基板、铝块从后往前叠，前面打印压圈压住"),
     dict(name="激光雷达", model="乐动 LD19", src="乐动 LD19 规格书 V2.5",
          dims="安装脚 54 × 46.29，总高 34.8，扫描面离底 27", holes="3-Φ2.5：前两个 ±23.4、前后 31.92", mount="上层壳左前角，3 颗 M2 自攻拧进壳里的柱子"),
     dict(name="麦克风 ×2", model="INMP441 圆板", src="模块资料", dims="Φ13.8", holes="—", mount="上层壳右前角拾音孔下面 Φ14.2 圆槽，胶粘"),
@@ -47,11 +47,11 @@ SENSORS = [
          dims="20.32 × 17.78", holes="2-Φ2.18（对角）", mount="C01 托板，M2 铜柱 ×2"),
     dict(name="功放", model="Adafruit MAX98357A（3006）", src="Adafruit 官方 3D 模型 3006 MAX98357.step（007a/ref/adafruit/）",
          dims="17.78 × 19.05", holes="2-Φ2.5，孔距 12.7，离一边 2.54", mount="C01 托板，M2.5 铜柱 ×2"),
-    dict(name="IMU", model="超核 HI12M0-MI1-000（UART + CAN）", src="店铺详情页尺寸图（★ 尺寸表被截掉，D1 / E1 / 孔径没拿到）", dims="★", holes="★ 3 个孔（上中一个、下两角）",
-         mount="先用打印卡座 P03（卡槽 + 扎带），拿到尺寸表改成螺丝孔"),
+    dict(name="IMU", model="超核 HI12M0-MI1-000（UART + CAN）", src="天猫 HiPNUC 旗舰店详情页尺寸表（HI12 系列：A 10、D 22、D1 17、E 22、E1 16.6、孔 Φ2.6、缺口 R2.4）",
+         dims="22 × 22 × 10", holes="3-Φ2.6：下面两个孔距 17，上面一个在正中、离下排 16.6", mount="C01 托板，M2.5 铜柱 ×3"),
     dict(name="抬头舵机", model="飞特 STS3032", src="店铺详情页尺寸图", dims="23 × 12 × 27.5；耳总长 32，离底 20.5–22；花键 25T Φ4.95，顶离底 31.9",
          holes="4-Φ2.5（★ 孔距 28 × 8 按 4-R2 同心推的；输出轴离机身一头 8.21 ★）", mount="打印舵机座 P04，后耳 2 颗 M2 自攻，座子 2 颗 M3 拧左头支架"),
-    dict(name="USB 转 4 路 485", model="宇树", src="★ 没图", dims="★", holes="★", mount="C01 托板扎带孔，到货再定"),
+    dict(name="USB 转 4 路 485", model="宇树", src="天猫宇树旗舰店照片：光板、没有安装孔（宇树没给尺寸）", dims="照片估约 60 × 35（托板上留 60 × 45）", holes="没有", mount="C01 托板：扎带 + 3M 双面泡棉胶，不靠尺寸"),
 ]
 
 # ---------------------------------------------------------------- 前防撞杠
@@ -124,12 +124,13 @@ def front_bar():
         for z in (-6.35, 6.35):
             bar = bar.cut(place(cyl_x(-3.81, z, 1.7, -1.7, 4.5), F, VL_TILT))
         bodies.append((f"台阶测距 VL53L1X{F[1]:+.0f}", place(box(-1.6, 0, -6.35, 6.35, -8.89, 8.89), F, VL_TILT), "skel_dk"))
-    # 探照灯：透镜 Φ20 + 基板 Φ20 + 散热块 Φ26 × 8（★ 到货量）+ 后面的线孔
-    bar = bar.cut(place(cyl_x(0, 0, 20.4, -13.6, 1), LAMP_F))
-    bar = bar.cut(place(cyl_x(0, 0, 26.4, -22, -13.6), LAMP_F))
-    bar = bar.cut(place(cyl_x(0, 0, 6.0, -60, -22), LAMP_F))
-    bodies.append(("探照灯透镜", place(cyl_x(0, 0, 20, -12, -0.5), LAMP_F), "lamp"))
-    bodies.append(("探照灯压圈（打印）", place(cyl_x(0, 0, 36, -0.5, 1.5).cut(cyl_x(0, 0, 18, -1, 2)), LAMP_F), "metal"))
+    # 探照灯（v21 按店铺图）：透镜 Φ21.8 × 17.6 + 铜基板 Φ20 × 1.6 + 散热铝块 20 × 20 × 6 从前往后叠 + 后面的线孔
+    bar = bar.cut(place(cyl_x(0, 0, 22.2, -18.1, 1), LAMP_F))
+    bar = bar.cut(place(cyl_x(0, 0, 20.4, -19.8, -18.1), LAMP_F))
+    bar = bar.cut(place(box(-26.0, -19.8, -10.2, 10.2, -10.2, 10.2), LAMP_F))
+    bar = bar.cut(place(cyl_x(0, 0, 6.0, -60, -26), LAMP_F))
+    bodies.append(("探照灯透镜", place(cyl_x(0, 0, 21.8, -18.1, -0.5), LAMP_F), "lamp"))
+    bodies.append(("探照灯压圈（打印）", place(cyl_x(0, 0, 36, -0.5, 1.5).cut(cyl_x(0, 0, 19, -1, 2)), LAMP_F), "metal"))
     # 背面：走线槽 + 4 个热熔螺母孔
     for sy in (1, -1):                                                # 走线槽只在相机两边（|y| 50–110），中间是相机背后的墙
         bar = bar.cut(box(X_A05 - 1, X_A05 + 8, *sorted((sy * 50.0, sy * (BAR_Y - 4))), Z0 + 29, Z0 + 35))
@@ -223,18 +224,16 @@ TRAY_BOARDS = [   # (名字, 板中心 x, y, 板长 x, 宽 y, 高, [(孔 x, 孔 
     ("5V 5.5A 降压 D36V50F5", -41.0, 0.0, 25.4, 25.4, 9.5, [(-10.5, -10.6), (-10.5, 10.6), (10.5, 10.6)], 2.6, "已确认：Pololu 官方图（孔离边约 2，开 Φ2.6 留余量）"),
     ("5V 3.2A 降压 D36V28F5", 41.0, 6.0, 17.78, 20.32, 8.0, [(7.09, 7.74), (-6.51, -8.16)], 2.6, "已确认：Pololu 官方图"),
     ("功放 MAX98357A", 44.0, -16.0, 17.78, 19.05, 4.0, [(-6.35, 6.985), (6.35, 6.985)], 2.7, "已确认：Adafruit 官方 STEP"),
-    ("USB 转 4 路 485（宇树）", 0.0, -40.0, 60.0, 45.0, 15.0, [], 0, "★ 没图：扎带"),
+    ("USB 转 4 路 485（宇树）", 0.0, -40.0, 60.0, 45.0, 15.0, [], 0, "光板没孔：扎带 + 双面胶"),
+    ("IMU 超核 HI12M0", 0.0, 0.0, 22.0, 22.0, 10.0, [(0.0, 8.3), (-8.5, -8.3), (8.5, -8.3)], 2.7, "已确认：店铺尺寸表（下排孔距 17、上下 16.6）"),
     ("USB 集线器", -20.0, -85.0, 40.0, 30.0, 12.0, [], 0, "到货实测：扎带"),
     ("12V 5A 降压（抬头舵机、探照灯）", 26.0, -88.0, 26.0, 20.0, 15.0, [], 0, "到货实测：扎带"),
 ]
-IMU_C = (0.0, 0.0)
-IMU_BOX = (24.0, 26.0, 12.0)                     # 超核 HI13 外形（官网）
-IMU_SCREWS = [(IMU_C[0] + sx * 19.0, IMU_C[1]) for sx in (1, -1)]
 STANDOFF = 6.0                                    # 铜柱高
 
 
 def tray_holes(tray, z0):
-    """C01（亚克力 3）：板子的孔、扎带孔、IMU 卡座的 2 个 M3 孔。z0 = 托板下表面。"""
+    """C01（亚克力 3）：板子的孔、扎带孔。z0 = 托板下表面。"""
     for n, cx, cy, lx, ly, h, holes, d, st in TRAY_BOARDS:
         for hx, hy in holes:
             tray = tray.cut(cq.Solid.makeCylinder(d / 2, 5, V(cx + hx, cy + hy, z0 - 1)))
@@ -243,8 +242,6 @@ def tray_holes(tray, z0):
                 for dy in (-ly / 4, ly / 4):
                     x = cx + sx * (lx / 2 + 3.5)
                     tray = tray.cut(box(x - 1.5, x + 1.5, cy + dy - 2.25, cy + dy + 2.25, z0 - 1, z0 + 4))
-    for x, y in IMU_SCREWS:
-        tray = tray.cut(cq.Solid.makeCylinder(1.7, 5, V(x, y, z0 - 1)))
     return tray
 
 
@@ -257,22 +254,6 @@ def tray_bodies(z_top):
         for hx, hy in holes:
             P.append((f"{n} 铜柱", cq.Solid.makeCylinder(2.0, STANDOFF, V(cx + hx, cy + hy, z_top)), "metal"))
     return P
-
-
-def imu_cradle(z_top):
-    """IMU 卡座 P03（打印 PETG）：底板 50 × 32 × 3 + 四周墙（槽 24.4 × 26.4，深 8）+ 一侧开口出 USB + 扎带槽；2 颗 M3 拧 C01（从托板下面拧进热熔螺母）。"""
-    cx, cy = IMU_C
-    ix, iy, ih = IMU_BOX
-    base = box(cx - 25, cx + 25, cy - 16, cy + 16, z_top, z_top + 3)
-    wall = box(cx - ix / 2 - 2.2, cx + ix / 2 + 2.2, cy - iy / 2 - 2.2, cy + iy / 2 + 2.2, z_top + 3, z_top + 11).cut(
-        box(cx - ix / 2 - 0.2, cx + ix / 2 + 0.2, cy - iy / 2 - 0.2, cy + iy / 2 + 0.2, z_top + 2.9, z_top + 12))
-    cr = base.fuse(wall).cut(box(cx - 7, cx + 7, cy - iy / 2 - 3, cy - iy / 2 + 0.5, z_top + 4, z_top + 12))   # 线口（★ USB 口朝哪边到货看）
-    cr = cr.cut(box(cx - ix / 2 - 3, cx + ix / 2 + 3, cy - 2.5, cy + 2.5, z_top + 3, z_top + 6))                   # 扎带槽（横穿底下）
-    for x, y in IMU_SCREWS:
-        cr = cr.fuse(cq.Solid.makeCylinder(4.5, 8, V(x, y, z_top)))                                          # 柱子
-        cr = cr.cut(cq.Solid.makeCylinder(2.0, 5.5, V(x, y, z_top - 0.5)))                                   # M3 热熔螺母
-    imu = box(cx - ix / 2, cx + ix / 2, cy - iy / 2, cy + iy / 2, z_top + 3, z_top + 3 + ih)
-    return cr, imu
 
 
 # ---------------------------------------------------------------- 每一颗螺丝
@@ -306,8 +287,6 @@ def fasteners():
         F.append((f"舵机座 M3×8 (x{x:.0f})", (x, 35.0, z), (0, -1, 0), 8, 1.7, [("舵机座", "clear"), ("头支架左", "clear")]))
     for dz in (-4.0, 4.0):
         F.append((f"舵机后耳 M2×6 (z{dz:+.0f})", (H.SV_XC - H.SV_EAR / 2 + 2.0, H.SV_Y0 + H.SV_EAR_Y + 1.5, H.PZ + dz), (0, -1, 0), 6, 0.85, [("舵机座", "grip")]))
-    for x, y in IMU_SCREWS:
-        F.append((f"IMU 卡座 M3×8 ({x:+.0f})", (x, y, B.TRAY_Z), (0, 0, 1), 7.5, 1.7, [("C01", "clear"), ("IMU 卡座", "insert")]))
     for n, cx, cy, lx, ly, h, holes, d, st in TRAY_BOARDS:
         for hx, hy in holes:
             F.append((f"{n.split('（')[0]} 铜柱孔 ({hx:+.1f},{hy:+.1f})", (cx + hx, cy + hy, B.TRAY_Z), (0, 0, 1), 3, d / 2 - 0.15, [("C01", "clear")]))

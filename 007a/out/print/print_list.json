@@ -176,7 +176,7 @@
    41
   ],
   "fits": true,
-  "vol": 107.7,
+  "vol": 107.0,
   "note": "v20 一件：深度相机罩 + 热像仪座 + 探照灯筒 + 2 个台阶测距窗；背面 4 个 M3 热熔螺母（拧 A05）+ 走线槽；传感器孔位见 mounts.py"
  },
  {
@@ -256,23 +256,8 @@
  },
  {
   "code": "S18",
-  "name": "IMU 卡座",
-  "file": "S18_IMU 卡座.stl",
-  "mat": "PETG",
-  "qty": 1,
-  "size": [
-   50,
-   32,
-   11
-  ],
-  "fits": true,
-  "vol": 6.8,
-  "note": "IMU 卡槽 24.4 × 26.4（超核官网外形，没给安装孔）+ 扎带槽；2 个 M3 热熔螺母（从托板下面拧）"
- },
- {
-  "code": "S19",
   "name": "护角",
-  "file": "S19_护角.stl",
+  "file": "S18_护角.stl",
   "mat": "TPU 95A 黑",
   "qty": 4,
   "size": [
@@ -285,9 +270,9 @@
   "note": "四个角一样（左右镜像打：切片里镜像）"
  },
  {
-  "code": "S20",
+  "code": "S19",
   "name": "大腿外层壳",
-  "file": "S20_大腿外层壳.stl",
+  "file": "S19_大腿外层壳.stl",
   "mat": "PA12-CF / ASA",
   "qty": 4,
   "size": [
@@ -300,9 +285,9 @@
   "note": "左右腿镜像（切片里镜像）"
  },
  {
-  "code": "S21",
+  "code": "S20",
   "name": "小腿",
-  "file": "S21_小腿.stl",
+  "file": "S20_小腿.stl",
   "mat": "PA12-CF",
   "qty": 4,
   "size": [
@@ -315,9 +300,9 @@
   "note": "左右腿镜像（切片里镜像）"
  },
  {
-  "code": "S22",
+  "code": "S21",
   "name": "绕线环",
-  "file": "S22_绕线环.stl",
+  "file": "S21_绕线环.stl",
   "mat": "PETG",
   "qty": 4,
   "size": [
@@ -330,9 +315,9 @@
   "note": "左右腿镜像（切片里镜像）"
  },
  {
-  "code": "S23",
+  "code": "S22",
   "name": "大腿外盖板",
-  "file": "S23_大腿外盖板.stl",
+  "file": "S22_大腿外盖板.stl",
   "mat": "ASA 浅灰",
   "qty": 4,
   "size": [
@@ -345,9 +330,9 @@
   "note": ""
  },
  {
-  "code": "S24",
+  "code": "S23",
   "name": "小腿盖板",
-  "file": "S24_小腿盖板.stl",
+  "file": "S23_小腿盖板.stl",
   "mat": "ASA 浅灰",
   "qty": 8,
   "size": [
@@ -360,9 +345,9 @@
   "note": "小腿两面各一块"
  },
  {
-  "code": "S25",
+  "code": "S24",
   "name": "髋盖",
-  "file": "S25_髋盖.stl",
+  "file": "S24_髋盖.stl",
   "mat": "ASA 深灰",
   "qty": 4,
   "size": [
@@ -375,9 +360,9 @@
   "note": ""
  },
  {
-  "code": "S26",
+  "code": "S25",
   "name": "膝盖帽外",
-  "file": "S26_膝盖帽外.stl",
+  "file": "S25_膝盖帽外.stl",
   "mat": "ASA 深灰",
   "qty": 4,
   "size": [
@@ -390,9 +375,9 @@
   "note": ""
  },
  {
-  "code": "S27",
+  "code": "S26",
   "name": "脚垫",
-  "file": "S27_脚垫.stl",
+  "file": "S26_脚垫.stl",
   "mat": "TPU 95A 黑",
   "qty": 4,
   "size": [
